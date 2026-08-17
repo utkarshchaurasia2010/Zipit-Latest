@@ -1,0 +1,91 @@
+.pull-refresh-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.pull-refresh-pill {
+  position: fixed;
+  top: env(safe-area-inset-top, 16px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-80px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  box-shadow: 0 12px 32px rgba(31, 38, 135, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.15), background-color 0.2s, box-shadow 0.2s;
+  will-change: transform;
+}
+
+body[data-theme="dark"] .pull-refresh-pill {
+  background: rgba(30, 30, 30, 0.55);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+}
+
+.pull-refresh-pill.dragging {
+  transition: none !important; /* Instant response to finger position */
+}
+
+.pull-refresh-pill.ready {
+  background: rgba(248, 203, 70, 0.75) !important;
+  color: #111827 !important;
+  box-shadow: 0 12px 36px rgba(248, 203, 70, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.pull-refresh-pill.refreshing {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border-color: rgba(248, 203, 70, 0.85) !important;
+  box-shadow: 0 12px 32px rgba(248, 203, 70, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+}
+
+body[data-theme="dark"] .pull-refresh-pill.refreshing {
+  background: rgba(30, 30, 30, 0.65) !important;
+}
+
+.pull-refresh-pill.success {
+  background: rgba(16, 185, 129, 0.75) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+}
+
+.pull-refresh-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  color: #F8CB46;
+}
+
+.pull-refresh-pill.ready .pull-refresh-icon,
+.pull-refresh-pill.success .pull-refresh-icon {
+  color: inherit;
+}
+
+.pull-refresh-icon.spin {
+  animation: pullRefreshSpin 0.8s linear infinite;
+}
+
+@keyframes pullRefreshSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

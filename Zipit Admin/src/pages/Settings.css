@@ -1,0 +1,124 @@
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 800px;
+}
+
+.settings-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #101828;
+  margin: 0;
+}
+
+.settings-header p {
+  color: #667085;
+  font-size: 15px;
+  margin: 0;
+}
+
+.settings-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 32px;
+  border: 1px solid #EAECF0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.settings-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #101828;
+  margin: 0 0 24px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #EAECF0;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #344054;
+}
+
+.form-group small {
+  font-size: 13px;
+  color: #667085;
+}
+
+.input-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #D0D5DD;
+  border-radius: 8px;
+  background: #FFFFFF;
+  transition: all 0.2s;
+}
+
+.input-with-icon:focus-within {
+  border-color: #F8CB46;
+  box-shadow: 0 0 0 4px rgba(248, 203, 70, 0.1);
+}
+
+.input-with-icon svg {
+  color: #667085;
+}
+
+.input-with-icon input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 15px;
+  color: #101828;
+  outline: none;
+}
+
+.form-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.save-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #101828;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-settings-btn:hover:not(:disabled) {
+  background: #1D2939;
+}
+
+.save-settings-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

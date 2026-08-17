@@ -1,0 +1,341 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap');
+
+:root {
+  --color-primary: #F8CB46; /* Zipit Yellow */
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+  --color-background: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-popup-border: #E2E8F0;
+  --color-text: #0F172A; /* High contrast Slate-900 for Light Mode */
+  --color-text-light: #475569; /* Slate-600 for sharp subtitle visibility */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+  
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 8px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 20px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
+  
+  --color-header-bg: linear-gradient(to bottom, #F8CB46, #FFFFFF);
+}
+
+body[data-theme="dark"] {
+  --color-background: #121212;
+  --color-surface: #1E1E1E;
+  --color-surface-muted: #2C2C2C;
+  --color-border: #333333;
+  --color-popup-border: #555555;
+  --color-text: #E5E7EB; /* More greyish white */
+  --color-text-light: #9CA3AF;
+  
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  
+  --color-header-bg: #1E1E1E; /* Whole greyish black */
+}
+
+body[data-theme="dark"] .section-title,
+body[data-theme="dark"] .category-name,
+body[data-theme="dark"] h2,
+body[data-theme="dark"] h3 {
+  color: #FFFFFF !important;
+}
+
+body[data-theme="dark"] .mic-icon-wrapper {
+  background-color: #1e1e1e;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent !important;
+  /* Hide scrollbars globally across the app */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+}
+
+html, body, #root, div, span, p, h1, h2, h3, h4, h5, h6, a, button, img, svg {
+  -webkit-tap-highlight-color: transparent !important;
+  /* Prevent browser text selection and blue highlight */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Prevent iOS long-press context callout menu */
+  -webkit-touch-callout: none;
+  /* Prevent image ghost dragging */
+  -webkit-user-drag: none;
+}
+
+/* Allow normal text selection and typing in input and textarea elements */
+input, textarea {
+  -webkit-user-select: auto !important;
+  -moz-user-select: auto !important;
+  -ms-user-select: auto !important;
+  user-select: auto !important;
+}
+
+html, body {
+  /* Prevent browser pull-to-refresh spinner and rubber-band bounce void */
+  overscroll-behavior-y: none;
+  scroll-behavior: smooth;
+}
+
+*:focus {
+  outline: none;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* 
+ * We set a max-width to simulate a mobile app on desktop, 
+ * but it will take full 100% width on actual mobile devices.
+ */
+#root {
+  width: 100%;
+  max-width: 430px; 
+  min-height: 100vh;
+  background-color: var(--color-background);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 40px rgba(0,0,0,0.1);
+}
+
+@keyframes pageFadeScale {
+  0% { opacity: 0; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.page-transition {
+  animation: pageFadeScale 0.25s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+.back-btn {
+  color: var(--color-text);
+  cursor: pointer;
+  background-color: rgba(150, 150, 150, 0.15);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(150, 150, 150, 0.2);
+  border-radius: 50%;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  margin: 0;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.back-btn svg {
+  width: 22px !important;
+  height: 22px !important;
+  stroke-width: 2.6px !important;
+  display: block;
+  margin: auto;
+  flex-shrink: 0;
+}
+
+body[data-theme="dark"] .back-btn {
+  background-color: rgba(150, 150, 150, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+/* Premium App Action Buttons */
+.zipit-premium-btn-primary {
+  background: linear-gradient(135deg, #0c831f 0%, #10b981 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 14px;
+  padding: 15px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 20px rgba(12, 131, 31, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.zipit-premium-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(12, 131, 31, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  filter: brightness(1.05);
+}
+
+.zipit-premium-btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 4px 12px rgba(12, 131, 31, 0.2);
+}
+
+.zipit-premium-btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  border-radius: 14px;
+  padding: 15px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  width: 100%;
+}
+
+.zipit-premium-btn-secondary:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: #10B981;
+  color: #0c831f;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.zipit-premium-btn-secondary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+
+
+/* --- App Wide Animations --- */
+
+/* Smooth page entry */
+.page-fade-in {
+  animation: pageFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Staggered Grid items */
+.stagger-item {
+  opacity: 0;
+  animation: pageFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: 0.05s; }
+.stagger-item:nth-child(2) { animation-delay: 0.1s; }
+.stagger-item:nth-child(3) { animation-delay: 0.15s; }
+.stagger-item:nth-child(4) { animation-delay: 0.2s; }
+.stagger-item:nth-child(5) { animation-delay: 0.25s; }
+.stagger-item:nth-child(6) { animation-delay: 0.3s; }
+.stagger-item:nth-child(7) { animation-delay: 0.35s; }
+.stagger-item:nth-child(8) { animation-delay: 0.4s; }
+.stagger-item:nth-child(9) { animation-delay: 0.45s; }
+.stagger-item:nth-child(10) { animation-delay: 0.5s; }
+.stagger-item:nth-child(n+11) { animation-delay: 0.5s; }
+
+/* Global Select Styling */
+select {
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  font-family: inherit;
+}
+select:focus {
+  border-color: var(--color-primary);
+}
+
+.home-page, .categories-page, .profile-page, .history-page, .cart-page, .checkout-page, .orders-section, .category-section, .search-overlay {
+  animation: pageFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+/* SLEEK ICONS GLOBALLY */
+svg.lucide {
+  stroke-width: 1.5px !important;
+}
+
+/* GLOBAL BUTTON STYLING FOR NATURAL CURVED BOXES & GLOW */
+button,
+.add-btn,
+.add-btn-small,
+.qty-control,
+.hero-add-btn,
+.hero-qty-control,
+.search-qty-control,
+.tip-btn,
+.track-cancel-btn {
+  border-radius: 12px;
+  transition: transform 0.1s, box-shadow 0.2s, background-color 0.2s;
+}
+button:active {
+  transform: scale(0.96);
+}
+
+/* Ensure perfectly round icons stay round */
+.back-btn,
+.profile-pic,
+.mic-icon-wrapper,
+.wishlist-btn-corner,
+.bestseller-sheet-close-btn,
+.search-close-btn,
+.theme-toggle .toggle-switch,
+.add-btn-plus-only {
+  border-radius: 50% !important;
+}
+
+/* Pill shaped primary buttons */
+.checkout-btn,
+.login-btn,
+.browse-btn {
+  border-radius: 100px !important;
+}
+
+/* Card Active Hover Effect */
+.product-card:active, 
+.menu-item:active, 
+.category-card:active, 
+.address-card:active, 
+.track-card:active, 
+.order-card:active {
+  transform: scale(0.98);
+}

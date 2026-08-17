@@ -1,0 +1,91 @@
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  animation: fadeInOverlay 0.4s ease forwards;
+}
+
+.onboarding-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-radius: 24px 24px 0 0;
+  padding: 32px 24px;
+  z-index: 10001;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+  animation: slideUpModal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.onboarding-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.onboarding-header h2 {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--color-text);
+}
+
+.onboarding-header p {
+  color: var(--color-text-light);
+  font-size: 14px;
+}
+
+.onboarding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Reusing modern-input-group from LoginPage.css, but just in case we need overrides */
+.onboarding-form .modern-input-group {
+  margin-top: 0 !important;
+}
+
+.onboarding-form .modern-continue-btn {
+  margin-top: 8px !important;
+}
+
+/* Animations */
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpModal {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.onboarding-overlay.fade-out {
+  animation: fadeOutOverlay 0.4s ease forwards;
+}
+
+.onboarding-modal.slide-down {
+  animation: slideDownModal 0.4s ease forwards;
+}
+
+@keyframes fadeOutOverlay {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideDownModal {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+/* Dark mode support */
+body[data-theme="dark"] .onboarding-modal {
+  background: var(--color-surface);
+}

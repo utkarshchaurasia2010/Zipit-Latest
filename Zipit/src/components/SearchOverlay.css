@@ -1,0 +1,318 @@
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background-color: var(--color-background);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  isolation: isolate;
+  animation: overlaySlideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+@keyframes overlaySlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.search-overlay-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 0;
+}
+
+/* Remove old separate back-btn override — button is now inside the box */
+
+.search-input-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background-color: var(--color-surface-muted);
+  border-radius: 14px;
+  padding: 8px 12px 8px 6px;
+  gap: 8px;
+  border: 1.5px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input-box:focus-within {
+  border-color: var(--color-success);
+  box-shadow: 0 2px 12px rgba(12, 131, 31, 0.12);
+}
+
+/* Embedded back button inside search box */
+.search-back-btn {
+  background: none;
+  border: none;
+  padding: 4px 6px 4px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--color-text);
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.search-back-btn:active {
+  background: var(--color-border);
+}
+
+.search-input-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--color-text);
+}
+
+.search-input-box input::placeholder {
+  color: var(--color-text-light);
+}
+
+.search-input-box .divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--color-border);
+}
+
+.mic-icon {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.mic-icon.listening {
+  animation: pulse-mic 1.5s infinite;
+  color: var(--color-primary);
+}
+
+@keyframes pulse-mic {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.voice-listening-dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.voice-listening-dialog {
+  background: var(--color-surface);
+  border-radius: 24px;
+  padding: 32px 24px;
+  width: 80%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  transform: scale(0.9);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+}
+
+@keyframes popIn {
+  to { transform: scale(1); }
+}
+
+.siri-orb {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ff4081, #d50000, #4a148c);
+  filter: blur(10px) contrast(1.5);
+  animation: siri-pulse 1.5s infinite alternate cubic-bezier(0.4, 0, 0.2, 1), siri-rotate 4s infinite linear;
+  margin-bottom: 24px;
+}
+
+@keyframes siri-pulse {
+  0% { transform: scale(0.8); filter: blur(8px) hue-rotate(0deg); }
+  100% { transform: scale(1.3); filter: blur(14px) hue-rotate(45deg); }
+}
+
+@keyframes siri-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.voice-listening-dialog h3 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.voice-listening-dialog p {
+  font-size: 14px;
+  color: var(--color-text-light);
+  margin-bottom: 24px;
+}
+
+.voice-cancel-btn {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 12px 32px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.voice-cancel-btn:hover {
+  background: var(--color-border);
+}
+
+.filter-chips-container {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px 12px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: none;
+}
+
+.filter-chips-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.filter-chip {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.filter-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #000;
+}
+
+.search-body {
+  flex: 1;
+  padding: 4px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.recent-searches h4 {
+  font-size: 14px;
+  color: var(--color-text-light);
+  margin-bottom: 16px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tag {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.tag:hover {
+  background-color: var(--color-border);
+}
+
+.remove-tag-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-light);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.remove-tag-btn:hover {
+  color: var(--color-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.search-results-text {
+  color: var(--color-text-light);
+  font-size: 15px;
+}
+.search-results-list { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.search-product-card { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  background: var(--color-surface); 
+  padding: 12px; 
+  border-radius: 12px; 
+  border: 1px solid var(--color-border); 
+}
+.search-product-img { width: 60px; height: 60px; border-radius: 8px; background: var(--color-surface-muted); margin-right: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.search-product-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.search-product-info { flex: 1; min-width: 0; }
+.search-product-info .item-name { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-product-info .item-amount { font-size: 12px; color: #666; margin-bottom: 4px; }
+.search-product-info .item-price { font-weight: 700; color: var(--color-text); font-size: 14px; }
+.search-product-action { margin-left: 12px; flex-shrink: 0; display: flex; justify-content: flex-end; min-width: 80px; }
+.search-product-action .add-btn-plus-only {
+  background: #f3f9f4;
+  color: #0c831f;
+  border: 1px solid #0c831f;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.search-product-action .search-qty-control { display: flex; align-items: center; background: #0c831f; color: white; border-radius: 12px; overflow: hidden; }
+.search-product-action .search-qty-control button { background: none; border: none; color: white; font-size: 16px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.search-product-action .search-qty-control span { font-weight: 600; font-size: 14px; width: 20px; text-align: center; }

@@ -1,0 +1,216 @@
+.history-page {
+  flex: 1;
+  background-color: var(--color-background);
+  padding: 0 0 100px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.orders-list {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.order-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: 12px;
+}
+
+.order-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-text {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.order-date {
+  font-size: 12px;
+  color: var(--color-text-light);
+}
+
+.order-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-items {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.order-amount {
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reorder-btn {
+  background-color: #FEF2F2;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--color-text);
+  padding-left: 4px;
+}
+
+.orders-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.active-order-card {
+  border: 2px solid #0c831f;
+  background: linear-gradient(to bottom right, #f4fdf6, #ffffff);
+}
+
+body[data-theme="dark"] .active-order-card {
+  background: var(--color-surface);
+}
+
+.active-status .status-text {
+  color: #0c831f;
+  font-weight: 800;
+}
+
+.past-order-card {
+  opacity: 0.8;
+  box-shadow: none;
+  border: 1px solid var(--color-border);
+}
+
+/* Order Timeline Styles */
+.order-timeline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--color-border);
+  position: relative;
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  flex: 1;
+  z-index: 2;
+}
+
+.timeline-icon-container {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-border);
+  z-index: 2;
+  transition: all 0.3s;
+  color: var(--color-text-light);
+}
+
+.timeline-step.completed .timeline-icon-container,
+.timeline-step.active .timeline-icon-container {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #000;
+}
+
+.timeline-step.cancelled .timeline-icon-container {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+
+.timeline-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  text-align: center;
+  max-width: 60px;
+  line-height: 1.2;
+}
+
+.timeline-step.completed .timeline-label,
+.timeline-step.active .timeline-label {
+  color: var(--color-text);
+}
+
+.timeline-step.cancelled .timeline-label {
+  color: var(--color-danger);
+}
+
+/* Connection Lines */
+.timeline-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border);
+  z-index: 1;
+  transition: all 0.3s;
+}
+
+.timeline-step.completed:not(:last-child)::after {
+  background: var(--color-primary);
+}
+
+/* Cancellation Rejected Alert */
+.cancellation-rejected-alert {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #B42318;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}

@@ -1,0 +1,147 @@
+/* ── Hero Carousel Wrapper ─────────────────────────────── */
+.hero-carousel-wrapper {
+  position: relative;
+  width: calc(100% - 32px);
+  margin: 0 16px 0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.10);
+  background: #f3f4f6;
+  min-height: 160px;
+}
+
+/* ── Track outer (clip) ─────────────────────────────────── */
+.hero-carousel-track-outer {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  cursor: grab;
+  user-select: none;
+}
+
+.hero-carousel-track-outer:active {
+  cursor: grabbing;
+}
+
+/* ── Slide track ────────────────────────────────────────── */
+.hero-carousel-track {
+  display: flex;
+  width: 100%;
+  will-change: transform;
+}
+
+/* ── Individual slide ───────────────────────────────────── */
+.hero-carousel-slide {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 160px;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.hero-carousel-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  border-radius: 18px;
+}
+
+.hero-carousel-color-slide {
+  width: 100%;
+  min-height: 160px;
+  border-radius: 18px;
+}
+
+/* ── Arrow buttons ──────────────────────────────────────── */
+.hero-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%); /* slightly above center, above the dots */
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.88);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: background 0.2s, transform 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.hero-carousel-arrow:hover {
+  background: #fff;
+  transform: translateY(-60%) scale(1.08);
+}
+
+.hero-carousel-arrow:active {
+  transform: translateY(-60%) scale(0.95);
+}
+
+.hero-carousel-arrow-left {
+  left: 10px;
+}
+
+.hero-carousel-arrow-right {
+  right: 10px;
+}
+
+/* ── Pagination dots ────────────────────────────────────── */
+.hero-carousel-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.hero-carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.hero-carousel-dot.active {
+  width: 20px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+/* ── Dark mode ──────────────────────────────────────────── */
+body[data-theme="dark"] .hero-carousel-wrapper {
+  background: #1e1e1e;
+}
+
+body[data-theme="dark"] .hero-carousel-arrow {
+  background: rgba(44, 44, 44, 0.88);
+}
+
+body[data-theme="dark"] .hero-carousel-arrow:hover {
+  background: #2c2c2c;
+}
+
+body[data-theme="dark"] .hero-carousel-arrow svg {
+  stroke: #e5e7eb;
+}
+
+body[data-theme="dark"] .hero-carousel-dot {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+body[data-theme="dark"] .hero-carousel-dot.active {
+  background: #fff;
+}

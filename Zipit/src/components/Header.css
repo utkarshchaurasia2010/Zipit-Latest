@@ -1,0 +1,134 @@
+.app-header {
+  padding: 8px 20px 0px;
+  background-color: var(--color-primary);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  border-bottom: 4px solid var(--color-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  height: 64px;
+}
+
+.location-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.delivery-time strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.delivery-time h1 {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.address {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.profile-pic {
+  width: 44px;
+  height: 44px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.profile-pic:active {
+  transform: scale(0.9);
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  padding: 6px 16px;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  cursor: text;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.search-container:active {
+  transform: scale(0.97);
+}
+
+.search-placeholder-wrapper {
+  flex: 1;
+  color: var(--color-text-light);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.animated-search-text {
+  position: relative;
+  height: 20px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.slide-up-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  animation: slideUpFade 2s ease-in-out infinite;
+}
+
+@keyframes slideUpFade {
+  0% { transform: translateY(100%); opacity: 0; }
+  15% { transform: translateY(0); opacity: 1; }
+  85% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+
+.search-container .divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--color-border);
+}
+
+.mic-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.mic-icon-wrapper:active {
+  transform: scale(0.9);
+}

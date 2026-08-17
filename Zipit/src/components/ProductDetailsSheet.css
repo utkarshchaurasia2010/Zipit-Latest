@@ -1,0 +1,296 @@
+.product-details-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease-out forwards;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.product-details-sheet {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border-radius: 24px 24px 0 0;
+  padding: 0;
+  animation: slideUpDetails 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+}
+@keyframes slideUpDetails {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.details-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.details-image-container {
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(to bottom, var(--color-bg), var(--color-surface));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border-radius: 24px 24px 0 0;
+  position: relative;
+}
+.details-image-container img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 15px 25px rgba(0,0,0,0.1));
+}
+.details-content {
+  padding: 24px;
+}
+.details-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 16px 0;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+}
+.details-delivery-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(47, 136, 29, 0.1);
+  color: #2F881D;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+.details-info-box {
+  background: var(--color-bg);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid var(--color-border);
+}
+.details-info-box h4 {
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+.details-info-box p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-light);
+  line-height: 1.5;
+}
+
+/* Premium Nutrition Grid */
+.nutrition-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.nutrition-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 4px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.nutrition-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+}
+.nutrition-icon {
+  margin-bottom: 8px;
+  opacity: 0.9;
+}
+.energy-item .nutrition-icon { color: #ff6b6b; }
+.protein-item .nutrition-icon { color: #339af0; }
+.carbs-item .nutrition-icon { color: #fcc419; }
+.fat-item .nutrition-icon { color: #ff922b; }
+
+.nutrition-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1;
+}
+.nutrition-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.details-suggested h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.suggested-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 24px;
+  margin: 0 -24px;
+  padding-left: 24px;
+  padding-right: 24px;
+  scroll-snap-type: x mandatory;
+}
+.suggested-carousel::-webkit-scrollbar {
+  height: 4px;
+}
+.suggested-carousel::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+.suggested-item {
+  min-width: 120px;
+  background: var(--color-bg);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  scroll-snap-align: start;
+}
+.suggested-item img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+}
+.suggested-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.2;
+}
+.suggested-item-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+.details-action-bar-sticky {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -24px -24px -24px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+
+.details-action-bar-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.details-action-price {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.details-action-amount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.details-action-bar-right {
+  min-width: 140px;
+}
+
+.details-action-add {
+  width: 100%;
+  background: #0c831f;
+  color: white;
+  border: none;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(12, 131, 31, 0.2);
+  transition: transform 0.2s;
+}
+
+.details-action-add:active {
+  transform: scale(0.95);
+}
+
+.details-action-qty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: #0c831f;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(12, 131, 31, 0.2);
+}
+
+.details-action-qty button {
+  flex: 1;
+  background: none;
+  border: none;
+  color: white;
+  padding: 12px;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.details-action-qty span {
+  color: white;
+  font-weight: 800;
+  font-size: 16px;
+  width: 32px;
+  text-align: center;
+}

@@ -1,0 +1,89 @@
+.install-prompt-overlay {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 440px;
+  z-index: 1000;
+  animation: slideUpPrompt 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes slideUpPrompt {
+  0% { transform: translate(-50%, 150%); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.install-prompt-card {
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.install-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.install-prompt-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(248, 203, 70, 0.4);
+}
+
+.install-prompt-text h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.install-prompt-text p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-light);
+  line-height: 1.4;
+}
+
+.install-prompt-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.install-btn-secondary, .install-btn-primary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.install-btn-secondary {
+  background: transparent;
+  color: var(--color-text-light);
+}
+
+.install-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-text);
+  box-shadow: 0 2px 8px rgba(248, 203, 70, 0.3);
+}
+
+.install-btn-secondary:active, .install-btn-primary:active {
+  transform: scale(0.95);
+}

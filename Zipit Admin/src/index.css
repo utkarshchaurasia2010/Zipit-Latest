@@ -1,0 +1,290 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap');
+
+:root {
+  --color-primary: #F8CB46; /* Zipit Yellow */
+  --color-success: #16A34A; /* Blinkit Green */
+  --color-danger: #E23744; /* Zomato Red */
+  --color-background: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F3F4F6;
+  --color-border: #E5E7EB;
+  --color-popup-border: #EEEEEE;
+  --color-text: #111827;
+  --color-text-light: #6B7280;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+  
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+  
+  --color-header-bg: linear-gradient(to bottom, #F8CB46, #FFFFFF);
+}
+
+body[data-theme="dark"] {
+  --color-background: #121212;
+  --color-surface: #1E1E1E;
+  --color-surface-muted: #2C2C2C;
+  --color-border: #333333;
+  --color-popup-border: #555555;
+  --color-text: #E5E7EB; /* More greyish white */
+  --color-text-light: #9CA3AF;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --color-header-bg: #1E1E1E; /* Whole greyish black */
+}
+
+body[data-theme="dark"] .section-title,
+body[data-theme="dark"] .category-name,
+body[data-theme="dark"] h2,
+body[data-theme="dark"] h3 {
+  color: #FFFFFF !important;
+}
+
+body[data-theme="dark"] .mic-icon-wrapper {
+  background-color: #1e1e1e;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+html, body, a, button, div, span, input, select {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+button:focus, a:focus, input:focus, select:focus, div:focus {
+  outline: none;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* 
+ * We set a max-width to simulate a mobile app on desktop, 
+ * but it will take full 100% width on actual mobile devices.
+ */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--color-background);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.back-btn {
+  color: var(--color-text);
+  cursor: pointer;
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+body[data-theme="dark"] .back-btn {
+  background-color: #2C2C2C;
+  border-color: #333;
+  box-shadow: none;
+}
+
+
+
+/* --- App Wide Animations --- */
+
+/* Smooth page entry */
+.page-fade-in {
+  animation: pageFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Staggered Grid items */
+.stagger-item {
+  opacity: 0;
+  animation: pageFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: 0.05s; }
+.stagger-item:nth-child(2) { animation-delay: 0.1s; }
+.stagger-item:nth-child(3) { animation-delay: 0.15s; }
+.stagger-item:nth-child(4) { animation-delay: 0.2s; }
+.stagger-item:nth-child(5) { animation-delay: 0.25s; }
+.stagger-item:nth-child(6) { animation-delay: 0.3s; }
+.stagger-item:nth-child(7) { animation-delay: 0.35s; }
+.stagger-item:nth-child(8) { animation-delay: 0.4s; }
+.stagger-item:nth-child(9) { animation-delay: 0.45s; }
+.stagger-item:nth-child(10) { animation-delay: 0.5s; }
+.stagger-item:nth-child(n+11) { animation-delay: 0.5s; }
+
+/* Global Select Styling */
+select {
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  font-family: inherit;
+}
+select:focus {
+  border-color: var(--color-primary);
+}
+
+.admin-layout, .overview-page, .admin-dashboard, .admin-list {
+  animation: pageFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+/* Admin Modal Styles */
+.admin-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.admin-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUpFade 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.admin-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #E5E7EB;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #F3F4F6;
+  color: #111827;
+}
+
+.admin-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s;
+  background: #F9FAFB;
+}
+
+.admin-input:focus {
+  border-color: var(--color-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.1);
+  outline: none;
+}
+
+.admin-modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #E5E7EB;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  background: #fff;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #F3F4F6;
+}
+
+.submit-btn {
+  padding: 10px 20px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(18, 183, 106, 0.2);
+}
+
+.submit-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
