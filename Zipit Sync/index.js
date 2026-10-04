@@ -17,23 +17,52 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !GOOGLE_SHEETS_ID) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Support both environment variable JSON (for Cloud hosts like Render/Railway) and physical file
-let authConfig = {
-  scopes: ['https://www.googleapis.com/auth/spreadsheets']
-};
+const fs = require('fs');
 
-if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-  try {
-    authConfig.credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-  } catch (err) {
-    console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:", err.message);
-    authConfig.keyFile = CREDENTIALS_PATH;
+// Helper to get authenticated Google Sheets client with private_key normalization
+async function getGoogleSheetsClient() {
+  // Option 1: GOOGLE_SERVICE_ACCOUNT_JSON env var
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    try {
+      let raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.trim();
+      let creds = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (typeof creds === 'string') creds = JSON.parse(creds);
+      
+      if (creds && creds.private_key) {
+        creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+      }
+      
+      const auth = new google.auth.GoogleAuth({
+        credentials: creds,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets']
+      });
+      const authClient = await auth.getClient();
+      return google.sheets({ version: 'v4', auth: authClient });
+    } catch (err) {
+      console.warn('[ZIPIT-SYNC] Failed using GOOGLE_SERVICE_ACCOUNT_JSON:', err.message);
+    }
   }
-} else {
-  authConfig.keyFile = CREDENTIALS_PATH;
-}
 
-const auth = new google.auth.GoogleAuth(authConfig);
+  // Option 2: credentials.json physical file
+  if (fs.existsSync(CREDENTIALS_PATH)) {
+    try {
+      const fileContent = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
+      if (fileContent.private_key) {
+        fileContent.private_key = fileContent.private_key.replace(/\\n/g, '\n');
+      }
+      const auth = new google.auth.GoogleAuth({
+        credentials: fileContent,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets']
+      });
+      const authClient = await auth.getClient();
+      return google.sheets({ version: 'v4', auth: authClient });
+    } catch (err) {
+      console.error('[ZIPIT-SYNC] Failed using credentials file:', err.message);
+    }
+  }
+
+  throw new Error('No valid Google Service Account credentials found (checked GOOGLE_SERVICE_ACCOUNT_JSON and credentials.json)');
+}
 
 const app = express();
 app.use(cors());
@@ -119,8 +148,7 @@ async function updateSheet(sheets, tabName, values) {
 // ----------------------------------------------------
 async function syncToSheets() {
   console.log(`[${new Date().toISOString()}] Starting sync TO Google Sheets...`);
-  const authClient = await auth.getClient();
-  const sheets = google.sheets({ version: 'v4', auth: authClient });
+  const sheets = await getGoogleSheetsClient();
   const results = {};
 
   // Profiles (Users)
@@ -220,8 +248,7 @@ async function syncToSheets() {
 // ----------------------------------------------------
 async function syncFromSheets() {
   console.log(`[${new Date().toISOString()}] Starting sync FROM Google Sheets...`);
-  const authClient = await auth.getClient();
-  const sheets = google.sheets({ version: 'v4', auth: authClient });
+  const sheets = await getGoogleSheetsClient();
   
   let updatedOrders = 0;
   let updatedProducts = 0;
@@ -334,8 +361,7 @@ app.get('/api/debug', async (req, res) => {
   }
 
   try {
-    const authClient = await auth.getClient();
-    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const sheets = await getGoogleSheetsClient();
     const meta = await sheets.spreadsheets.get({ spreadsheetId: GOOGLE_SHEETS_ID });
     result.sheets.title = meta.data.properties.title;
     result.sheets.tabs = (meta.data.sheets || []).map(s => s.properties.title);
