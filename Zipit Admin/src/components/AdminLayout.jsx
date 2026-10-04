@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Volume2, VolumeX, AlertTriangle, ArrowRight, Key, ExternalLink } from 'lucide-react';
 import { db, supabase } from '../services/db';
+import { startSiren, stopSiren, testSiren } from '../utils/siren';
 import './AdminLayout.css';
 
 const AdminLayout = ({ profile, setProfile }) => {
@@ -18,6 +19,10 @@ const AdminLayout = ({ profile, setProfile }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
+
+  // Incoming Order Alarm State
+  const [incomingAlertOrder, setIncomingAlertOrder] = useState(null);
+  const [isTestingSiren, setIsTestingSiren] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('admin_theme') || 'dark');
@@ -39,24 +44,27 @@ const AdminLayout = ({ profile, setProfile }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Real-time Notification Listener
+  // Real-time Notification & Order Siren Listener
   useEffect(() => {
     const fetchInitialRecent = async () => {
-      // Just fetch last 5 orders to populate initially if we want, or start empty. Let's start empty for truly "new" notifications while active, or fetch 5.
       const recent = await db.orders.getAllAdmin();
       const top5 = recent.slice(0, 5);
       setNotifications(top5);
     };
     fetchInitialRecent();
 
-    const channel = supabase.channel('admin-orders')
+    const ordersChannel = supabase.channel('admin-orders-live-siren')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-        setNotifications(prev => [payload.new, ...prev].slice(0, 10)); // keep last 10
+        setNotifications(prev => [payload.new, ...prev].slice(0, 10));
         setUnreadCount(prev => prev + 1);
         
+        // Trigger Loud Village Shop Siren Alarm!
+        startSiren();
+        setIncomingAlertOrder(payload.new);
+
         // Native browser notification if granted
         if (Notification.permission === 'granted') {
-          new Notification('New Order Received!', { body: `Order #${payload.new.id.split('-')[0]}` });
+          new Notification('🚨 NEW ORDER RECEIVED!', { body: `Order #${payload.new.id.split('-')[0].toUpperCase()} for ₹${payload.new.total}` });
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
@@ -70,13 +78,22 @@ const AdminLayout = ({ profile, setProfile }) => {
         }
       })
       .subscribe();
-      
-    // Ask for notification permission
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
 
-    return () => supabase.removeChannel(channel);
+    // Realtime Profile Listener
+    const profileChannel = supabase.channel('admin-profile-sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, async (payload) => {
+        if (payload.new.id === profile?.id || payload.new.is_admin) {
+          const fresh = await db.user.get();
+          if (fresh) setProfile(fresh);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      stopSiren();
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(profileChannel);
+    };
   }, []);
 
   // Search Effect
@@ -126,6 +143,7 @@ const AdminLayout = ({ profile, setProfile }) => {
     { name: 'Banners', path: '/banners', icon: <LayoutDashboard size={20} /> },
     { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
     { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
+    { name: 'Access Codes', path: '/access-codes', icon: <Key size={20} /> },
   ];
 
   // Pending Refund Badge State
@@ -263,46 +281,126 @@ const AdminLayout = ({ profile, setProfile }) => {
           
           <div className="topbar-actions">
             
-            {/* Google Sheets Sync Buttons */}
+            {/* Google Sheets Cloud Sync Buttons */}
             <div style={{display: 'flex', gap: '8px', marginRight: '16px', alignItems: 'center'}}>
               <button 
                 onClick={async (e) => {
-                  e.target.disabled = true;
-                  const originalText = e.target.innerText;
-                  e.target.innerText = 'Pushing...';
+                  const btn = e.currentTarget;
+                  btn.disabled = true;
+                  const originalText = btn.innerText;
+                  btn.innerText = 'Pushing...';
+                  const syncUrl = import.meta.env.VITE_SYNC_SERVER_URL || localStorage.getItem('zipit_sync_url') || 'https://zipit-sync.onrender.com';
+                  const targetEndpoint = `${syncUrl.replace(/\/$/, '')}/sync/to-sheets`;
                   try {
-                    const res = await fetch('http://localhost:4000/sync/to-sheets', { method: 'POST' });
-                    const data = await res.json();
-                    if(data.success) alert(data.message);
-                    else alert("Error: " + data.error);
-                  } catch (err) { alert("Make sure Zipit Sync server is running!"); }
-                  e.target.disabled = false;
-                  e.target.innerText = originalText;
+                    let res = await fetch(targetEndpoint, { method: 'POST' }).catch(() => null);
+                    if (!res || !res.ok) {
+                      // Fallback to local sync server or alternate path
+                      res = await fetch('http://localhost:4000/sync/to-sheets', { method: 'POST' }).catch(() => null);
+                    }
+                    if (res && res.ok) {
+                      const data = await res.json();
+                      alert(data.message || 'Successfully pushed latest data to Google Sheets!');
+                    } else {
+                      alert('Could not reach cloud sync service. Please ensure zipit-sync.onrender.com is awake.');
+                    }
+                  } catch (err) {
+                    alert('Sync error: ' + err.message);
+                  } finally {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                  }
                 }}
                 style={{background: '#0c831f', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'}}
+                title="Push all products, orders, profiles to Google Sheets (Cloud: https://zipit-sync.onrender.com)"
               >
                 Push to Sheets
               </button>
               
               <button 
                 onClick={async (e) => {
-                  e.target.disabled = true;
-                  const originalText = e.target.innerText;
-                  e.target.innerText = 'Pulling...';
+                  const btn = e.currentTarget;
+                  btn.disabled = true;
+                  const originalText = btn.innerText;
+                  btn.innerText = 'Pulling...';
+                  const syncUrl = import.meta.env.VITE_SYNC_SERVER_URL || localStorage.getItem('zipit_sync_url') || 'https://zipit-sync.onrender.com';
+                  const targetEndpoint = `${syncUrl.replace(/\/$/, '')}/sync/from-sheets`;
                   try {
-                    const res = await fetch('http://localhost:4000/sync/from-sheets', { method: 'POST' });
-                    const data = await res.json();
-                    if(data.success) alert(data.message);
-                    else alert("Error: " + data.error);
-                  } catch (err) { alert("Make sure Zipit Sync server is running!"); }
-                  e.target.disabled = false;
-                  e.target.innerText = originalText;
+                    let res = await fetch(targetEndpoint, { method: 'POST' }).catch(() => null);
+                    if (!res || !res.ok) {
+                      // Fallback to local sync server
+                      res = await fetch('http://localhost:4000/sync/from-sheets', { method: 'POST' }).catch(() => null);
+                    }
+                    if (res && res.ok) {
+                      const data = await res.json();
+                      alert(data.message || 'Successfully pulled latest changes from Google Sheets!');
+                    } else {
+                      alert('Could not reach cloud sync service. Please ensure zipit-sync.onrender.com is awake.');
+                    }
+                  } catch (err) {
+                    alert('Sync error: ' + err.message);
+                  } finally {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                  }
                 }}
                 style={{background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)', padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'}}
+                title="Pull updated product prices/stock from Google Sheets (Cloud: https://zipit-sync.onrender.com)"
               >
                 Pull from Sheets
               </button>
+
+              <a
+                href="https://docs.google.com/spreadsheets/d/1nIK_sYkNurKoVkXch9WBuxT_TfLI_-R4s83uxrGL1is/edit"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'var(--color-text-light)',
+                  textDecoration: 'none',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface-muted)'
+                }}
+                title="Open Google Sheet in new tab"
+              >
+                <span>Sheet</span>
+                <ExternalLink size={13} />
+              </a>
             </div>
+
+            {/* Loud Siren Test Button */}
+            <button 
+              className="siren-test-btn"
+              onClick={() => {
+                setIsTestingSiren(true);
+                testSiren();
+                setTimeout(() => setIsTestingSiren(false), 1500);
+              }}
+              title="Test Shop Siren Sound Alert"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: isTestingSiren ? '#ef4444' : 'rgba(239, 68, 68, 0.12)',
+                color: isTestingSiren ? '#ffffff' : '#ef4444',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                marginRight: '8px'
+              }}
+            >
+              <Volume2 size={16} className={isTestingSiren ? 'pulse-icon' : ''} />
+              <span>{isTestingSiren ? 'Siren Ringing...' : 'Test Siren'}</span>
+            </button>
 
             <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
@@ -342,6 +440,60 @@ const AdminLayout = ({ profile, setProfile }) => {
           <Outlet />
         </div>
       </main>
+
+      {/* LOUD INCOMING ORDER SIREN OVERLAY MODAL */}
+      {incomingAlertOrder && (
+        <div className="siren-modal-overlay">
+          <div className="siren-modal-card">
+            <div className="siren-pulse-badge">
+              <AlertTriangle size={36} color="#dc2626" className="siren-shake" />
+            </div>
+
+            <h2 className="siren-title">🚨 NEW ORDER RECEIVED!</h2>
+            <p className="siren-order-code">Order #{incomingAlertOrder.id?.slice(0, 8).toUpperCase()}</p>
+            
+            <div className="siren-details-box">
+              <div className="siren-detail-row">
+                <span>Total Amount:</span>
+                <strong>₹{incomingAlertOrder.total}</strong>
+              </div>
+              <div className="siren-detail-row">
+                <span>Items:</span>
+                <span>{incomingAlertOrder.items?.length || 0} item(s)</span>
+              </div>
+              <div className="siren-detail-row">
+                <span>Payment:</span>
+                <span className="siren-tag">{incomingAlertOrder.payment_method || 'COD / UPI'}</span>
+              </div>
+            </div>
+
+            <div className="siren-actions">
+              <button 
+                className="siren-btn-primary"
+                onClick={() => {
+                  stopSiren();
+                  setIncomingAlertOrder(null);
+                  navigate('/orders');
+                }}
+              >
+                <span>Accept Order & Stop Alarm</span>
+                <ArrowRight size={18} />
+              </button>
+
+              <button 
+                className="siren-btn-mute"
+                onClick={() => {
+                  stopSiren();
+                  setIncomingAlertOrder(null);
+                }}
+              >
+                <VolumeX size={16} />
+                <span>Mute Alarm</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
