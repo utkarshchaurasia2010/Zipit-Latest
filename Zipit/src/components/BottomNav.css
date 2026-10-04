@@ -6,17 +6,21 @@
   width: calc(100% - 48px);
   max-width: 400px;
   height: 68px;
-  background-color: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-radius: 34px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(32px) saturate(210%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%);
+  border-radius: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 20px 48px rgba(0, 0, 0, 0.14),
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: space-around;
   align-items: center;
   z-index: 50;
-  transition: transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out, background 0.3s, box-shadow 0.3s;
 }
 
 .bottom-nav.hidden {
@@ -24,7 +28,7 @@
 }
 
 .nav-item {
-  color: var(--color-text-light);
+  color: #64748b;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -36,22 +40,28 @@
 }
 
 .nav-item.active {
-  color: var(--color-text);
+  color: #0f172a;
   animation: navPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.5) forwards;
 }
 
 body[data-theme="dark"] .bottom-nav {
-  background-color: rgba(30, 30, 32, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.05);
+  background: rgba(28, 28, 30, 0.85);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 24px 52px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4);
 }
 
 body[data-theme="dark"] .nav-item {
-  color: #666;
+  color: #94a3b8;
 }
 
 body[data-theme="dark"] .nav-item.active {
-  color: #fff;
+  color: #ffffff;
 }
 
 .nav-label {

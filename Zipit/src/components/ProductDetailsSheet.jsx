@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 import { X, Clock, Info, Flame, Dumbbell, Wheat, Droplet } from 'lucide-react';
 import { getProductDeliveryTime } from '../utils/time';
 import { getNutritionalInfo } from '../utils/nutrition';
@@ -8,6 +9,13 @@ import { db } from '../services/db';
 
 const ProductDetailsSheet = ({ product, onClose, cart, updateCartQty }) => {
   const [suggested, setSuggested] = useState([]);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === '/checkout' || location.pathname === '/payment') {
+      onClose();
+    }
+  }, [location.pathname, onClose]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';

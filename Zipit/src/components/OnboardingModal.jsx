@@ -9,26 +9,43 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
-    // Attempt to prefill email from auth session
+    // Attempt to prefill email from auth session or userProfile
     const fetchEmail = async () => {
       const { data } = await supabase.auth.getUser();
-      if (data?.user?.email) {
-        setFormData(prev => ({ ...prev, email: data.user.email }));
+      const authEmail = data?.user?.email || userProfile?.email || '';
+      if (authEmail) {
+        setFormData(prev => ({ ...prev, email: authEmail }));
       }
     };
     fetchEmail();
-  }, []);
+  }, [userProfile]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    await db.user.update(formData);
+    if (!formData.name.trim() || !formData.phone.trim()) return;
     
-    // Smooth closing animation
-    setClosing(true);
-    setTimeout(() => {
-      onComplete(formData);
-    }, 400); // Wait for animation
+    // Auto-generate initials if empty
+    let photoInitials = formData.photo.trim();
+    if (!photoInitials) {
+      photoInitials = formData.name.trim().split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    }
+
+    const payload = {
+      ...formData,
+      photo: photoInitials || 'NU'
+    };
+
+    setLoading(true);
+    const updated = await db.user.update(payload);
+    setLoading(false);
+    
+    if (updated) {
+      // Smooth closing animation
+      setClosing(true);
+      setTimeout(() => {
+        onComplete(updated);
+      }, 400); // Wait for animation
+    }
   };
 
   return (
@@ -50,6 +67,7 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
               onChange={e => setFormData({...formData, name: e.target.value})}
               required
               disabled={loading}
+              autoFocus
             />
           </div>
           
@@ -59,21 +77,22 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
               type="tel" 
               placeholder="Mobile Number" 
               value={formData.phone}
-              onChange={e => setFormData({...formData, phone: e.target.value})}
+              onChange={e => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
               required
               disabled={loading}
+              maxLength={10}
             />
           </div>
           
-          <div className="modern-input-group">
-            <div className="email-prefix"><Mail size={18} color="#FFF" /></div>
+          <div className="modern-input-group disabled-input-group">
+            <div className="email-prefix"><Mail size={18} color="#888" /></div>
             <input 
               type="email" 
               placeholder="Email Address" 
               value={formData.email}
-              onChange={e => setFormData({...formData, email: e.target.value})}
-              required
-              disabled={loading}
+              readOnly
+              disabled
+              style={{ opacity: 0.7, cursor: 'not-allowed' }}
             />
           </div>
           
@@ -81,11 +100,10 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
             <div className="email-prefix"><Edit2 size={18} color="#FFF" /></div>
             <input 
               type="text" 
-              placeholder="Initials (e.g. UC)" 
+              placeholder="Initials (e.g. UC - Optional)" 
               maxLength={2}
               value={formData.photo}
-              onChange={e => setFormData({...formData, photo: e.target.value})}
-              required
+              onChange={e => setFormData({...formData, photo: e.target.value.toUpperCase()})}
               disabled={loading}
               style={{textTransform: 'uppercase'}}
             />
@@ -94,7 +112,7 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
           <button 
             type="submit" 
             className="modern-continue-btn" 
-            disabled={!formData.name || !formData.phone || !formData.email || !formData.photo || loading}
+            disabled={!formData.name.trim() || formData.phone.length < 10 || loading}
           >
             {loading ? 'Saving...' : 'Get Started'}
           </button>

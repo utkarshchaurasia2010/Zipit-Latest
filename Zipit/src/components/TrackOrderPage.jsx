@@ -4,6 +4,7 @@ import { db, supabase } from '../services/db';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { playBellSound } from '../utils/siren';
 import './TrackOrderPage.css';
 
 // Error boundary so a Leaflet crash never blanks the whole page
@@ -201,8 +202,14 @@ const TrackOrderPage = ({ navigate }) => {
 
     const channel = supabase
       .channel(`track-orders-${Math.random()}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => fetchOrders(true))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => fetchOrders(true))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        playBellSound();
+        fetchOrders(true);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+        playBellSound();
+        fetchOrders(true);
+      })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => fetchOrders(true))
       .subscribe();
 

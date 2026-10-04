@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronLeft, Mic, X, Heart, Search, SearchX } from 'lucide-react';
 import { db } from '../services/db';
 import { useToast } from '../context/ToastContext';
@@ -69,6 +70,14 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
   const recognitionRef = useRef(null);
   const { showToast } = useToast();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const location = useLocation();
+
+  // Close SearchOverlay immediately if route changes to /checkout or /payment
+  useEffect(() => {
+    if (isOpen && (location.pathname === '/checkout' || location.pathname === '/payment')) {
+      onClose();
+    }
+  }, [location.pathname, isOpen, onClose]);
 
   useEffect(() => {
     const saved = localStorage.getItem('zipit_recent_searches');

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, MapPin } from 'lucide-react';
+import { stripAddressTags } from './SavedAddressesPage';
 import './SavedAddressesPage.css';
 import './CartModal.css';
 
@@ -58,8 +59,18 @@ const CheckoutAddressPage = ({ navigate, addresses, cart, updateCartQty }) => {
                 <div className="address-header">
                   <h4 style={{margin:0}}>{addr.type}</h4>
                 </div>
-                <p className="address-details" style={{margin: '4px 0'}}>{addr.details}</p>
-                <p className="address-phone" style={{margin: 0}}>Phone number: <strong>{addr.phone || '9651568829'}</strong></p>
+                <p className="address-details" style={{margin: '4px 0'}}>{stripAddressTags(addr.details)}</p>
+                {addr.landmark && (
+                  <div style={{ fontSize: '12px', color: '#0c831f', fontWeight: 600, margin: '2px 0' }}>
+                    🚩 Landmark: {addr.landmark}
+                  </div>
+                )}
+                {addr.family_head && (
+                  <div style={{ fontSize: '12px', color: 'var(--color-text)', fontWeight: 500, margin: '2px 0' }}>
+                    🏠 House: {addr.family_head}
+                  </div>
+                )}
+                <p className="address-phone" style={{margin: 0}}>Phone number: <strong>{addr.phone || '9651568829'}</strong>{addr.alt_phone ? ` (Alt: ${addr.alt_phone})` : ''}</p>
               </div>
             </div>
           </div>

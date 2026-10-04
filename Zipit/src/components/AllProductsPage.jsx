@@ -100,12 +100,18 @@ const AllProductsPage = ({ navigate, cart, updateCartQty, onSearchClick, onProdu
                         <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
                       </div>
                       <div className="bestseller-img" style={{cursor: 'default'}}>
-                        {item.sticker && <div className="wafer-sticker">{item.sticker}</div>}
-                        <img src={item.image_url} alt={item.name} />
+                        {item.is_out_of_stock || item.stock_count === 0 ? (
+                          <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(240, 68, 56, 0.9)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap'}}>OUT OF STOCK</div>
+                        ) : item.sticker ? (
+                          <div className="wafer-sticker">{item.sticker}</div>
+                        ) : null}
+                        <img src={item.image_url} alt={item.name} style={{opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1}} />
                       </div>
                       <div className="img-footer-row" onClick={(e) => e.stopPropagation()}>
                         <span className="item-amount-text">{item.amount}</span>
-                        {qty === 0 ? (
+                        {item.is_out_of_stock || item.stock_count === 0 ? (
+                          <button className="add-btn-small" style={{background: '#f2f4f7', color: '#98a2b3', border: '1px solid #e4e7ec'}} onClick={(e) => { e.stopPropagation(); updateCartQty(item, 1); }}>ADD</button>
+                        ) : qty === 0 ? (
                           <button className="add-btn-small" onClick={(e) => { e.stopPropagation(); updateCartQty(item, 1); }}>ADD</button>
                         ) : (
                           <div className="qty-control" onClick={(e) => e.stopPropagation()}>

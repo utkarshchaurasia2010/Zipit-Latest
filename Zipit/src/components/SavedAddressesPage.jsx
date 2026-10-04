@@ -5,11 +5,24 @@ import { useToast } from '../context/ToastContext';
 import MapPinPicker from './MapPinPicker';
 import './SavedAddressesPage.css';
 
+export const stripAddressTags = (str) => {
+  if (!str) return '';
+  return str.toString().replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').replace(/---.*$/, '').trim();
+};
+
 const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) => {
   const [isEditing, setIsEditing] = useState(null);
-  const [formData, setFormData] = useState({ type: 'Home', details: '', phone: '' });
+  const [formData, setFormData] = useState({
+    type: 'Home',
+    village_area: '',
+    landmark: '',
+    family_head: '',
+    phone: '',
+    alt_phone: '',
+    details: ''
+  });
   const [mapPinData, setMapPinData] = useState(null);
-  const [step, setStep] = useState(1); // 1: Map Pin & GPS, 2: House details
+  const [step, setStep] = useState(1); // 1: Map Pin & GPS, 2: Village / House details
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(!!add);
@@ -23,18 +36,30 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
   }, [isEditing, isAddingNew]);
 
   const handleSave = async () => {
-    if (!formData.details || formData.details.trim() === '') {
-      showToast('Please enter complete address details.', 'Error');
+    // Generate combined details if not already present
+    let combinedDetails = formData.details?.trim() || '';
+    if (!combinedDetails) {
+      const parts = [];
+      if (formData.village_area?.trim()) parts.push(formData.village_area.trim());
+      if (formData.landmark?.trim()) parts.push(`Landmark: ${formData.landmark.trim()}`);
+      if (formData.family_head?.trim()) parts.push(`House: ${formData.family_head.trim()}`);
+      combinedDetails = parts.join(', ');
+    }
+
+    if (!combinedDetails && !formData.landmark?.trim()) {
+      showToast('Please enter your village name or landmark.', 'Address Required');
       return;
     }
+
     setLoading(true);
     try {
       const enrichedData = {
         ...formData,
-        gps_area: mapPinData?.areaTitle || localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram',
+        details: combinedDetails,
+        gps_area: mapPinData?.areaTitle || localStorage.getItem('zipit_gps_area') || (formData.village_area || 'Village Delivery Zone'),
         lat: mapPinData?.lat || '28.4595',
         lng: mapPinData?.lng || '77.0266',
-        map_full_address: mapPinData?.fullAddress || '',
+        map_full_address: mapPinData?.fullAddress || combinedDetails,
         google_maps_url: mapPinData?.googleMapsUrl || `https://maps.google.com/?q=${mapPinData?.lat || '28.4595'},${mapPinData?.lng || '77.0266'}`
       };
       if (isEditing) {
@@ -46,10 +71,18 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
       setAddresses(refreshed);
       setIsEditing(null);
       setIsAddingNew(false);
-      setFormData({ type: 'Home', details: '', phone: '' });
+      setFormData({
+        type: 'Home',
+        village_area: '',
+        landmark: '',
+        family_head: '',
+        phone: '',
+        alt_phone: '',
+        details: ''
+      });
       setMapPinData(null);
       setStep(1);
-      showToast('Address & Map Location saved successfully!', 'Success');
+      showToast('Village Address & Landmark saved successfully!', 'Success');
     } catch (err) {
       showToast('Error saving address', 'Error');
       console.error(err);
@@ -145,8 +178,21 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                   </h4>
                   <MapPin size={16} className="pin-icon" />
                 </div>
-                <p className="address-details" onClick={() => handleSetDefault(addr.id)}>{addr.details}</p>
-                <p className="address-phone">Phone number: <strong>{addr.phone || '9651568829'}</strong></p>
+                <p className="address-details" onClick={() => handleSetDefault(addr.id)}>{stripAddressTags(addr.details)}</p>
+                {addr.landmark && (
+                  <div style={{ margin: '4px 0', fontSize: '12px', color: '#0c831f', fontWeight: 600 }}>
+                    🚩 Landmark: {addr.landmark}
+                  </div>
+                )}
+                {addr.family_head && (
+                  <div style={{ margin: '2px 0', fontSize: '12px', color: 'var(--color-text)', fontWeight: 500 }}>
+                    🏠 House: {addr.family_head}
+                  </div>
+                )}
+                <p className="address-phone">
+                  Phone: <strong>{addr.phone || '9651568829'}</strong>
+                  {addr.alt_phone ? <span style={{ marginLeft: 8, color: 'var(--color-text-light)' }}>(Alt: {addr.alt_phone})</span> : null}
+                </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 14px 0' }}>
                   <a 
                     href={addr.google_maps_url || `https://maps.google.com/?q=${addr.lat || '28.4595'},${addr.lng || '77.0266'}`}
@@ -208,7 +254,16 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                         onClick={(e) => {
                           e.stopPropagation();
                           setIsEditing(addr.id);
-                          setFormData({ type: addr.type, details: addr.details, phone: addr.phone || '' });
+                          setFormData({
+                            type: addr.type || 'Home',
+                            village_area: addr.village_area || '',
+                            landmark: addr.landmark || '',
+                            family_head: addr.family_head || '',
+                            phone: addr.phone || '',
+                            alt_phone: addr.alt_phone || '',
+                            details: stripAddressTags(addr.details || '')
+                          });
+                          setStep(2);
                           setShowMenu(null);
                         }}
                       >
@@ -238,51 +293,79 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
         {(isEditing || isAddingNew) && (
           <div className="new-address-form" style={{ textAlign: 'left', width: '100%' }}>
             {step === 1 ? (
-              <MapPinPicker 
-                initialLat={mapPinData?.lat || 28.4595} 
-                initialLng={mapPinData?.lng || 77.0266} 
-                onConfirmLocation={(data) => {
-                  setMapPinData(data);
-                  if (!formData.details || formData.details.trim() === '') {
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      details: data.fullAddress || data.areaTitle || '' 
-                    }));
-                  }
-                  setStep(2);
-                }}
-                onCancel={() => {
-                  setIsEditing(null);
-                  setIsAddingNew(false);
-                }}
-              />
+              <div>
+                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(12, 131, 31, 0.1)',
+                      border: '1.5px dashed #0c831f',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      color: '#0c831f',
+                      fontWeight: 700,
+                      fontSize: '13.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>🌾 Living in a village? Skip Map & Enter Landmark Directly ➔</span>
+                  </button>
+                </div>
+                <MapPinPicker 
+                  initialLat={mapPinData?.lat || 28.4595} 
+                  initialLng={mapPinData?.lng || 77.0266} 
+                  onConfirmLocation={(data) => {
+                    setMapPinData(data);
+                    if (!formData.village_area) {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        village_area: data.areaTitle || '',
+                        details: prev.details || data.fullAddress || ''
+                      }));
+                    }
+                    setStep(2);
+                  }}
+                  onCancel={() => {
+                    setIsEditing(null);
+                    setIsAddingNew(false);
+                  }}
+                />
+              </div>
             ) : (
               <div>
                 <h3 style={{color: 'var(--color-text)', marginBottom: 16, textAlign: 'center'}}>
-                  {isEditing ? 'Edit Address Details' : 'Enter Address Details'}
+                  {isEditing ? 'Edit Address & Landmark' : 'Enter Address & Village Landmark'}
                 </h3>
 
-                <div className="gps-map-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: 20, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', padding: '12px 14px', borderRadius: '14px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ color: '#10B981', fontWeight: 700, fontSize: '13px' }}>
-                      📍 Map Location: {mapPinData?.areaTitle || 'Selected Area'}
-                    </span>
-                    <span style={{ color: 'var(--color-text-light)', fontSize: '12px' }}>
-                      {mapPinData?.fullAddress || 'Coordinates confirmed from map'}
-                    </span>
+                {mapPinData && (
+                  <div className="gps-map-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: 20, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', padding: '12px 14px', borderRadius: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ color: '#10B981', fontWeight: 700, fontSize: '13px' }}>
+                        📍 Map Location: {mapPinData?.areaTitle || 'Selected Area'}
+                      </span>
+                      <span style={{ color: 'var(--color-text-light)', fontSize: '12px' }}>
+                        {mapPinData?.fullAddress || 'Coordinates confirmed from map'}
+                      </span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setStep(1)}
+                      style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #10B981', background: 'transparent', color: '#10B981', fontWeight: 700, fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Change Pin
+                    </button>
                   </div>
-                  <button 
-                    type="button"
-                    onClick={() => setStep(1)}
-                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #10B981', background: 'transparent', color: '#10B981', fontWeight: 700, fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    Change Pin
-                  </button>
-                </div>
+                )}
 
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 14 }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: 6 }}>
-                    Address Type {isEditing && <span style={{fontSize:'11px', color:'var(--color-text-light)'}}>(Cannot be changed when editing)</span>}
+                    Address Type
                   </label>
                   <select 
                     value={formData.type} 
@@ -301,37 +384,102 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                       opacity: isEditing ? 0.65 : 1
                     }}
                   >
-                    <option value="Home">Home</option>
-                    <option value="Work">Work</option>
-                    <option value="Other">Other</option>
+                    <option value="Home">Home (घर)</option>
+                    <option value="Shop">Shop / Business (दुकान)</option>
+                    <option value="Other">Other (अन्य)</option>
                   </select>
                 </div>
 
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: 6 }}>Complete Address (House / Flat No., Landmark, Building)</label>
-                  <textarea 
-                    placeholder="e.g. Flat 402, Shivam Apts, Near Mother Dairy..." 
-                    value={formData.details} 
-                    onChange={e => setFormData({...formData, details: e.target.value})}
-                    rows={3}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+                {/* Village / Mohalla */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                    Village / Mohalla / Area (गाँव / टोला / क्षेत्र) <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Rampur Purab Tola, Ward No. 4..." 
+                    value={formData.village_area || ''} 
+                    onChange={e => setFormData({...formData, village_area: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
                   />
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: 6 }}>Phone Number (Optional)</label>
+                {/* Known Landmark (Most Critical for village) */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0c831f', marginBottom: 6 }}>
+                    🚩 Known Landmark (पहचान / लैंडमार्क - सबसे ज़रूरी) <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
                   <input 
                     type="text" 
-                    placeholder="+91 9876543210" 
-                    value={formData.phone || ''} 
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    placeholder="e.g. Purani Shiv Mandir ke paas, Primary School ke samne, Pipal ped..." 
+                    value={formData.landmark || ''} 
+                    onChange={e => setFormData({...formData, landmark: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #0c831f', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none', fontWeight: 500 }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '4px', display: 'block' }}>
+                    Delivery boy will ask for this landmark upon arriving in your area.
+                  </span>
+                </div>
+
+                {/* Family Head / House Identification */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                    House / Family Head Name (घर / मुखिया का नाम)
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Ramesh Pradhan ji ka ghar, Sharma ji ki chakki ke paas..." 
+                    value={formData.family_head || ''} 
+                    onChange={e => setFormData({...formData, family_head: e.target.value})}
                     style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                  />
+                </div>
+
+                {/* Primary & Alternate Phone */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                      Primary Mobile (मुख्य फोन)
+                    </label>
+                    <input 
+                      type="tel" 
+                      placeholder="9876543210" 
+                      value={formData.phone || ''} 
+                      onChange={e => setFormData({...formData, phone: e.target.value})}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                      Alternate Phone (वैकल्पिक)
+                    </label>
+                    <input 
+                      type="tel" 
+                      placeholder="Ghar ka dusra no." 
+                      value={formData.alt_phone || ''} 
+                      onChange={e => setFormData({...formData, alt_phone: e.target.value})}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Additional Details */}
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: 6 }}>
+                    Full Address Notes / Complete Description (Optional)
+                  </label>
+                  <textarea 
+                    placeholder="Any specific delivery instructions or house details..." 
+                    value={formData.details || ''} 
+                    onChange={e => setFormData({...formData, details: e.target.value})}
+                    rows={2}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
                   />
                 </div>
 
                 <div style={{display: 'flex', gap: 12, marginTop: 8}}>
                   <button onClick={() => setStep(1)} className="zipit-premium-btn-secondary" style={{flex: 1}}>Back to Map</button>
-                  <button onClick={handleSave} disabled={loading} className="zipit-premium-btn-primary" style={{flex: 1, opacity: loading ? 0.7 : 1}}>{loading ? 'Saving...' : 'Save Address'}</button>
+                  <button onClick={handleSave} disabled={loading} className="zipit-premium-btn-primary" style={{flex: 1, opacity: loading ? 0.7 : 1}}>{loading ? 'Saving...' : 'Save Village Address'}</button>
                 </div>
               </div>
             )}

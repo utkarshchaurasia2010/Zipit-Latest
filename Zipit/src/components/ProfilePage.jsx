@@ -20,15 +20,21 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, title: '', message: '' });
 
+  React.useEffect(() => {
+    if (userProfile) {
+      setFormData(userProfile);
+    }
+  }, [userProfile]);
+
   const handleSave = async () => {
     setSaving(true);
-    const updated = await db.user.update(formData);
-    if(updated) {
-      setUserProfile(updated);
+    const result = await db.user.update(formData);
+    if (result?.data) {
+      setUserProfile(result.data);
       setIsEditing(false);
       setToast({ visible: true, title: 'Profile Updated', message: 'Your profile has been updated successfully.' });
     } else {
-      setToast({ visible: true, title: 'Update Failed', message: 'There was an error updating your profile.' });
+      setToast({ visible: true, title: 'Update Failed', message: result?.error || 'There was an error updating your profile.' });
     }
     setSaving(false);
   };

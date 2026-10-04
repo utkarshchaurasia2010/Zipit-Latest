@@ -19,13 +19,15 @@ export const db = {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', pid).single();
       
       if (!data) {
-        // Use a random phone to avoid UNIQUE constraint errors if multiple test accounts are made
-        const randomPhone = 'temp_' + Math.floor(Math.random() * 10000);
+        const { data: authData } = await supabase.auth.getUser();
+        const userEmail = authData?.user?.email || '';
+        // High entropy unique string prevents profiles_phone_key duplicate error
+        const randomPhone = 'temp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
         const { data: newData, error: insertError } = await supabase.from('profiles').insert([{ 
           id: pid,
           name: 'New User', 
           phone: randomPhone, 
-          email: '',
+          email: userEmail,
           photo: 'NU' 
         }]).select().single();
         if (insertError) console.error("DB Error (profiles insert):", insertError);
@@ -44,20 +46,48 @@ export const db = {
     },
     update: async (formData) => {
       const pid = await getUserId();
-      if (!pid) return null;
+      if (!pid) return { error: 'No user session found' };
       
-      const { id, ...updateData } = formData;
+      const { id, created_at, addresses_list, ...updateData } = formData;
       
-      // Convert empty strings to null so Postgres doesn't throw a duplicate constraint error 
-      // when multiple users have an empty phone number.
+      // Clean phone number
       if (updateData.phone === '') {
         updateData.phone = null;
       }
       
-      // If email is empty, we remove it from the update payload to avoid crashing
-      // if the 'email' column does not exist yet.
       if (updateData.email === '') {
         delete updateData.email;
+      }
+
+      // Check for duplicates in phone or email across other profiles
+      if (updateData.phone) {
+        const { data: existingPhone } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('phone', updateData.phone)
+          .neq('id', pid)
+          .limit(1);
+
+        if (existingPhone && existingPhone.length > 0) {
+          const warning = "This phone number is already registered with another account. Please use a different phone number.";
+          alert(warning);
+          return { error: warning };
+        }
+      }
+
+      if (updateData.email) {
+        const { data: existingEmail } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('email', updateData.email)
+          .neq('id', pid)
+          .limit(1);
+
+        if (existingEmail && existingEmail.length > 0) {
+          const warning = "This email address is already registered with another account. Please use a different email address.";
+          alert(warning);
+          return { error: warning };
+        }
       }
       
       const current = await db.user.get();
@@ -80,7 +110,14 @@ export const db = {
       const { data, error } = await supabase.from('profiles').update(updateData).eq('id', pid).select().single();
       if (error) {
         console.error("DB Error (profiles update):", error);
-        alert("Database Error: " + error.message);
+        if (error.message.includes('profiles_phone_key') || error.code === '23505') {
+          const warning = "This phone number is already registered with another account. Please use a different phone number.";
+          alert(warning);
+          return { error: warning };
+        } else {
+          alert("Could not update profile: " + error.message);
+          return { error: error.message };
+        }
       }
       
       if (data) {
@@ -93,7 +130,7 @@ export const db = {
         }
       }
       
-      return data;
+      return { data };
     }
   },
   addresses: {
@@ -101,21 +138,84 @@ export const db = {
       const pid = await getUserId();
       if (!pid) return [];
       
+      const extractAddressInfo = (rawDetails, baseObj = {}) => {
+        let text = (rawDetails || '').toString();
+        let phone = baseObj.phone || '';
+        let lat = baseObj.lat || '28.4595';
+        let lng = baseObj.lng || '77.0266';
+        let gps_area = baseObj.gps_area || localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
+        let google_maps_url = baseObj.google_maps_url || '';
+        let landmark = '';
+        let family_head = '';
+        let alt_phone = '';
+        let village_area = '';
+
+        if (text.includes('---TAG:PHONE:')) {
+          phone = text.split('---TAG:PHONE:')[1]?.split('---')[0] || phone;
+        }
+        if (text.includes('---TAG:LANDMARK:')) {
+          landmark = text.split('---TAG:LANDMARK:')[1]?.split('---')[0] || '';
+        }
+        if (text.includes('---TAG:FAMILY_HEAD:')) {
+          family_head = text.split('---TAG:FAMILY_HEAD:')[1]?.split('---')[0] || '';
+        }
+        if (text.includes('---TAG:ALT_PHONE:')) {
+          alt_phone = text.split('---TAG:ALT_PHONE:')[1]?.split('---')[0] || '';
+        }
+        if (text.includes('---TAG:VILLAGE:')) {
+          village_area = text.split('---TAG:VILLAGE:')[1]?.split('---')[0] || '';
+        }
+        if (text.includes('---TAG:LAT:')) {
+          lat = text.split('---TAG:LAT:')[1]?.split('---')[0] || lat;
+        }
+        if (text.includes('---TAG:LNG:')) {
+          lng = text.split('---TAG:LNG:')[1]?.split('---')[0] || lng;
+        }
+        if (text.includes('---TAG:GPS_AREA:')) {
+          gps_area = text.split('---TAG:GPS_AREA:')[1]?.split('---')[0] || gps_area;
+        }
+        if (text.includes('---TAG:GMAPS:')) {
+          google_maps_url = text.split('---TAG:GMAPS:')[1]?.split('---')[0] || google_maps_url;
+        }
+
+        // Clean out ALL tags from visible text
+        let cleanText = text.replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
+        if (cleanText.includes('---')) {
+          cleanText = cleanText.split('---')[0].trim();
+        }
+
+        return {
+          details: cleanText,
+          phone,
+          landmark,
+          family_head,
+          alt_phone,
+          village_area,
+          lat,
+          lng,
+          gps_area,
+          google_maps_url: google_maps_url || `https://maps.google.com/?q=${lat},${lng}`
+        };
+      };
+
       const profile = await db.user.get();
       const allAddresses = [];
       
       if (profile && profile.address) {
+        const parsedPrimary = extractAddressInfo(profile.address, {
+          phone: profile.phone || '',
+          lat: profile.lat?.toString() || '28.4595',
+          lng: profile.lng?.toString() || '77.0266',
+          gps_area: profile.gps_area,
+          google_maps_url: profile.google_maps_url
+        });
+
         allAddresses.push({
           id: 'primary',
           profile_id: pid,
           type: 'HOME',
           is_default: true,
-          details: profile.address,
-          phone: profile.phone || '',
-          lat: profile.lat?.toString() || '28.4595',
-          lng: profile.lng?.toString() || '77.0266',
-          gps_area: profile.gps_area || localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram',
-          google_maps_url: profile.google_maps_url || `https://maps.google.com/?q=${profile.lat},${profile.lng}`,
+          ...parsedPrimary
         });
       }
 
@@ -123,42 +223,16 @@ export const db = {
       if (error) console.error("DB Error (addresses get):", error);
       
       const secondaryAddrs = (data || []).map(addr => {
-        let details = addr.details || '';
-        let phone = '';
-        let lat = '28.4595';
-        let lng = '77.0266';
-        let gps_area = localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
-        let google_maps_url = '';
+        const parsed = extractAddressInfo(addr.details, {
+          lat: '28.4595',
+          lng: '77.0266'
+        });
 
-        if (details.includes('---TAG:PHONE:')) {
-          phone = details.split('---TAG:PHONE:')[1]?.split('---')[0] || '';
-        }
-        if (details.includes('---TAG:LAT:')) {
-          lat = details.split('---TAG:LAT:')[1]?.split('---')[0] || lat;
-        }
-        if (details.includes('---TAG:LNG:')) {
-          lng = details.split('---TAG:LNG:')[1]?.split('---')[0] || lng;
-        }
-        if (details.includes('---TAG:GPS_AREA:')) {
-          gps_area = details.split('---TAG:GPS_AREA:')[1]?.split('---')[0] || gps_area;
-        }
-        if (details.includes('---TAG:GMAPS:')) {
-          google_maps_url = details.split('---TAG:GMAPS:')[1]?.split('---')[0] || `https://maps.google.com/?q=${lat},${lng}`;
-        }
-        if (details.includes('\n---TAG:')) {
-          details = details.split('\n---TAG:')[0];
-        } else if (details.includes('---TAG:')) {
-          details = details.split('---TAG:')[0];
-        }
-
-        addr.details = details.trim();
-        addr.phone = phone;
-        addr.lat = lat;
-        addr.lng = lng;
-        addr.gps_area = gps_area;
-        addr.google_maps_url = google_maps_url || `https://maps.google.com/?q=${lat},${lng}`;
-        addr.is_default = false; // secondary addresses are not default
-        return addr;
+        return {
+          ...addr,
+          ...parsed,
+          is_default: false // secondary addresses are not default
+        };
       });
       
       return [...allAddresses, ...secondaryAddrs];
@@ -171,28 +245,16 @@ export const db = {
       const userName = profile?.name || 'Unknown';
       
       const payload = { ...addr };
-      const { phone, lat, lng, gps_area, google_maps_url } = payload;
-      let cleanDetails = payload.details || '';
-      if (cleanDetails.includes('\n---TAG:')) cleanDetails = cleanDetails.split('\n---TAG:')[0];
-      else if (cleanDetails.includes('---TAG:')) cleanDetails = cleanDetails.split('---TAG:')[0];
+      const { phone, lat, lng, gps_area, google_maps_url, landmark, family_head, alt_phone, village_area } = payload;
+      let cleanDetails = (payload.details || '').replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
+      if (cleanDetails.includes('---')) cleanDetails = cleanDetails.split('---')[0].trim();
 
-      if (!profile || !profile.address) {
-        // First address, make it primary!
-        const { data, error } = await supabase.from('profiles').update({
-          address: cleanDetails,
-          lat: lat ? parseFloat(lat) : null,
-          lng: lng ? parseFloat(lng) : null,
-          gps_area: gps_area || null,
-          google_maps_url: google_maps_url || null,
-          phone: phone || profile?.phone
-        }).eq('id', pid).select().single();
-        if (error) throw new Error(error.message);
-        return { id: 'primary', ...data };
-      }
-
-      // Already has primary, save as secondary in addresses table
       const tags = [
         phone ? `---TAG:PHONE:${phone}---` : '',
+        landmark ? `---TAG:LANDMARK:${landmark}---` : '',
+        family_head ? `---TAG:FAMILY_HEAD:${family_head}---` : '',
+        alt_phone ? `---TAG:ALT_PHONE:${alt_phone}---` : '',
+        village_area ? `---TAG:VILLAGE:${village_area}---` : '',
         lat ? `---TAG:LAT:${lat}---` : '',
         lng ? `---TAG:LNG:${lng}---` : '',
         gps_area ? `---TAG:GPS_AREA:${gps_area}---` : '',
@@ -200,8 +262,23 @@ export const db = {
         `---TAG:NAME:${userName}---`
       ].filter(Boolean).join('\n');
 
+      if (!profile || !profile.address) {
+        // First address, make it primary!
+        const { data, error } = await supabase.from('profiles').update({
+          address: cleanDetails ? `${cleanDetails}\n${tags}` : tags,
+          lat: lat ? parseFloat(lat) : null,
+          lng: lng ? parseFloat(lng) : null,
+          gps_area: gps_area || null,
+          google_maps_url: google_maps_url || null,
+          phone: phone || profile?.phone
+        }).eq('id', pid).select().single();
+        if (error) throw new Error(error.message);
+        return { id: 'primary', ...data, landmark, family_head, alt_phone, village_area };
+      }
+
       payload.details = `${cleanDetails}\n${tags}`;
       delete payload.phone; delete payload.lat; delete payload.lng; delete payload.gps_area; delete payload.map_full_address; delete payload.google_maps_url;
+      delete payload.landmark; delete payload.family_head; delete payload.alt_phone; delete payload.village_area;
       
       const { data, error } = await supabase.from('addresses').insert([{ ...payload, profile_id: pid, is_default: false }]).select().single();
       if (error) throw new Error(error.message);
@@ -215,26 +292,16 @@ export const db = {
       const userName = profile?.name || 'Unknown';
       
       const payload = { ...addr };
-      const { phone, lat, lng, gps_area, google_maps_url } = payload;
-      let cleanDetails = payload.details || '';
-      if (cleanDetails.includes('\n---TAG:')) cleanDetails = cleanDetails.split('\n---TAG:')[0];
-      else if (cleanDetails.includes('---TAG:')) cleanDetails = cleanDetails.split('---TAG:')[0];
-
-      if (id === 'primary') {
-        const { data, error } = await supabase.from('profiles').update({
-          address: cleanDetails,
-          lat: lat ? parseFloat(lat) : null,
-          lng: lng ? parseFloat(lng) : null,
-          gps_area: gps_area || null,
-          google_maps_url: google_maps_url || null,
-          phone: phone || profile?.phone
-        }).eq('id', pid).select().single();
-        if (error) throw new Error(error.message);
-        return { id: 'primary', ...data };
-      }
+      const { phone, lat, lng, gps_area, google_maps_url, landmark, family_head, alt_phone, village_area } = payload;
+      let cleanDetails = (payload.details || '').replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
+      if (cleanDetails.includes('---')) cleanDetails = cleanDetails.split('---')[0].trim();
 
       const tags = [
         phone ? `---TAG:PHONE:${phone}---` : '',
+        landmark ? `---TAG:LANDMARK:${landmark}---` : '',
+        family_head ? `---TAG:FAMILY_HEAD:${family_head}---` : '',
+        alt_phone ? `---TAG:ALT_PHONE:${alt_phone}---` : '',
+        village_area ? `---TAG:VILLAGE:${village_area}---` : '',
         lat ? `---TAG:LAT:${lat}---` : '',
         lng ? `---TAG:LNG:${lng}---` : '',
         gps_area ? `---TAG:GPS_AREA:${gps_area}---` : '',
@@ -242,8 +309,22 @@ export const db = {
         `---TAG:NAME:${userName}---`
       ].filter(Boolean).join('\n');
 
+      if (id === 'primary') {
+        const { data, error } = await supabase.from('profiles').update({
+          address: cleanDetails ? `${cleanDetails}\n${tags}` : tags,
+          lat: lat ? parseFloat(lat) : null,
+          lng: lng ? parseFloat(lng) : null,
+          gps_area: gps_area || null,
+          google_maps_url: google_maps_url || null,
+          phone: phone || profile?.phone
+        }).eq('id', pid).select().single();
+        if (error) throw new Error(error.message);
+        return { id: 'primary', ...data, landmark, family_head, alt_phone, village_area };
+      }
+
       payload.details = `${cleanDetails}\n${tags}`;
       delete payload.phone; delete payload.lat; delete payload.lng; delete payload.gps_area; delete payload.map_full_address; delete payload.google_maps_url;
+      delete payload.landmark; delete payload.family_head; delete payload.alt_phone; delete payload.village_area;
 
       const { data, error } = await supabase.from('addresses').update(payload).eq('id', id).select().single();
       if (error) throw new Error(error.message);
@@ -387,11 +468,6 @@ export const db = {
       if (error) console.error("DB Error (orders getAllAdmin):", error);
       return data || [];
     },
-    updateStatus: async (id, status) => {
-      const { data, error } = await supabase.from('orders').update({ status }).eq('id', id).select().single();
-      if (error) console.error("DB Error (orders updateStatus):", error);
-      return data;
-    },
     delete: async (id) => {
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) console.error("DB Error (orders delete):", error);
@@ -406,9 +482,18 @@ export const db = {
   },
   categories: {
     getAll: async () => {
-      const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
-      if (error) console.error("DB Error (categories get):", error);
-      return data || [];
+      try {
+        const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          try { localStorage.setItem('zipit_cached_categories', JSON.stringify(data)); } catch (e) {}
+        }
+        return data || [];
+      } catch (err) {
+        console.warn("DB offline fallback (categories):", err);
+        const cached = localStorage.getItem('zipit_cached_categories');
+        return cached ? JSON.parse(cached) : [];
+      }
     },
     add: async (category) => {
       const { data, error } = await supabase.from('categories').insert([category]).select().single();
@@ -444,20 +529,31 @@ export const db = {
   },
   products: {
     getAll: async () => {
-      const { data, error } = await supabase.from('products').select('*, categories(name)').order('created_at', { ascending: false });
-      if (error) console.error("DB Error (products getAll):", error);
-      
-      const filtered = (data || []).filter(p => !p.name.includes('---TAG:BANNER---'));
-      return filtered.map(p => {
-        const is_wafer = p.name.includes('---TAG:WAFER---');
-        const is_grid = p.name.includes('---TAG:GRID---');
-        const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
-        const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
-        const sticker = stickerMatch ? stickerMatch[1] : null;
+      try {
+        const { data, error } = await supabase.from('products').select('*, categories(name)').order('created_at', { ascending: false });
+        if (error) throw error;
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
-      });
+        const filtered = (data || []).filter(p => !p.name.includes('---TAG:BANNER---'));
+        const mapped = filtered.map(p => {
+          const is_wafer = p.name.includes('---TAG:WAFER---');
+          const is_grid = p.name.includes('---TAG:GRID---');
+          const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
+          const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
+          const sticker = stickerMatch ? stickerMatch[1] : null;
+          
+          let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
+          return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
+        });
+
+        if (mapped && mapped.length > 0) {
+          try { localStorage.setItem('zipit_cached_products', JSON.stringify(mapped)); } catch (e) {}
+        }
+        return mapped;
+      } catch (err) {
+        console.warn("DB offline fallback (products getAll):", err);
+        const cached = localStorage.getItem('zipit_cached_products');
+        return cached ? JSON.parse(cached) : [];
+      }
     },
     getByCategory: async (categoryId) => {
       const { data, error } = await supabase.from('products').select('*, categories(name)').eq('category_id', categoryId).order('created_at', { ascending: false });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, MapPin, Search, Navigation, Plus } from 'lucide-react';
+import { stripAddressTags } from './SavedAddressesPage';
 import './AddressModal.css';
 
 const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, currentRoute }) => {
@@ -67,8 +68,18 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                       Edit
                     </button>
                   </div>
-                  <p className="address-details" style={{margin: '4px 0', cursor: 'pointer'}} onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>{addr.details}</p>
-                  <p className="address-phone" style={{margin: 0}}>Phone number: <strong>{addr.phone || '9651568829'}</strong></p>
+                  <p className="address-details" style={{margin: '4px 0', cursor: 'pointer'}} onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>{stripAddressTags(addr.details)}</p>
+                  {addr.landmark && (
+                    <div style={{ fontSize: '11.5px', color: '#0c831f', fontWeight: 600, margin: '2px 0' }}>
+                      🚩 Landmark: {addr.landmark}
+                    </div>
+                  )}
+                  {addr.family_head && (
+                    <div style={{ fontSize: '11.5px', color: 'var(--color-text)', fontWeight: 500, margin: '2px 0' }}>
+                      🏠 House: {addr.family_head}
+                    </div>
+                  )}
+                  <p className="address-phone" style={{margin: 0}}>Phone number: <strong>{addr.phone || '9651568829'}</strong>{addr.alt_phone ? ` (Alt: ${addr.alt_phone})` : ''}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                     <a 
                       href={addr.google_maps_url || `https://maps.google.com/?q=${addr.lat || '28.4595'},${addr.lng || '77.0266'}`}

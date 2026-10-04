@@ -3,6 +3,7 @@ import { ChevronLeft, CreditCard, Banknote } from 'lucide-react';
 import { db } from '../services/db';
 import { useToast } from '../context/ToastContext';
 import { triggerConfetti } from '../utils/confetti';
+import { playBellSound } from '../utils/siren';
 import './SavedAddressesPage.css';
 
 const PaymentPage = ({ navigate, cart, total, deliveryCharge, smallCartCharge, address, clearCart, appliedCoupon, setAppliedCoupon, discountAmount }) => {
@@ -24,6 +25,7 @@ const PaymentPage = ({ navigate, cart, total, deliveryCharge, smallCartCharge, a
         discountAmount: discountAmount || 0,
         couponCode: appliedCoupon ? appliedCoupon.code : null
       });
+      playBellSound();
       triggerConfetti();
       // Clear cart in both React state and database
       clearCart();

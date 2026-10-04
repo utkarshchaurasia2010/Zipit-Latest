@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PackageCheck, ShoppingBag, ChevronLeft, Check, X, AlertCircle } from 'lucide-react';
 import { db, supabase } from '../services/db';
+import { playBellSound } from '../utils/siren';
 import './HistoryPage.css';
 
 const PlacedOrdersPage = ({ navigate }) => {
@@ -22,8 +23,14 @@ const PlacedOrdersPage = ({ navigate }) => {
     fetchOrders();
 
     const channel = supabase.channel(`customer-orders-${Math.random()}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, fetchOrders)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, fetchOrders)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+        playBellSound();
+        fetchOrders();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+        playBellSound();
+        fetchOrders();
+      })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, fetchOrders)
       .subscribe();
 

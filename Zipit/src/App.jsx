@@ -18,6 +18,7 @@ import CheckoutPage from './components/CheckoutPage';
 import AddressModal from './components/AddressModal';
 import SearchOverlay from './components/SearchOverlay';
 import OnboardingModal from './components/OnboardingModal';
+import OfflineBanner from './components/OfflineBanner';
 import UpdatePrompt from './components/UpdatePrompt';
 import SkeletonLoader from './components/SkeletonLoader';
 import SplashScreen from './components/SplashScreen';
@@ -414,6 +415,7 @@ function AppContent() {
     const dataChannel = supabase.channel('global-data-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initDB(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initDB(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => initDB(true))
       .subscribe();
       
     return () => {
@@ -429,8 +431,13 @@ function AppContent() {
   const updateCartQty = (product, delta) => {
     if (delta > 0) {
       // Stock limit check
+      if (product.is_out_of_stock || product.stock_count === 0) {
+        showToast(`The ${product.name} is Out of Stock currently.`, 'warning');
+        triggerHapticFeedback([30, 20]);
+        return;
+      }
       const stockLimit = product.stock_count;
-      const hasLimit = stockLimit !== undefined && stockLimit !== null && stockLimit >= 0;
+      const hasLimit = stockLimit !== undefined && stockLimit !== null && stockLimit > 0;
       if (hasLimit) {
         const currentQtyInCart = cart.find(i => i.id === product.id)?.qty || 0;
         if (currentQtyInCart + delta > stockLimit) {
@@ -518,7 +525,27 @@ function AppContent() {
   const activeTab = viewName === '/' ? 'home' : viewName === '/categories' ? 'categories' : viewName === '/track' ? 'track' : '';
   const showCartBar = totalItems > 0 && !viewName.includes('/checkout') && !viewName.includes('/payment') && !selectedProduct;
 
-  const defaultAddress = addresses.find(a => a.is_default) || addresses[0];
+  // Whenever user navigates to /checkout or /payment, ensure all modal/overlay states and body locks are cleaned up
+  useEffect(() => {
+    if (viewName === '/checkout' || viewName === '/payment') {
+      setIsSearchOpen(false);
+      setSelectedProduct(null);
+      setIsAddressModalOpen(false);
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+  }, [viewName]);
+
+  const handleOpenCart = () => {
+    setIsSearchOpen(false);
+    setSelectedProduct(null);
+    setIsAddressModalOpen(false);
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    navigate('/checkout');
+  };
 
   const handleRefreshApp = async () => {
     try {
@@ -581,17 +608,20 @@ function AppContent() {
       </PullToRefresh>
       
       {showCartBar && (
-        <CartBar count={totalItems} total={itemTotal} cart={cart} onOpen={() => {
-          closeProductSheet();
-          navigate('/checkout');
-        }} isNavHidden={(!showBottomNav || isNavHidden) && !selectedProduct} />
+        <CartBar 
+          count={totalItems} 
+          total={itemTotal} 
+          cart={cart} 
+          onOpen={handleOpenCart} 
+          isNavHidden={(!showBottomNav || isNavHidden) && !selectedProduct} 
+        />
       )}
       
       {showBottomNav && (
         <BottomNav
           activeTab={activeTab}
           navigate={navigate}
-          openCart={() => navigate('/checkout')}
+          openCart={handleOpenCart}
           isNavHidden={isNavHidden}
         />
       )}
@@ -631,6 +661,7 @@ function AppContent() {
         />
       )}
       
+      <OfflineBanner />
       <UpdatePrompt />
     </>
   );
