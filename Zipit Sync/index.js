@@ -18,6 +18,20 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !GOOGLE_SHEETS_ID) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const fs = require('fs');
+const crypto = require('crypto');
+
+function isValidPrivateKey(key) {
+  try {
+    if (!key || typeof key !== 'string') return false;
+    const sign = crypto.createSign('SHA256');
+    sign.update('test');
+    sign.end();
+    sign.sign(key);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 
 // Helper to get authenticated Google Sheets client with private_key normalization
 async function getGoogleSheetsClient() {
@@ -29,17 +43,21 @@ async function getGoogleSheetsClient() {
       if (typeof creds === 'string') creds = JSON.parse(creds);
       
       if (creds && creds.private_key) {
-        creds.private_key = creds.private_key.replace(/\\n/g, '\n');
+        let cleanedKey = creds.private_key.replace(/\\n/g, '\n').replace(/\\r/g, '').trim();
+        if (isValidPrivateKey(cleanedKey)) {
+          creds.private_key = cleanedKey;
+          const auth = new google.auth.GoogleAuth({
+            credentials: creds,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets']
+          });
+          const authClient = await auth.getClient();
+          return google.sheets({ version: 'v4', auth: authClient });
+        } else {
+          console.warn('[ZIPIT-SYNC] GOOGLE_SERVICE_ACCOUNT_JSON private_key is invalid according to OpenSSL. Falling back to credentials.json...');
+        }
       }
-      
-      const auth = new google.auth.GoogleAuth({
-        credentials: creds,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets']
-      });
-      const authClient = await auth.getClient();
-      return google.sheets({ version: 'v4', auth: authClient });
     } catch (err) {
-      console.warn('[ZIPIT-SYNC] Failed using GOOGLE_SERVICE_ACCOUNT_JSON:', err.message);
+      console.warn('[ZIPIT-SYNC] Failed parsing GOOGLE_SERVICE_ACCOUNT_JSON:', err.message);
     }
   }
 
@@ -48,14 +66,18 @@ async function getGoogleSheetsClient() {
     try {
       const fileContent = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
       if (fileContent.private_key) {
-        fileContent.private_key = fileContent.private_key.replace(/\\n/g, '\n');
+        fileContent.private_key = fileContent.private_key.replace(/\\n/g, '\n').replace(/\\r/g, '').trim();
       }
-      const auth = new google.auth.GoogleAuth({
-        credentials: fileContent,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets']
-      });
-      const authClient = await auth.getClient();
-      return google.sheets({ version: 'v4', auth: authClient });
+      if (isValidPrivateKey(fileContent.private_key)) {
+        const auth = new google.auth.GoogleAuth({
+          credentials: fileContent,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets']
+        });
+        const authClient = await auth.getClient();
+        return google.sheets({ version: 'v4', auth: authClient });
+      } else {
+        console.error('[ZIPIT-SYNC] credentials.json private_key is also invalid in OpenSSL.');
+      }
     } catch (err) {
       console.error('[ZIPIT-SYNC] Failed using credentials file:', err.message);
     }
@@ -338,6 +360,7 @@ app.all(['/sync/from-sheets', '/api/syncFromSheets'], handleSyncFromSheets);
 // Diagnostic Debug Route
 app.get('/api/debug', async (req, res) => {
   const result = {
+    version: '1.2.0',
     timestamp: new Date().toISOString(),
     env: {
       has_supabase_url: !!process.env.SUPABASE_URL,
