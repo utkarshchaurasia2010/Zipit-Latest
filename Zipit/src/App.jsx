@@ -509,6 +509,18 @@ function AppContent() {
     }
   }, [itemTotal, appliedCoupon]);
 
+  // Whenever user navigates to /checkout or /payment, ensure all modal/overlay states and body locks are cleaned up
+  useEffect(() => {
+    if (viewName === '/checkout' || viewName === '/payment') {
+      setIsSearchOpen(false);
+      setSelectedProduct(null);
+      setIsAddressModalOpen(false);
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+  }, [viewName]);
+
   if (showSplash || isInitializingAuth) {
     return <SplashScreen />;
   }
@@ -524,18 +536,6 @@ function AppContent() {
   const showBottomNav = ['/', '/categories', '/track'].includes(viewName);
   const activeTab = viewName === '/' ? 'home' : viewName === '/categories' ? 'categories' : viewName === '/track' ? 'track' : '';
   const showCartBar = totalItems > 0 && !viewName.includes('/checkout') && !viewName.includes('/payment') && !selectedProduct;
-
-  // Whenever user navigates to /checkout or /payment, ensure all modal/overlay states and body locks are cleaned up
-  useEffect(() => {
-    if (viewName === '/checkout' || viewName === '/payment') {
-      setIsSearchOpen(false);
-      setSelectedProduct(null);
-      setIsAddressModalOpen(false);
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-    }
-  }, [viewName]);
 
   const handleOpenCart = () => {
     setIsSearchOpen(false);
