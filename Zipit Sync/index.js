@@ -16,14 +16,42 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !GOOGLE_SHEETS_ID) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const auth = new google.auth.GoogleAuth({
-  keyFile: CREDENTIALS_PATH,
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
+
+// Support both environment variable JSON (for Cloud hosts like Render/Railway) and physical file
+let authConfig = {
+  scopes: ['https://www.googleapis.com/auth/spreadsheets']
+};
+
+if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+  try {
+    authConfig.credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  } catch (err) {
+    console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:", err.message);
+    authConfig.keyFile = CREDENTIALS_PATH;
+  }
+} else {
+  authConfig.keyFile = CREDENTIALS_PATH;
+}
+
+const auth = new google.auth.GoogleAuth(authConfig);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Health Check for Cloud Service monitors (Render, Railway, UptimeRobot)
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'Zipit Google Sheets Cloud Sync Engine',
+    uptime: `${Math.floor(process.uptime())}s`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // Helper to clear and write to a specific sheet tab
 async function updateSheet(sheets, tabName, values) {
@@ -144,38 +172,44 @@ async function syncFromSheets() {
 }
 
 // ----------------------------------------------------
-// API ENDPOINTS (For Manual Admin Triggers)
+// API ENDPOINTS (For Manual Triggers & Cron Webhooks)
 // ----------------------------------------------------
-app.post('/sync/to-sheets', async (req, res) => {
+const handleSyncToSheets = async (req, res) => {
   try {
     await syncToSheets();
     res.json({ success: true, message: 'Successfully pushed latest data to Google Sheets.' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
-});
+};
 
-app.post('/sync/from-sheets', async (req, res) => {
+const handleSyncFromSheets = async (req, res) => {
   try {
     const stats = await syncFromSheets();
     res.json({ success: true, message: `Successfully pulled from Sheets. Updated ${stats.updatedOrders} Orders, ${stats.updatedProducts} Products.` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
-});
+};
+
+app.all(['/sync/to-sheets', '/api/syncToSheets'], handleSyncToSheets);
+app.all(['/sync/from-sheets', '/api/syncFromSheets'], handleSyncFromSheets);
 
 // ----------------------------------------------------
 // BOOTSTRAP
 // ----------------------------------------------------
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Zipit Sync Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[ZIPIT-SYNC] Ready & listening on http://0.0.0.0:${PORT}`);
   
   // Run an initial sync on startup
-  syncToSheets();
+  syncToSheets().catch(err => {
+    console.error("[ZIPIT-SYNC] Initial sync error:", err.message);
+  });
 
   // Schedule to run every 3 hours automatically
   cron.schedule('0 */3 * * *', () => {
-    syncToSheets();
+    console.log("[ZIPIT-SYNC] Scheduled 3-hour cron sync triggered...");
+    syncToSheets().catch(err => console.error("[ZIPIT-SYNC] Cron sync error:", err.message));
   });
 });
