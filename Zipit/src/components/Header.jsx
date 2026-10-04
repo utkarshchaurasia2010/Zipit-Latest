@@ -73,7 +73,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             <h1>{getCartDeliveryTime(cart) || time} minutes</h1>
           </div>
           <div className="address" style={{ display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '240px', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>
-            {defaultAddress && defaultAddress.details ? (
+            {defaultAddress && typeof defaultAddress.details === 'string' && defaultAddress.details.trim() ? (
               <div 
                 style={{ 
                   display: 'flex', 
@@ -91,7 +91,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
                   {defaultAddress.type || 'Home'}
                 </span>
                 <span style={{ fontWeight: 450, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.9, fontSize: '12.5px' }}>
-                  {` - ${defaultAddress.details.split(',')[0].trim()}`}
+                  {` - ${(defaultAddress.details.split(',')[0] || '').trim()}`}
                 </span>
                 <ChevronDown size={15} style={{ flexShrink: 0, marginLeft: '3px' }} strokeWidth={2.5} />
               </div>
@@ -112,7 +112,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
                   Current location
                 </span>
                 <span style={{ fontWeight: 450, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.9, fontSize: '12.5px' }}>
-                  {` - ${(gpsLocation || localStorage.getItem('zipit_gps_area') || 'Detecting...').split(',')[0].trim()}`}
+                  {` - ${(String(gpsLocation || localStorage.getItem('zipit_gps_area') || 'Detecting...').split(',')[0] || '').trim()}`}
                 </span>
                 <ChevronDown size={15} style={{ flexShrink: 0, marginLeft: '3px' }} strokeWidth={2.5} />
               </div>

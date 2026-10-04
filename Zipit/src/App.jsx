@@ -351,25 +351,47 @@ function AppContent() {
     
     const initDB = async (silent = false) => {
       if (!silent) setIsLoading(true);
-      const profile = await db.user.get();
-      setUserProfile(profile);
-      const addrs = await db.addresses.getAll();
-      setAddresses(addrs);
-      
-      const orders = await db.orders.getAll();
-      orders.forEach(o => {
-        knownOrderStatuses.current[o.id] = o.status;
-      });
-      
-      const savedCart = await db.carts.get();
-      if (savedCart && savedCart.length > 0) {
-        setCart(savedCart);
-      } else {
-        setCart([]);
+      try {
+        const profile = await db.user.get();
+        setUserProfile(profile || null);
+
+        let addrs = [];
+        try {
+          addrs = await db.addresses.getAll();
+        } catch (e) {
+          console.warn("Addresses fetch failed:", e);
+        }
+        setAddresses(Array.isArray(addrs) ? addrs : []);
+        
+        let orders = [];
+        try {
+          orders = await db.orders.getAll();
+        } catch (e) {
+          console.warn("Orders fetch failed:", e);
+        }
+        if (Array.isArray(orders)) {
+          orders.forEach(o => {
+            if (o?.id) knownOrderStatuses.current[o.id] = o.status;
+          });
+        }
+        
+        let savedCart = [];
+        try {
+          savedCart = await db.carts.get();
+        } catch (e) {
+          console.warn("Carts fetch failed:", e);
+        }
+        if (Array.isArray(savedCart) && savedCart.length > 0) {
+          setCart(savedCart);
+        } else {
+          setCart([]);
+        }
+        localStorage.removeItem('cart'); // Clear any legacy local storage cart
+      } catch (err) {
+        console.error("initDB error:", err);
+      } finally {
+        if (!silent) setIsLoading(false);
       }
-      localStorage.removeItem('cart'); // Clear any legacy local storage cart
-      
-      if (!silent) setIsLoading(false);
 
       if (!silent) {
         setTimeout(async () => {
@@ -487,8 +509,9 @@ function AppContent() {
     setAddresses(addrs);
   };
 
-  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
-  const itemTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const safeCart = Array.isArray(cart) ? cart : [];
+  const totalItems = safeCart.reduce((sum, item) => sum + (item?.qty || 0), 0);
+  const itemTotal = safeCart.reduce((sum, item) => sum + ((item?.price || 0) * (item?.qty || 0)), 0);
   const smallCartCharge = itemTotal > 0 ? 9 : 0;
   const deliveryCharge = (itemTotal > 0 && itemTotal < 149) ? 20 : 0;
   
@@ -529,13 +552,12 @@ function AppContent() {
     return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
   }
 
-  if (isLoading) {
-    return <SplashScreen />;
-  }
-
   const showBottomNav = ['/', '/categories', '/track'].includes(viewName);
   const activeTab = viewName === '/' ? 'home' : viewName === '/categories' ? 'categories' : viewName === '/track' ? 'track' : '';
   const showCartBar = totalItems > 0 && !viewName.includes('/checkout') && !viewName.includes('/payment') && !selectedProduct;
+
+  const safeAddresses = Array.isArray(addresses) ? addresses : [];
+  const defaultAddress = safeAddresses.find(a => a?.is_default) || safeAddresses[0] || null;
 
   const handleOpenCart = () => {
     setIsSearchOpen(false);
@@ -667,17 +689,51 @@ function AppContent() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', color: '#0F172A' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Unable to display page</h2>
+          <p style={{ fontSize: 13, color: '#64748B', maxWidth: 320, marginBottom: 20 }}>
+            {this.state.error?.message || 'A render issue occurred.'}
+          </p>
+          <button 
+            onClick={() => { localStorage.removeItem('cart'); window.location.reload(); }} 
+            style={{ padding: '12px 28px', backgroundColor: '#F8CB46', border: 'none', borderRadius: 24, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}
+          >
+            Refresh App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   return (
-    <ThemeProvider>
-      <WishlistProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </ToastProvider>
-      </WishlistProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <WishlistProvider>
+          <ToastProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </ToastProvider>
+        </WishlistProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
