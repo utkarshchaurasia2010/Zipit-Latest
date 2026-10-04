@@ -53,24 +53,65 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
-// Helper to clear and write to a specific sheet tab
+// Helper to ensure tab exists in spreadsheet
+async function ensureTabExists(sheets, tabName) {
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: GOOGLE_SHEETS_ID });
+    const existingTabs = (meta.data.sheets || []).map(s => s.properties.title);
+    if (!existingTabs.includes(tabName)) {
+      console.log(`[ZIPIT-SYNC] Tab '${tabName}' does not exist. Creating it now...`);
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: GOOGLE_SHEETS_ID,
+        resource: {
+          requests: [
+            {
+              addSheet: {
+                properties: { title: tabName }
+              }
+            }
+          ]
+        }
+      });
+      console.log(`[ZIPIT-SYNC] Created tab '${tabName}'.`);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn(`[ZIPIT-SYNC] Could not check/create tab '${tabName}':`, err.message);
+    return false;
+  }
+}
+
+// Clean address or name tags helper
+function stripTags(text) {
+  if (!text) return '';
+  return String(text).replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').replace(/---[A-Z_]+---/g, '').trim();
+}
+
+// Helper to clear and write to a specific sheet tab starting cleanly at A1
 async function updateSheet(sheets, tabName, values) {
+  await ensureTabExists(sheets, tabName);
+
+  // Clear existing content in sheet
   try {
     await sheets.spreadsheets.values.clear({
       spreadsheetId: GOOGLE_SHEETS_ID,
-      range: `${tabName}!A:Z`,
+      range: `${tabName}!A1:Z5000`,
     });
-    
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: GOOGLE_SHEETS_ID,
-      range: `${tabName}!A1`,
-      valueInputOption: 'USER_ENTERED',
-      resource: { values },
-    });
-    console.log(`-> Successfully synced ${values.length - 1} rows to '${tabName}' tab.`);
   } catch (err) {
-    console.error(`-> Failed to sync '${tabName}':`, err.message);
+    console.warn(`[ZIPIT-SYNC] Clear warning for '${tabName}':`, err.message);
   }
+  
+  // Write fresh rows starting at A1 (prevents jumping to row 1000)
+  const res = await sheets.spreadsheets.values.update({
+    spreadsheetId: GOOGLE_SHEETS_ID,
+    range: `${tabName}!A1`,
+    valueInputOption: 'USER_ENTERED',
+    resource: { values },
+  });
+  
+  console.log(`-> Successfully synced ${values.length - 1} data rows to '${tabName}' tab.`);
+  return { tabName, rows: values.length - 1, updatedCells: res.data.updatedCells };
 }
 
 // ----------------------------------------------------
@@ -80,40 +121,98 @@ async function syncToSheets() {
   console.log(`[${new Date().toISOString()}] Starting sync TO Google Sheets...`);
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: authClient });
+  const results = {};
 
-  // Profiles
-  const { data: profiles } = await supabase.from('profiles').select('*');
-  const profileRows = [['ID', 'Name', 'Phone', 'Email', 'Role', 'Primary Address', 'Lat', 'Lng', 'Created At']];
-  (profiles || []).forEach(p => {
-    profileRows.push([p.id || '', p.name || '', p.phone || '', p.email || '', p.role || '', p.address || '', p.lat || '', p.lng || '', p.created_at || '']);
-  });
-  await updateSheet(sheets, 'Profiles', profileRows);
+  // Profiles (Users)
+  const { data: profiles, error: profErr } = await supabase.from('profiles').select('*');
+  if (profErr) {
+    console.error('[ZIPIT-SYNC] Profiles fetch error:', profErr.message);
+    results.profiles = { error: profErr.message };
+  } else {
+    const profileRows = [['ID', 'Name', 'Phone', 'Email', 'Role', 'Primary Address', 'Village / Area', 'Lat', 'Lng', 'Created At']];
+    (profiles || []).forEach(p => {
+      profileRows.push([
+        p.id || '',
+        p.name || '',
+        p.phone || '',
+        p.email || '',
+        p.is_admin ? 'Admin' : 'Customer',
+        stripTags(p.address),
+        p.gps_area || '',
+        p.lat || '',
+        p.lng || '',
+        p.created_at || ''
+      ]);
+    });
+    results.profiles = await updateSheet(sheets, 'Profiles', profileRows);
+  }
 
   // Addresses
-  const { data: addresses } = await supabase.from('addresses').select('*');
-  const addressRows = [['ID', 'Profile ID', 'Type', 'Details', 'Phone', 'Created At']];
-  (addresses || []).forEach(a => {
-    addressRows.push([a.id || '', a.profile_id || '', a.type || '', a.details || '', a.phone || '', a.created_at || '']);
-  });
-  await updateSheet(sheets, 'Addresses', addressRows);
+  const { data: addresses, error: addrErr } = await supabase.from('addresses').select('*');
+  if (addrErr) {
+    console.error('[ZIPIT-SYNC] Addresses fetch error:', addrErr.message);
+    results.addresses = { error: addrErr.message };
+  } else {
+    const addressRows = [['ID', 'Profile ID', 'Type', 'Clean Address', 'Phone', 'Created At']];
+    (addresses || []).forEach(a => {
+      addressRows.push([
+        a.id || '',
+        a.profile_id || '',
+        a.type || '',
+        stripTags(a.details),
+        a.phone || '',
+        a.created_at || ''
+      ]);
+    });
+    results.addresses = await updateSheet(sheets, 'Addresses', addressRows);
+  }
 
   // Orders
-  const { data: orders } = await supabase.from('orders').select('*');
-  const orderRows = [['Order ID', 'Profile ID', 'Total', 'Status', 'Payment Method', 'Payment Status', 'Created At']];
-  (orders || []).forEach(o => {
-    orderRows.push([o.id || '', o.profile_id || '', o.total || '', o.status || '', o.payment_method || '', o.payment_status || '', o.created_at || '']);
-  });
-  await updateSheet(sheets, 'Orders', orderRows);
+  const { data: orders, error: ordErr } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  if (ordErr) {
+    console.error('[ZIPIT-SYNC] Orders fetch error:', ordErr.message);
+    results.orders = { error: ordErr.message };
+  } else {
+    const orderRows = [['Order ID', 'Profile ID', 'Total', 'Status', 'Payment Method', 'Payment Status', 'Created At']];
+    (orders || []).forEach(o => {
+      orderRows.push([
+        o.id || '',
+        o.profile_id || '',
+        o.total || '',
+        o.status || '',
+        o.payment_method || '',
+        o.payment_status || '',
+        o.created_at || ''
+      ]);
+    });
+    results.orders = await updateSheet(sheets, 'Orders', orderRows);
+  }
 
   // Products (Inventory)
-  const { data: products } = await supabase.from('products').select('*');
-  const productsRows = [['ID', 'Name', 'Category ID', 'Price', 'Stock', 'Unit', 'Created At']];
-  (products || []).forEach(i => {
-    productsRows.push([i.id || '', i.name || '', i.category_id || '', i.price || '', i.stock || '', i.unit || '', i.created_at || '']);
-  });
-  await updateSheet(sheets, 'Inventory', productsRows);
+  const { data: products, error: prodErr } = await supabase.from('products').select('*').order('name');
+  if (prodErr) {
+    console.error('[ZIPIT-SYNC] Products fetch error:', prodErr.message);
+    results.products = { error: prodErr.message };
+  } else {
+    const productsRows = [['ID', 'Name', 'Category ID', 'Price', 'Unit/Pack', 'Stock Count', 'Available', 'Created At']];
+    (products || []).forEach(i => {
+      const stock = i.stock_count != null ? i.stock_count : (i.is_out_of_stock ? 0 : 100);
+      productsRows.push([
+        i.id || '',
+        stripTags(i.name),
+        i.category_id || '',
+        i.price || '',
+        i.amount || '',
+        stock,
+        i.is_out_of_stock ? 'Out of Stock' : 'In Stock',
+        i.created_at || ''
+      ]);
+    });
+    results.products = await updateSheet(sheets, 'Inventory', productsRows);
+  }
 
-  console.log(`[${new Date().toISOString()}] Sync TO Sheets completed!`);
+  console.log(`[${new Date().toISOString()}] Sync TO Sheets completed!`, results);
+  return results;
 }
 
 // ----------------------------------------------------
@@ -138,7 +237,6 @@ async function syncFromSheets() {
     for (const row of orderRows) {
       const [id, profile_id, total, status, payment_method, payment_status] = row;
       if (id && status) {
-        // We update the status and payment status in Supabase based on the spreadsheet
         await supabase.from('orders').update({ status, payment_status }).eq('id', id);
         updatedOrders++;
       }
@@ -147,18 +245,20 @@ async function syncFromSheets() {
     // Sync Inventory (Products)
     const invRes = await sheets.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEETS_ID,
-      range: 'Inventory!A2:G',
+      range: 'Inventory!A2:H',
     });
     
     const invRows = invRes.data.values || [];
     for (const row of invRows) {
-      const [id, name, category_id, price, stock, unit] = row;
+      const [id, name, category_id, price, unit, stock_count] = row;
       if (id && price) {
-        // We update price and stock in Supabase based on the spreadsheet
-        await supabase.from('products').update({ 
-          price: parseFloat(price), 
-          stock: parseInt(stock) 
-        }).eq('id', id);
+        const updatePayload = { price: parseFloat(price) };
+        if (stock_count !== undefined && stock_count !== '') {
+          const s = parseInt(stock_count, 10);
+          updatePayload.stock_count = isNaN(s) ? 100 : s;
+          updatePayload.is_out_of_stock = isNaN(s) ? false : (s <= 0);
+        }
+        await supabase.from('products').update(updatePayload).eq('id', id);
         updatedProducts++;
       }
     }
@@ -176,24 +276,78 @@ async function syncFromSheets() {
 // ----------------------------------------------------
 const handleSyncToSheets = async (req, res) => {
   try {
-    await syncToSheets();
-    res.json({ success: true, message: 'Successfully pushed latest data to Google Sheets.' });
+    const details = await syncToSheets();
+    const profCount = details.profiles?.rows ?? 0;
+    const prodCount = details.products?.rows ?? 0;
+    const ordCount = details.orders?.rows ?? 0;
+    res.json({ 
+      success: true, 
+      message: `Pushed latest data to Google Sheets: ${profCount} Profiles, ${prodCount} Products, ${ordCount} Orders.`,
+      details 
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('[ZIPIT-SYNC] Push failed:', err);
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
   }
 };
 
 const handleSyncFromSheets = async (req, res) => {
   try {
     const stats = await syncFromSheets();
-    res.json({ success: true, message: `Successfully pulled from Sheets. Updated ${stats.updatedOrders} Orders, ${stats.updatedProducts} Products.` });
+    res.json({ 
+      success: true, 
+      message: `Pulled from Sheets. Updated ${stats.updatedOrders} Orders, ${stats.updatedProducts} Products.`,
+      stats 
+    });
   } catch (err) {
+    console.error('[ZIPIT-SYNC] Pull failed:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
 app.all(['/sync/to-sheets', '/api/syncToSheets'], handleSyncToSheets);
 app.all(['/sync/from-sheets', '/api/syncFromSheets'], handleSyncFromSheets);
+
+// Diagnostic Debug Route
+app.get('/api/debug', async (req, res) => {
+  const result = {
+    timestamp: new Date().toISOString(),
+    env: {
+      has_supabase_url: !!process.env.SUPABASE_URL,
+      has_supabase_anon_key: !!process.env.SUPABASE_ANON_KEY,
+      google_sheets_id: process.env.GOOGLE_SHEETS_ID,
+      has_sa_json: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+      has_credentials_file: require('fs').existsSync(CREDENTIALS_PATH),
+    },
+    supabase: {},
+    sheets: {}
+  };
+
+  try {
+    const { data: profs, error: prErr } = await supabase.from('profiles').select('id, name, is_admin').limit(5);
+    result.supabase.profiles = { count: profs?.length, error: prErr?.message, sample: profs };
+
+    const { data: prods, error: pErr } = await supabase.from('products').select('id, name, price, stock_count').limit(5);
+    result.supabase.products = { count: prods?.length, error: pErr?.message, sample: prods };
+  } catch (e) {
+    result.supabase.error = e.message;
+  }
+
+  try {
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: GOOGLE_SHEETS_ID });
+    result.sheets.title = meta.data.properties.title;
+    result.sheets.tabs = (meta.data.sheets || []).map(s => s.properties.title);
+  } catch (e) {
+    result.sheets.error = e.message;
+    if (e.response && e.response.data) {
+      result.sheets.details = e.response.data;
+    }
+  }
+
+  res.json(result);
+});
 
 // ----------------------------------------------------
 // BOOTSTRAP
@@ -213,3 +367,4 @@ app.listen(PORT, '0.0.0.0', () => {
     syncToSheets().catch(err => console.error("[ZIPIT-SYNC] Cron sync error:", err.message));
   });
 });
+
