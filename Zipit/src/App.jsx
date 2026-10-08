@@ -27,6 +27,7 @@ import TrackOrderPage from './components/TrackOrderPage';
 import SubstituteSelectionPage from './components/SubstituteSelectionPage';
 import PastOrdersPage from './components/PastOrdersPage';
 import TermsPage from './components/TermsPage';
+import LegalPoliciesPage from './components/LegalPoliciesPage';
 import ProductDetailsSheet from './components/ProductDetailsSheet';
 import PullToRefresh from './components/PullToRefresh';
 import { ToastProvider } from './context/ToastContext';
@@ -210,8 +211,18 @@ function AppContent() {
   }, [isSearchOpen, selectedProduct]);
   const [headerBgColor, setHeaderBgColor] = useState('linear-gradient(to right, #F8CB46, #F9D423)');
 
-  const [userProfile, setUserProfile] = useState(null);
-  const [addresses, setAddresses] = useState([]);
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_user_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch (_) { return null; }
+  });
+  const [addresses, setAddresses] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_addresses');
+      return cached ? JSON.parse(cached) : [];
+    } catch (_) { return []; }
+  });
   const [gpsLocation, setGpsLocation] = useState(() => {
     return localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
   });
@@ -264,19 +275,22 @@ function AppContent() {
       document.head.appendChild(metaThemeColor);
     }
     
-    if (viewName === '/' || viewName === '/categories') {
+    if (showSplash) {
+      metaThemeColor.content = '#0a0a0c';
+    } else if (viewName === '/' || viewName === '/categories') {
       metaThemeColor.content = theme === 'dark' ? '#1E1E1E' : '#F8CB46';
     } else if (viewName === '/profile') {
       metaThemeColor.content = theme === 'dark' ? '#4F2F1D' : '#FFEAA7';
     } else {
       metaThemeColor.content = theme === 'dark' ? '#121212' : '#F3F4F6';
     }
-  }, [viewName, theme]);
+  }, [viewName, theme, showSplash]);
 
   useEffect(() => {
+    // Elegant splash display time to imprint brand identity in user mind
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1500);
+    }, 1600);
     return () => clearTimeout(timer);
   }, []);
 
@@ -335,12 +349,14 @@ function AppContent() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session);
+      const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+      setIsLoggedIn(!!session || hasFirebasePhone);
       setIsInitializingAuth(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
+      const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+      setIsLoggedIn(!!session || hasFirebasePhone);
     });
 
     return () => subscription.unsubscribe();
@@ -352,37 +368,22 @@ function AppContent() {
     const initDB = async (silent = false) => {
       if (!silent) setIsLoading(true);
       try {
-        const profile = await db.user.get();
-        setUserProfile(profile || null);
+        const [profileRes, addrsRes, ordersRes, savedCartRes] = await Promise.all([
+          db.user.get().catch(e => { console.warn("User get failed:", e); return null; }),
+          db.addresses.getAll().catch(e => { console.warn("Addresses fetch failed:", e); return []; }),
+          db.orders.getAll().catch(e => { console.warn("Orders fetch failed:", e); return []; }),
+          db.carts.get().catch(e => { console.warn("Carts fetch failed:", e); return []; })
+        ]);
 
-        let addrs = [];
-        try {
-          addrs = await db.addresses.getAll();
-        } catch (e) {
-          console.warn("Addresses fetch failed:", e);
-        }
-        setAddresses(Array.isArray(addrs) ? addrs : []);
-        
-        let orders = [];
-        try {
-          orders = await db.orders.getAll();
-        } catch (e) {
-          console.warn("Orders fetch failed:", e);
-        }
-        if (Array.isArray(orders)) {
-          orders.forEach(o => {
+        if (profileRes) setUserProfile(profileRes);
+        if (Array.isArray(addrsRes)) setAddresses(addrsRes);
+        if (Array.isArray(ordersRes)) {
+          ordersRes.forEach(o => {
             if (o?.id) knownOrderStatuses.current[o.id] = o.status;
           });
         }
-        
-        let savedCart = [];
-        try {
-          savedCart = await db.carts.get();
-        } catch (e) {
-          console.warn("Carts fetch failed:", e);
-        }
-        if (Array.isArray(savedCart) && savedCart.length > 0) {
-          setCart(savedCart);
+        if (Array.isArray(savedCartRes) && savedCartRes.length > 0) {
+          setCart(savedCartRes);
         } else {
           setCart([]);
         }
@@ -427,9 +428,15 @@ function AppContent() {
     
     initDB();
 
+    let lastHiddenTime = Date.now();
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        initDB(true);
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTime = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        // Only trigger background refresh if user was away for at least 60 seconds
+        if (Date.now() - lastHiddenTime > 60000) {
+          initDB(true);
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -615,6 +622,7 @@ function AppContent() {
               <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} />} />
               <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
               <Route path="/terms" element={<TermsPage navigate={navigate} />} />
+              <Route path="/legal" element={<LegalPoliciesPage navigate={navigate} />} />
               <Route path="/category/:categoryId" element={<ProductListPageWrapper navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
               <Route path="/all-products" element={<AllProductsPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
               <Route path="/wishlist" element={<WishlistPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} />} />
@@ -674,7 +682,7 @@ function AppContent() {
         />
       )}
       
-      {userProfile?.name === 'New User' && (
+      {(!userProfile?.name || userProfile?.name === 'New User' || userProfile?.name.startsWith('User ') || userProfile?.name.trim() === '') && (
         <OnboardingModal 
           userProfile={userProfile} 
           onComplete={(newData) => {

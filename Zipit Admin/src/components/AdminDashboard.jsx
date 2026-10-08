@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db, supabase } from '../services/db';
-import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff, Phone, MapPin, UserCheck, Bike } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import './AdminDashboard.css';
 
@@ -307,10 +307,27 @@ const AdminDashboard = ({ initialTab }) => {
           <div class="meta-card">
             <div class="meta-row"><span class="lbl">Order Ref:</span><span class="val">#${order.id.slice(0, 8).toUpperCase()}</span></div>
             <div class="meta-row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
+            <div class="meta-row"><span class="lbl">Fulfillment:</span><span class="val" style="${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? 'color:#15803d; font-weight:900;' : ''}">${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? '🛍️ STORE PICKUP (Ready ~1 hr)' : '🛵 HOME DELIVERY'}</span></div>
             <div class="meta-row"><span class="lbl">Customer:</span><span class="val">${order.profiles?.name || order.delivery_address?.name || 'Guest Customer'}</span></div>
             ${(order.profiles?.phone || order.delivery_address?.phone) ? `<div class="meta-row"><span class="lbl">Contact Phone:</span><span class="val">${order.profiles?.phone || order.delivery_address?.phone}</span></div>` : ''}
             <div class="meta-row"><span class="lbl">Payment Gateway:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
-            ${order.delivery_address ? `<div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details || order.delivery_address.full_address || 'Customer Location'}</span></div>` : ''}
+            ${order.delivery_address?.landmark ? `<div class="meta-row" style="background:#fee2e2; padding:4px 6px; border-radius:4px; margin: 4px 0;"><span class="lbl" style="color:#b91c1c; font-weight:bold;">🚩 Landmark:</span><span class="val" style="font-weight:bold; color:#b91c1c;">${order.delivery_address.landmark}</span></div>` : ''}
+            ${order.delivery_address?.family_head ? `<div class="meta-row"><span class="lbl">🏠 House/Family:</span><span class="val">${order.delivery_address.family_head}</span></div>` : ''}
+            ${order.delivery_address?.alt_phone ? `<div class="meta-row"><span class="lbl">Alt Contact:</span><span class="val">${order.delivery_address.alt_phone}</span></div>` : ''}
+            <div class="meta-row"><span class="lbl">Shopkeeper:</span><span class="val">${order.accepted_by_shopkeeper ? `✓ ${order.accepted_by_shopkeeper}` : 'Pending Acceptance'}</span></div>
+            ${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? `
+              <div class="meta-row"><span class="lbl">Rider / Delivery:</span><span class="val" style="color: #64748b;">N/A (Store Pickup)</span></div>
+            ` : `
+              <div class="meta-row"><span class="lbl">Assigned Rider:</span><span class="val">${order.accepted_by_rider ? `🛵 ${order.accepted_by_rider}` : 'Unclaimed / Pending Rider'}</span></div>
+            `}
+            ${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? `
+              <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
+                <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup:</span>
+                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address.store_location || 'Zipit Store, Rauza'} (${order.delivery_address.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+              </div>
+            ` : order.delivery_address ? `
+              <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details || order.delivery_address.full_address || 'Customer Location'}</span></div>
+            ` : ''}
           </div>
 
           <div class="table-head">Order Items & Substitutions</div>
@@ -652,9 +669,42 @@ const AdminDashboard = ({ initialTab }) => {
               <div key={o.id} className="admin-list-item admin-order-card" style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '18px 20px', marginBottom: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
                 {/* Top header row */}
                 <div className="admin-order-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '14px', borderBottom: '1px solid var(--color-border)', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: 'var(--color-text)' }}>
-                    Order #{o.id.slice(0,8).toLowerCase()}
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: 'var(--color-text)' }}>
+                      Order #{o.id.slice(0,8).toLowerCase()}
+                    </h3>
+                    {(o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') ? (
+                      <span style={{ 
+                        background: '#dcfce7', 
+                        color: '#15803d', 
+                        border: '1.5px solid #86efac', 
+                        padding: '3px 10px', 
+                        borderRadius: '20px', 
+                        fontSize: '11.5px', 
+                        fontWeight: '800',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        🛍️ STORE PICKUP (Pack & Keep)
+                      </span>
+                    ) : (
+                      <span style={{ 
+                        background: '#e0f2fe', 
+                        color: '#0369a1', 
+                        border: '1.5px solid #bae6fd', 
+                        padding: '3px 10px', 
+                        borderRadius: '20px', 
+                        fontSize: '11.5px', 
+                        fontWeight: '800',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        🛵 HOME DELIVERY
+                      </span>
+                    )}
+                  </div>
                   
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button 
@@ -680,7 +730,9 @@ const AdminDashboard = ({ initialTab }) => {
                       ) : (
                         <>
                           <option value="Payment Pending">Payment Pending</option>
+                          <option value="Placed">Placed</option>
                           <option value="Preparing">Preparing</option>
+                          <option value="Ready for Pickup">Ready for Pickup</option>
                           <option value="Out for Delivery">Out for Delivery</option>
                           <option value="Delivered">Delivered</option>
                           <option value="Cancellation Requested">Cancellation Requested</option>
@@ -704,17 +756,155 @@ const AdminDashboard = ({ initialTab }) => {
                 
                 {/* Bottom details section */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ fontSize: '15px', color: 'var(--color-text-light)' }}>
-                    Customer: <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>
-                      {o.profiles?.name || o.delivery_address?.name || 'Customer'}
-                      {(o.profiles?.phone || o.delivery_address?.phone) ? ` (${o.profiles?.phone || o.delivery_address?.phone})` : ''}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ fontSize: '15px', color: 'var(--color-text-light)' }}>
+                      Customer: <span style={{ color: 'var(--color-text)', fontWeight: '600' }}>
+                        {o.profiles?.name || o.delivery_address?.name || 'Customer'}
+                        {(o.profiles?.phone || o.delivery_address?.phone) ? ` (${o.profiles?.phone || o.delivery_address?.phone})` : ''}
+                      </span>
+                    </div>
+
+                    {(o.profiles?.phone || o.delivery_address?.phone) && (
+                      <a
+                        href={`tel:${o.profiles?.phone || o.delivery_address?.phone}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: '#0c831f',
+                          color: '#ffffff',
+                          padding: '5px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          boxShadow: '0 2px 6px rgba(12, 131, 31, 0.25)'
+                        }}
+                      >
+                        <Phone size={13} />
+                        <span>Call Customer</span>
+                      </a>
+                    )}
                   </div>
+
+                  {/* Delivery Location OR Store Pickup Highlight */}
+                  {o.delivery_address && (
+                    (o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') ? (
+                      <div style={{
+                        background: '#f0fdf4',
+                        border: '1.5px solid #86efac',
+                        borderRadius: '10px',
+                        padding: '10px 14px',
+                        margin: '6px 0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', fontWeight: 800, color: '#15803d' }}>
+                          <span>🛍️ CUSTOMER WILL PICK UP FROM STORE</span>
+                        </div>
+                        <div style={{ fontSize: '12.5px', color: '#166534', fontWeight: 600 }}>
+                          ⏰ Ready Estimate: {o.delivery_address?.pickup_time_estimate || 'Ready in ~1 hour'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#14532d' }}>
+                          📍 Store Location: {o.delivery_address?.store_location || 'Zipit Hub & Store, Rauza'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 700, marginTop: '2px' }}>
+                          ⚡ Pack all items and keep aside on the pickup counter. NO RIDER ASSIGNED.
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{
+                        background: 'rgba(12, 131, 31, 0.08)',
+                        border: '1px solid rgba(12, 131, 31, 0.25)',
+                        borderRadius: '10px',
+                        padding: '8px 12px',
+                        margin: '4px 0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#0c831f' }}>
+                          <MapPin size={15} />
+                          <span>{o.delivery_address.village_area || o.delivery_address.type || 'Village Delivery Location'}</span>
+                        </div>
+
+                        {o.delivery_address.landmark && (
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#dc2626' }}>
+                            🚩 Landmark: {o.delivery_address.landmark}
+                          </div>
+                        )}
+
+                        {o.delivery_address.family_head && (
+                          <div style={{ fontSize: '12.5px', color: 'var(--color-text)', fontWeight: 600 }}>
+                            🏠 House / Family: {o.delivery_address.family_head}
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>
+                          {o.delivery_address.details || o.delivery_address.full_address}
+                          {o.delivery_address.alt_phone ? ` • Alt Phone: ${o.delivery_address.alt_phone}` : ''}
+                        </div>
+                      </div>
+                    )
+                  )}
+
                   <div style={{ fontSize: '15px', color: 'var(--color-text-light)' }}>
-                    Total: <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>₹{o.total}</span>
+                    Total: <span style={{ color: 'var(--color-text)', fontWeight: '600' }}>₹{o.total}</span>
+                    <span style={{ margin: '0 8px', color: 'var(--color-border)' }}>|</span>
+                    Payment: <span style={{ color: '#0c831f', fontWeight: '600' }}>{o.payment_method || 'COD / UPI'}</span>
                   </div>
-                  <div style={{ fontSize: '15px', color: 'var(--color-text-light)', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '14.5px', color: 'var(--color-text-light)', marginBottom: '4px' }}>
                     Items: <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>{o.items?.length || 0} items</span>
+                  </div>
+
+                  {/* Shopkeeper & Rider Assignment Information */}
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    background: 'var(--color-surface-muted, #f8fafc)',
+                    border: '1px dashed var(--color-border, #e2e8f0)',
+                    borderRadius: '10px',
+                    margin: '4px 0 8px 0',
+                    alignItems: 'center'
+                  }}>
+                    {/* Shopkeeper Status */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
+                      <UserCheck size={15} color={o.accepted_by_shopkeeper ? '#15803d' : '#94a3b8'} />
+                      <span style={{ color: 'var(--color-text-light)' }}>Shopkeeper:</span>
+                      {o.accepted_by_shopkeeper ? (
+                        <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', border: '1px solid #86efac' }}>
+                          ✓ {o.accepted_by_shopkeeper}
+                        </span>
+                      ) : (
+                        <span style={{ background: '#f1f5f9', color: '#64748b', fontWeight: 600, padding: '2px 8px', borderRadius: '6px' }}>
+                          ⏳ Pending Acceptance
+                        </span>
+                      )}
+                    </div>
+
+                    <span style={{ color: 'var(--color-border)' }}>•</span>
+
+                    {/* Rider Status */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
+                      <Bike size={15} color={(o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') ? '#94a3b8' : o.accepted_by_rider ? '#0284c7' : '#94a3b8'} />
+                      <span style={{ color: 'var(--color-text-light)' }}>Rider / Delivery:</span>
+                      {(o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') ? (
+                        <span style={{ background: '#f3f4f6', color: '#6b7280', fontWeight: 700, padding: '2px 8px', borderRadius: '6px' }}>
+                          🚫 No Rider (Store Pickup)
+                        </span>
+                      ) : o.accepted_by_rider ? (
+                        <span style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', border: '1px solid #bae6fd' }}>
+                          🛵 {o.accepted_by_rider}
+                        </span>
+                      ) : (
+                        <span style={{ background: '#fef3c7', color: '#b45309', fontWeight: 600, padding: '2px 8px', borderRadius: '6px' }}>
+                          ⏳ Unclaimed (Waiting for Rider)
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Item Chips */}

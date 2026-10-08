@@ -14,31 +14,31 @@
 .settings-header h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #101828;
+  color: var(--color-text);
   margin: 0;
 }
 
 .settings-header p {
-  color: #667085;
+  color: var(--color-text-light);
   font-size: 15px;
   margin: 0;
 }
 
 .settings-card {
-  background: #FFFFFF;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 32px;
-  border: 1px solid #EAECF0;
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .settings-card h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #101828;
+  color: var(--color-text);
   margin: 0 0 24px 0;
   padding-bottom: 16px;
-  border-bottom: 1px solid #EAECF0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .settings-form {
@@ -56,12 +56,12 @@
 .form-group label {
   font-size: 14px;
   font-weight: 500;
-  color: #344054;
+  color: var(--color-text);
 }
 
 .form-group small {
   font-size: 13px;
-  color: #667085;
+  color: var(--color-text-light);
 }
 
 .input-with-icon {
@@ -69,19 +69,19 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border: 1px solid #D0D5DD;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #FFFFFF;
+  background: var(--color-surface);
   transition: all 0.2s;
 }
 
 .input-with-icon:focus-within {
   border-color: #F8CB46;
-  box-shadow: 0 0 0 4px rgba(248, 203, 70, 0.1);
+  box-shadow: 0 0 0 4px rgba(248, 203, 70, 0.15);
 }
 
 .input-with-icon svg {
-  color: #667085;
+  color: var(--color-text-light);
 }
 
 .input-with-icon input {
@@ -89,7 +89,7 @@
   background: transparent;
   width: 100%;
   font-size: 15px;
-  color: #101828;
+  color: var(--color-text);
   outline: none;
 }
 
@@ -104,7 +104,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #101828;
+  background: #0c831f;
   color: #FFFFFF;
   border: none;
   border-radius: 8px;
@@ -115,10 +115,111 @@
 }
 
 .save-settings-btn:hover:not(:disabled) {
-  background: #1D2939;
+  background: #096818;
 }
 
 .save-settings-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* App Branding Grid & Logo Uploader */
+.branding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.logo-upload-card {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.logo-upload-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.logo-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-role-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.logo-role-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #475467;
+}
+
+.logo-preview-box {
+  width: 90px;
+  height: 90px;
+  border-radius: 18px;
+  border: 2px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #0f172a;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.logo-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.logo-preview-placeholder {
+  color: #64748b;
+  font-size: 11px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.logo-upload-btn-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.logo-upload-btn-label:hover {
+  background: #dbeafe;
+}
+
+.logo-upload-btn-label.uploading {
+  opacity: 0.6;
+  pointer-events: none;
 }

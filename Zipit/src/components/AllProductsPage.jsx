@@ -110,7 +110,7 @@ const AllProductsPage = ({ navigate, cart, updateCartQty, onSearchClick, onProdu
                       <div className="img-footer-row" onClick={(e) => e.stopPropagation()}>
                         <span className="item-amount-text">{item.amount}</span>
                         {item.is_out_of_stock || item.stock_count === 0 ? (
-                          <button className="add-btn-small" style={{background: '#f2f4f7', color: '#98a2b3', border: '1px solid #e4e7ec'}} onClick={(e) => { e.stopPropagation(); updateCartQty(item, 1); }}>ADD</button>
+                          <button className="add-btn-small" style={{background: '#f2f4f7', color: '#98a2b3', border: '1px solid #e4e7ec'}} disabled>ADD</button>
                         ) : qty === 0 ? (
                           <button className="add-btn-small" onClick={(e) => { e.stopPropagation(); updateCartQty(item, 1); }}>ADD</button>
                         ) : (

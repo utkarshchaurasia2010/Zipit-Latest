@@ -75,6 +75,254 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
+/* Modern Fulfillment Mode Selector */
+.fulfillment-selector-section {
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  margin: 10px 16px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.fulfillment-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.fulfillment-section-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+}
+
+.fulfillment-guarantee-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.fulfillment-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.fulfillment-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px 12px;
+  border-radius: 16px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  min-height: 128px;
+}
+
+.fulfillment-card:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.fulfillment-card.selected {
+  border-color: #0c831f;
+  background: linear-gradient(180deg, rgba(12, 131, 31, 0.04) 0%, rgba(12, 131, 31, 0.01) 100%);
+  box-shadow: 0 4px 14px rgba(12, 131, 31, 0.12);
+}
+
+.fulfillment-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.fulfillment-icon-bubble {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.fulfillment-card.selected .fulfillment-icon-bubble {
+  transform: scale(1.05);
+}
+
+.fulfillment-icon-bubble.delivery {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.fulfillment-icon-bubble.pickup {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* Custom Radio Dot */
+.fulfillment-radio-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.fulfillment-card.selected .fulfillment-radio-dot {
+  border-color: #0c831f;
+  background: #0c831f;
+}
+
+.radio-inner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: scale(0);
+  transition: transform 0.15s ease;
+}
+
+.fulfillment-card.selected .radio-inner {
+  transform: scale(1);
+}
+
+/* Card Body */
+.fulfillment-card-body {
+  margin-bottom: 10px;
+}
+
+.fulfillment-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0 0 3px 0;
+  line-height: 1.2;
+}
+
+.fulfillment-card-desc {
+  font-size: 11.5px;
+  color: var(--color-text-light);
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* Card Footer Badges */
+.fulfillment-card-footer {
+  display: flex;
+  align-items: center;
+}
+
+.card-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.card-badge.regular {
+  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--color-text-light);
+}
+
+.card-badge.savings {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+/* Store Pickup Notice Banner below cards */
+.pickup-notice-banner {
+  margin-top: 14px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.pickup-notice-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #dcfce7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.pickup-notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pickup-notice-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pickup-notice-title-row strong {
+  font-size: 13px;
+  color: #15803d;
+  font-weight: 800;
+}
+
+.pickup-ready-pill {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #15803d;
+  background: #ffffff;
+  border: 1px solid #86efac;
+  padding: 1px 7px;
+  border-radius: 12px;
+}
+
+.pickup-notice-text span {
+  font-size: 11.5px;
+  color: #166534;
+  line-height: 1.4;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .delivery-time-card {
   display: flex;
   flex-direction: column;
@@ -594,22 +842,29 @@
 
 .checkout-place-order-btn {
   flex: 1;
-  background: linear-gradient(135deg, #16a34a, #15803d);
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 50%, #0f5132 100%);
   color: #fff;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 14px;
+  padding: 14px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3);
-  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.checkout-place-order-btn:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 28px rgba(22, 163, 74, 0.6), 0 0 20px rgba(34, 197, 94, 0.4);
 }
 
 .checkout-place-order-btn:active {
-  transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);
+  transform: scale(0.97);
+  box-shadow: 0 3px 12px rgba(22, 163, 74, 0.5), 0 0 25px rgba(34, 197, 94, 0.7);
 }
 
 .checkout-place-order-btn:disabled {

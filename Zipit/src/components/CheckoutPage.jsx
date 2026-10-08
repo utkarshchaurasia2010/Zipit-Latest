@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, Clock, MapPin, ChevronRight, Tag, X, Check, Trash2, Package, Search, Share2, QrCode, Banknote, CheckCircle, FileText, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { ChevronLeft, Clock, MapPin, ChevronRight, Tag, X, Check, Trash2, Package, Search, Share2, QrCode, Banknote, CheckCircle, FileText, ShoppingBag, ShoppingCart, Bike, Store, Sparkles } from 'lucide-react';
 import { db } from '../services/db';
 import { getCartDeliveryTime, getProductDeliveryTime } from '../utils/time';
 import { triggerConfetti, triggerMoneyConfetti } from '../utils/confetti';
@@ -18,8 +18,21 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState('UPI');
   const [processing, setProcessing] = useState(false);
+  const [pickupPhone, setPickupPhone] = useState(address?.phone || '');
   const { showToast } = useToast();
   const { toggleWishlist } = useWishlist();
+
+  useEffect(() => {
+    // If address has phone, prefill pickup phone
+    if (address?.phone) {
+      setPickupPhone(address.phone);
+    } else {
+      // Attempt to load from profile
+      db.user.get().then(p => {
+        if (p?.phone) setPickupPhone(p.phone);
+      }).catch(() => {});
+    }
+  }, [address]);
 
   useEffect(() => {
     const fetchSuggested = async () => {
@@ -41,6 +54,14 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
     
     fetchSuggested();
   }, [cart]);
+
+  const [fulfillmentMode, setFulfillmentMode] = useState('delivery'); // 'delivery' | 'pickup'
+  const isPickup = fulfillmentMode === 'pickup';
+
+  // For pickup: delivery and handling charges are 0
+  const effectiveDeliveryCharge = isPickup ? 0 : deliveryCharge;
+  const effectiveSmallCartCharge = isPickup ? 0 : smallCartCharge;
+  const effectiveGrandTotal = Math.max(0, itemTotal + effectiveDeliveryCharge + effectiveSmallCartCharge - (discountAmount || 0));
 
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
 
@@ -96,25 +117,53 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   };
 
   const handlePlaceOrder = async () => {
-    if (!address) {
+    if (!isPickup && !address) {
       showToast('Please select a delivery address', 'Address Required');
       return;
     }
+
     setProcessing(true);
     try {
+      // 1. Automatically fetch customer profile for contact phone number
+      let customerPhone = (address?.phone || pickupPhone || '').trim();
+      if (!customerPhone) {
+        try {
+          const userProf = await db.user.get();
+          if (userProf?.phone) customerPhone = userProf.phone.trim();
+        } catch (_) {}
+      }
+
       if (selectedPayment === 'UPI') {
         // Option to trigger intent if needed, otherwise just assume flow
-        window.location.href = `upi://pay?pa=9651568829@upi&pn=Zipit%20Store&am=${grandTotal}&cu=INR&tn=Order%20Payment`;
+        window.location.href = `upi://pay?pa=9651568829@upi&pn=Zipit%20Store&am=${effectiveGrandTotal}&cu=INR&tn=Order%20Payment`;
         // We'll pause briefly to let intent fire
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
+      // Compute ready pickup time (~1 hour later)
+      const pickupTimeObj = new Date(Date.now() + 60 * 60 * 1000);
+      const formattedPickupTime = pickupTimeObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const finalAddress = isPickup ? {
+        is_pickup: true,
+        order_type: 'PICKUP',
+        type: 'STORE PICKUP',
+        details: `Store Pickup at Zipit Hub, Rauza (Ready around ${formattedPickupTime})`,
+        store_location: 'Zipit Hub & Store, Main Market, Rauza',
+        pickup_time_estimate: `Ready around ${formattedPickupTime} (~1 hr)`,
+        phone: customerPhone
+      } : {
+        ...address,
+        is_pickup: false,
+        order_type: 'DELIVERY'
+      };
+
       await db.orders.add({
         items: cart,
-        total: grandTotal,
-        deliveryCharge: deliveryCharge,
-        smallCartCharge: smallCartCharge,
-        address: address,
+        total: effectiveGrandTotal,
+        deliveryCharge: effectiveDeliveryCharge,
+        smallCartCharge: effectiveSmallCartCharge,
+        address: finalAddress,
         status: 'Preparing',
         paymentMethod: selectedPayment,
         discountAmount: discountAmount || 0,
@@ -124,7 +173,12 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       clearCart();
       await db.carts.clear();
       if (setAppliedCoupon) setAppliedCoupon(null);
-      showToast(`Order Placed successfully via ${selectedPayment}!`, 'Order Placed 🎉');
+      showToast(
+        isPickup 
+          ? `Store Pickup Order Placed! Ready around ${formattedPickupTime}.` 
+          : `Order Placed successfully via ${selectedPayment}!`, 
+        isPickup ? 'Store Pickup Confirmed 🛍️' : 'Order Placed 🎉'
+      );
       navigate('/track');
     } catch (e) {
       console.error(e);
@@ -150,15 +204,100 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         </div>
       </header>
 
-      {/* COMBINED DELIVERY TIME & ORDERED ITEMS CARD */}
+      {/* FULFILLMENT MODE SELECTOR (HOME DELIVERY VS STORE PICKUP) */}
+      <section className="checkout-section fulfillment-selector-section">
+        <div className="fulfillment-section-header">
+          <span className="fulfillment-section-label">SELECT FULFILLMENT OPTION</span>
+          <span className="fulfillment-guarantee-pill">
+            <Sparkles size={11} /> 100% Fresh & Safe
+          </span>
+        </div>
+
+        <div className="fulfillment-cards-grid">
+          {/* Home Delivery Card */}
+          <div 
+            className={`fulfillment-card ${!isPickup ? 'selected' : ''}`}
+            onClick={() => setFulfillmentMode('delivery')}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="fulfillment-card-top">
+              <div className="fulfillment-icon-bubble delivery">
+                <Bike size={20} strokeWidth={2.4} />
+              </div>
+              <div className="fulfillment-radio-dot">
+                <div className="radio-inner" />
+              </div>
+            </div>
+
+            <div className="fulfillment-card-body">
+              <h3 className="fulfillment-card-title">Home Delivery</h3>
+              <p className="fulfillment-card-desc">At your doorstep in {getCartDeliveryTime(cart)} mins</p>
+            </div>
+
+            <div className="fulfillment-card-footer">
+              <span className="card-badge regular">
+                {appliedCoupon?.discount_type === 'FREE_DELIVERY' || deliveryCharge === 0 ? 'FREE DELIVERY' : `₹${deliveryCharge} delivery`}
+              </span>
+            </div>
+          </div>
+
+          {/* Store Pickup Card */}
+          <div 
+            className={`fulfillment-card ${isPickup ? 'selected' : ''}`}
+            onClick={() => setFulfillmentMode('pickup')}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="fulfillment-card-top">
+              <div className="fulfillment-icon-bubble pickup">
+                <Store size={20} strokeWidth={2.4} />
+              </div>
+              <div className="fulfillment-radio-dot">
+                <div className="radio-inner" />
+              </div>
+            </div>
+
+            <div className="fulfillment-card-body">
+              <h3 className="fulfillment-card-title">Store Pickup</h3>
+              <p className="fulfillment-card-desc">Pack & ready in ~1 hr at Rauza hub</p>
+            </div>
+
+            <div className="fulfillment-card-footer">
+              <span className="card-badge savings">
+                SAVE ₹{(deliveryCharge || 0) + (smallCartCharge || 0)} • FREE
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {isPickup && (
+          <div className="pickup-notice-banner">
+            <div className="pickup-notice-icon">
+              <Store size={18} color="#15803d" />
+            </div>
+            <div className="pickup-notice-text" style={{ width: '100%' }}>
+              <div className="pickup-notice-title-row">
+                <strong>Zipit Store & Hub, Rauza</strong>
+                <span className="pickup-ready-pill">Ready in ~1 hr</span>
+              </div>
+              <span style={{ fontSize: '11.5px', color: '#166534', margin: '4px 0 0 0' }}>
+                Skip the queue! Your order will be packed and waiting for you on the pickup counter with zero delivery or handling fees.
+              </span>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* COMBINED DELIVERY / PICKUP TIME & ORDERED ITEMS CARD */}
       <section className="checkout-section delivery-time-card">
         <div className="delivery-time-header">
           <div className="delivery-time-icon">
             <Clock size={20} />
           </div>
           <div className="delivery-time-info">
-            <h2>Delivery in {getCartDeliveryTime(cart)} minutes</h2>
-            <p>Shipment of {totalItems} item{totalItems > 1 ? 's' : ''}</p>
+            <h2>{isPickup ? 'Ready for Pickup in ~1 hour' : `Delivery in ${getCartDeliveryTime(cart)} minutes`}</h2>
+            <p>{isPickup ? `Store pickup at Zipit Hub • ${totalItems} item${totalItems > 1 ? 's' : ''}` : `Shipment of ${totalItems} item${totalItems > 1 ? 's' : ''}`}</p>
           </div>
         </div>
 
@@ -293,7 +432,18 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
           </div>
         </div>
 
-        {smallCartCharge > 0 && (
+        {/* Handling charge: 0 if pickup */}
+        {isPickup ? (
+          <div className="bill-row-modern">
+            <div className="bill-label-modern">
+              <ShoppingBag size={16} color="var(--color-text-light)" />
+              <span className="dotted-underline">Handling charge</span>
+            </div>
+            <div className="bill-value-modern">
+              <span style={{ color: '#15803d', fontWeight: 800 }}>FREE (Store Pickup)</span>
+            </div>
+          </div>
+        ) : smallCartCharge > 0 ? (
           <div className="bill-row-modern">
             <div className="bill-label-modern">
               <ShoppingBag size={16} color="var(--color-text-light)" />
@@ -303,7 +453,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
               ₹{smallCartCharge}
             </div>
           </div>
-        )}
+        ) : null}
 
         <div className="bill-row-modern delivery-charge-row">
           <div className="bill-label-modern">
@@ -311,19 +461,21 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             <span className="dotted-underline">Delivery charge</span>
           </div>
           <div className="bill-value-modern">
-            {appliedCoupon?.discount_type === 'FREE_DELIVERY' && deliveryCharge > 0 ? (
+            {isPickup ? (
+              <span style={{ color: '#15803d', fontWeight: 800 }}>FREE (Store Pickup)</span>
+            ) : appliedCoupon?.discount_type === 'FREE_DELIVERY' && deliveryCharge > 0 ? (
               <>
-                <span style={{textDecoration: 'line-through', color: 'var(--color-text-light)', marginRight: '6px', fontSize: '12px'}}>₹{deliveryCharge}</span>
-                <span style={{color: '#15803d', fontWeight: 800}}>FREE</span>
+                <span style={{ textDecoration: 'line-through', color: 'var(--color-text-light)', marginRight: '6px', fontSize: '12px' }}>₹{deliveryCharge}</span>
+                <span style={{ color: '#15803d', fontWeight: 800 }}>FREE</span>
               </>
             ) : deliveryCharge === 0 ? (
-              <span style={{color: '#15803d', fontWeight: 800}}>FREE</span>
+              <span style={{ color: '#15803d', fontWeight: 800 }}>FREE</span>
             ) : (
               `₹${deliveryCharge}`
             )}
           </div>
         </div>
-        {(itemTotal < 149 && appliedCoupon?.discount_type !== 'FREE_DELIVERY') && (
+        {!isPickup && (itemTotal < 149 && appliedCoupon?.discount_type !== 'FREE_DELIVERY') && (
           <div className="bill-subtext-orange">
             Shop for ₹{149 - itemTotal} more to get FREE delivery
           </div>
@@ -336,7 +488,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             <span className="dotted-underline">Grand total</span>
           </div>
           <div className="bill-value-modern">
-            ₹{grandTotal}
+            ₹{effectiveGrandTotal}
           </div>
         </div>
       </section>
@@ -345,14 +497,20 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       {createPortal(
         <div className="checkout-bottom-bar" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, backgroundColor: 'var(--color-surface)' }}>
           {/* Address Banner Above the Buttons */}
-          <div className="checkout-address-area" onClick={onAddressClick}>
+          <div className="checkout-address-area" onClick={!isPickup ? onAddressClick : undefined} style={{ cursor: isPickup ? 'default' : 'pointer' }}>
             <div className="address-icon-bg">
               <MapPin size={14} />
             </div>
             <div className="checkout-address-text">
               <h3 className="checkout-address-title">
-                <span>Delivering to <strong>{address ? (address.type || 'Rauza') : 'Rauza'}</strong></span>
-                <span className="address-change-btn">Change</span>
+                {isPickup ? (
+                  <span>Pickup from: <strong>Zipit Store, Rauza (~1 hr)</strong></span>
+                ) : (
+                  <>
+                    <span>Delivering to <strong>{address ? (address.type || 'Rauza') : 'Rauza'}</strong></span>
+                    <span className="address-change-btn">Change</span>
+                  </>
+                )}
               </h3>
             </div>
           </div>
@@ -371,11 +529,11 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             
             <button className="checkout-place-order-btn" onClick={handlePlaceOrder} disabled={processing}>
               <div className="btn-price-col">
-                <span className="btn-total">₹{grandTotal}</span>
+                <span className="btn-total">₹{effectiveGrandTotal}</span>
                 <span className="btn-sub">TOTAL</span>
               </div>
               <div className="btn-action-col">
-                {processing ? 'Processing...' : 'Place Order'} <ChevronRight size={20} strokeWidth={3} />
+                {processing ? 'Processing...' : isPickup ? 'Place Pickup Order' : 'Place Order'} <ChevronRight size={20} strokeWidth={3} />
               </div>
             </button>
           </div>

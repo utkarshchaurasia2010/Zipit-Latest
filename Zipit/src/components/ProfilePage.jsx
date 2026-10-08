@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -166,12 +166,12 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
 
-          <div className="menu-item" onClick={() => navigate('/terms')}>
+          <div className="menu-item" onClick={() => navigate('/legal', { state: { policy: 'terms' } })}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-orange" style={{ background: 'rgba(248, 203, 70, 0.15)' }}>
-                <FileText size={18} color="var(--color-primary)" />
+                <ShieldCheck size={18} color="var(--color-primary)" />
               </div>
-              <span>Terms & Conditions</span>
+              <span>Legal & Policies</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>

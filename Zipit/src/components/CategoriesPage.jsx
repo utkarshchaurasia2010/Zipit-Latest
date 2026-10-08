@@ -3,7 +3,24 @@ import { db, supabase } from '../services/db';
 import './CategoriesPage.css';
 
 const CategoriesPage = ({ navigate, isEmbedded }) => {
-  const [sections, setSections] = useState([]);
+  const [sections, setSections] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_categories');
+      if (cached) {
+        const data = JSON.parse(cached);
+        const grouped = data.reduce((acc, cat) => {
+          if (!acc[cat.section]) acc[cat.section] = [];
+          acc[cat.section].push(cat);
+          return acc;
+        }, {});
+        return Object.keys(grouped).map(sectionTitle => ({
+          title: sectionTitle,
+          items: grouped[sectionTitle]
+        }));
+      }
+    } catch (_) {}
+    return [];
+  });
   
   useEffect(() => {
     const fetchCats = async () => {
@@ -47,7 +64,7 @@ const CategoriesPage = ({ navigate, isEmbedded }) => {
               {section.items.map((item, i) => (
                 <div key={item.id || i} className="category-card" onClick={() => navigate(`/category/${item.id}`, { state: { categoryName: item.name } })}>
                   <div className="category-card-img-wrap">
-                    <img src={item.image_url} alt={item.name} />
+                    <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
                   </div>
                   <span className="category-card-name">{item.name}</span>
                 </div>

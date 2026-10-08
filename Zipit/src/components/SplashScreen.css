@@ -4,41 +4,87 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('/splash_bg.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-color: var(--color-primary);
+  background: radial-gradient(circle at center, #18191f 0%, #0a0a0c 100%);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  z-index: 99999;
 }
 
 body[data-theme="dark"] .splash-screen {
-  background-color: #121212;
+  background: radial-gradient(circle at center, #18191f 0%, #0a0a0c 100%);
 }
 
 .splash-logo-container {
-  width: 260px;
+  width: 148px;
+  height: 148px;
   display: flex;
   justify-content: center;
   align-items: center;
   opacity: 0;
-  animation: splashFadeIn 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 60px rgba(22, 163, 74, 0.35);
+  animation: splashPopIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+}
+
+.splash-logo-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
 }
 
 .splash-logo {
   width: 100%;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
   display: block;
-  transform: scale(1.25);
+}
+
+.splash-brand-text {
+  margin-top: 22px;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+  opacity: 0;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+  animation: splashFadeIn 0.8s 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.splash-tagline {
+  margin-top: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+  opacity: 0;
+  animation: splashFadeIn 0.8s 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes splashPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(14px);
+  }
+  60% {
+    transform: scale(1.04) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes splashFadeIn {
   0% {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;

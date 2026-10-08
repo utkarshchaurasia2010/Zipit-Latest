@@ -1,0 +1,23 @@
+{
+  "name": "Zipit Shopkeeper Merchant App",
+  "short_name": "Zipit Store",
+  "description": "Zipit Merchant & Order Processing App",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c831f",
+  "theme_color": "#0c831f",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

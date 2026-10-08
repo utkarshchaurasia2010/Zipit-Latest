@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Volume2, VolumeX, AlertTriangle, ArrowRight, Key, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu } from 'lucide-react';
 import { db, supabase } from '../services/db';
-import { startSiren, stopSiren, testSiren } from '../utils/siren';
 import './AdminLayout.css';
 
 const AdminLayout = ({ profile, setProfile }) => {
   const navigate = useNavigate();
   
+  // Mobile Menu Drawer State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ products: [], categories: [], orders: [] });
@@ -19,10 +21,6 @@ const AdminLayout = ({ profile, setProfile }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
-
-  // Incoming Order Alarm State
-  const [incomingAlertOrder, setIncomingAlertOrder] = useState(null);
-  const [isTestingSiren, setIsTestingSiren] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('admin_theme') || 'dark');
@@ -57,10 +55,6 @@ const AdminLayout = ({ profile, setProfile }) => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
         setNotifications(prev => [payload.new, ...prev].slice(0, 10));
         setUnreadCount(prev => prev + 1);
-        
-        // Trigger Loud Village Shop Siren Alarm!
-        startSiren();
-        setIncomingAlertOrder(payload.new);
 
         // Native browser notification if granted
         if (Notification.permission === 'granted') {
@@ -90,7 +84,6 @@ const AdminLayout = ({ profile, setProfile }) => {
       .subscribe();
 
     return () => {
-      stopSiren();
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(profileChannel);
     };
@@ -115,7 +108,14 @@ const AdminLayout = ({ profile, setProfile }) => {
       setSearchResults({
         products: allProds.filter(p => p.name.toLowerCase().includes(q)).slice(0, 5),
         categories: allCats.filter(c => c.name.toLowerCase().includes(q)).slice(0, 5),
-        orders: allOrders.filter(o => o.id.toLowerCase().includes(q) || (o.status && o.status.toLowerCase().includes(q))).slice(0, 5)
+        orders: allOrders.filter(o => {
+          const idMatch = o.id.toLowerCase().includes(q);
+          const statusMatch = o.status && o.status.toLowerCase().includes(q);
+          const custNameMatch = (o.profiles?.name || o.delivery_address?.name || '').toLowerCase().includes(q);
+          const phoneMatch = (o.profiles?.phone || o.delivery_address?.phone || '').includes(q);
+          const addrMatch = (o.delivery_address?.details || o.delivery_address?.address || '').toLowerCase().includes(q);
+          return idMatch || statusMatch || custNameMatch || phoneMatch || addrMatch;
+        }).slice(0, 5)
       });
     };
     
@@ -170,12 +170,55 @@ const AdminLayout = ({ profile, setProfile }) => {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  // Dynamic Branding Logo Listener
+  const [adminLogo, setAdminLogo] = useState(() => localStorage.getItem('zipit_cached_admin_logo') || '/logo_full.png');
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b?.admin_logo) {
+        setAdminLogo(b.admin_logo);
+        localStorage.setItem('zipit_cached_admin_logo', b.admin_logo);
+      }
+    });
+
+    const brandingChannel = supabase.channel('admin-branding-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'id=eq.00000000-0000-0000-0000-000000000001' }, (payload) => {
+        if (payload.new?.address) {
+          try {
+            const data = JSON.parse(payload.new.address);
+            if (data.admin_logo) {
+              setAdminLogo(data.admin_logo);
+              localStorage.setItem('zipit_cached_admin_logo', data.admin_logo);
+            }
+          } catch (_) {}
+        }
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(brandingChannel);
+  }, []);
+
   return (
     <div className="admin-layout">
+      {/* Mobile Drawer Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="admin-mobile-backdrop" 
+          onClick={() => setIsMobileMenuOpen(false)} 
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
-          <img src="/logo_full.png" alt="Zipit Admin" className="sidebar-logo" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <img src={adminLogo} alt="Zipit Admin" className="sidebar-logo" style={{ objectFit: 'contain', borderRadius: '10px' }} />
+            <button 
+              className="mobile-sidebar-close"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
           <span className="admin-badge">Admin Workspace</span>
         </div>
 
@@ -188,6 +231,7 @@ const AdminLayout = ({ profile, setProfile }) => {
               className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
               end={item.path === '/'}
               style={{ position: 'relative' }}
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               {item.icon}
               <span>{item.name}</span>
@@ -218,6 +262,14 @@ const AdminLayout = ({ profile, setProfile }) => {
       {/* Main Content Area */}
       <main className="admin-main">
         <header className="admin-topbar">
+          <button 
+            className="mobile-menu-toggle" 
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open Navigation Menu"
+          >
+            <Menu size={22} />
+          </button>
+
           <div className="search-container" ref={searchRef}>
             <div className={`search-bar ${isSearchOpen && searchQuery ? 'focused' : ''}`}>
               <Search size={18} className="search-icon" />
@@ -244,7 +296,11 @@ const AdminLayout = ({ profile, setProfile }) => {
                     <h4>Orders</h4>
                     {searchResults.orders.map(o => (
                       <div key={o.id} className="search-result-item" onClick={() => { navigate(`/orders?search=${encodeURIComponent(o.id.split('-')[0])}`); setIsSearchOpen(false); }}>
-                        <ShoppingBag size={14} /> Order #{o.id.split('-')[0]} - <span className="status-badge">{o.status}</span>
+                        <ShoppingBag size={14} /> 
+                        <span>
+                          #{o.id.split('-')[0].toUpperCase()} - {(o.profiles?.name || o.delivery_address?.name || 'Customer')} {(o.profiles?.phone || o.delivery_address?.phone ? `(${o.profiles?.phone || o.delivery_address?.phone})` : '')}
+                        </span>
+                        <span className="status-badge" style={{ marginLeft: 'auto' }}>{o.status}</span>
                       </div>
                     ))}
                   </div>
@@ -300,6 +356,14 @@ const AdminLayout = ({ profile, setProfile }) => {
                     if (res && res.ok) {
                       const data = await res.json();
                       alert(data.message || 'Successfully pushed latest data to Google Sheets!');
+                    } else if (res) {
+                      let errData = await res.json().catch(() => null);
+                      let errMsg = errData?.error || `HTTP ${res.status} Error`;
+                      if (errMsg.includes('Invalid JWT Signature') || errMsg.includes('invalid_grant')) {
+                        alert('Sync Service Key Error: Google service account credentials on Render need single-line formatting. Details: ' + errMsg);
+                      } else {
+                        alert('Could not push to Google Sheets: ' + errMsg);
+                      }
                     } else {
                       alert('Could not reach cloud sync service. Please ensure zipit-sync.onrender.com is awake.');
                     }
@@ -333,6 +397,10 @@ const AdminLayout = ({ profile, setProfile }) => {
                     if (res && res.ok) {
                       const data = await res.json();
                       alert(data.message || 'Successfully pulled latest changes from Google Sheets!');
+                    } else if (res) {
+                      let errData = await res.json().catch(() => null);
+                      let errMsg = errData?.error || `HTTP ${res.status} Error`;
+                      alert('Could not pull from Google Sheets: ' + errMsg);
                     } else {
                       alert('Could not reach cloud sync service. Please ensure zipit-sync.onrender.com is awake.');
                     }
@@ -373,35 +441,6 @@ const AdminLayout = ({ profile, setProfile }) => {
               </a>
             </div>
 
-            {/* Loud Siren Test Button */}
-            <button 
-              className="siren-test-btn"
-              onClick={() => {
-                setIsTestingSiren(true);
-                testSiren();
-                setTimeout(() => setIsTestingSiren(false), 1500);
-              }}
-              title="Test Shop Siren Sound Alert"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: isTestingSiren ? '#ef4444' : 'rgba(239, 68, 68, 0.12)',
-                color: isTestingSiren ? '#ffffff' : '#ef4444',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                marginRight: '8px'
-              }}
-            >
-              <Volume2 size={16} className={isTestingSiren ? 'pulse-icon' : ''} />
-              <span>{isTestingSiren ? 'Siren Ringing...' : 'Test Siren'}</span>
-            </button>
-
             <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
@@ -440,60 +479,6 @@ const AdminLayout = ({ profile, setProfile }) => {
           <Outlet />
         </div>
       </main>
-
-      {/* LOUD INCOMING ORDER SIREN OVERLAY MODAL */}
-      {incomingAlertOrder && (
-        <div className="siren-modal-overlay">
-          <div className="siren-modal-card">
-            <div className="siren-pulse-badge">
-              <AlertTriangle size={36} color="#dc2626" className="siren-shake" />
-            </div>
-
-            <h2 className="siren-title">🚨 NEW ORDER RECEIVED!</h2>
-            <p className="siren-order-code">Order #{incomingAlertOrder.id?.slice(0, 8).toUpperCase()}</p>
-            
-            <div className="siren-details-box">
-              <div className="siren-detail-row">
-                <span>Total Amount:</span>
-                <strong>₹{incomingAlertOrder.total}</strong>
-              </div>
-              <div className="siren-detail-row">
-                <span>Items:</span>
-                <span>{incomingAlertOrder.items?.length || 0} item(s)</span>
-              </div>
-              <div className="siren-detail-row">
-                <span>Payment:</span>
-                <span className="siren-tag">{incomingAlertOrder.payment_method || 'COD / UPI'}</span>
-              </div>
-            </div>
-
-            <div className="siren-actions">
-              <button 
-                className="siren-btn-primary"
-                onClick={() => {
-                  stopSiren();
-                  setIncomingAlertOrder(null);
-                  navigate('/orders');
-                }}
-              >
-                <span>Accept Order & Stop Alarm</span>
-                <ArrowRight size={18} />
-              </button>
-
-              <button 
-                className="siren-btn-mute"
-                onClick={() => {
-                  stopSiren();
-                  setIncomingAlertOrder(null);
-                }}
-              >
-                <VolumeX size={16} />
-                <span>Mute Alarm</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

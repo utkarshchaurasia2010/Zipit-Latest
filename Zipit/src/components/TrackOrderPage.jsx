@@ -162,7 +162,12 @@ const DeliveryMap = ({ status, order }) => {
         ) : isOnTheWay ? (
           <>
             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#2563eb', animation: 'pulse 1.5s infinite' }}></span>
-            <span>Rider is on the way · ~8 mins</span>
+            <span>{order.delivery_lat ? '🛰️ Live Rider Location' : 'Rider is on the way · ~8 mins'}</span>
+          </>
+        ) : status === 'Ready for Pickup' ? (
+          <>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.5s infinite' }}></span>
+            <span>Items packed · Rider picking up package</span>
           </>
         ) : (
           <>
@@ -176,7 +181,16 @@ const DeliveryMap = ({ status, order }) => {
 };
 
 /* ───────── Main Page ───────── */
-const ACTIVE_STATUSES = ['Payment Pending', 'Preparing', 'Out for Delivery', 'Cancellation Requested', 'Cancellation Rejected', 'Refund Requested'];
+const ACTIVE_STATUSES = [
+  'Payment Pending',
+  'Preparing',
+  'Preparing (Accepted)',
+  'Ready for Pickup',
+  'Out for Delivery',
+  'Cancellation Requested',
+  'Cancellation Rejected',
+  'Refund Requested'
+];
 
 const TrackOrderPage = ({ navigate }) => {
   const [orders, setOrders] = useState([]);
@@ -302,7 +316,9 @@ const TrackOrderPage = ({ navigate }) => {
     return '#0c831f';
   };
 
-  const getTimelineSteps = (status) => {
+  const getTimelineSteps = (status, order = null) => {
+    const isPickup = order?.delivery_address?.is_pickup || order?.delivery_address?.order_type === 'PICKUP';
+
     if (status === 'Refund Requested' || status === 'Refunded') {
       return {
         steps: ['Refund Requested', 'Refunded'],
@@ -315,12 +331,35 @@ const TrackOrderPage = ({ navigate }) => {
         currentIdx: status === 'Cancellation Requested' ? 0 : 1
       };
     }
-    const defaultSteps = ['Confirmed', 'Preparing', 'On the way', 'Delivered'];
+
+    if (isPickup) {
+      const pickupSteps = ['Confirmed', 'Packing', 'Ready for Pickup', 'Picked Up'];
+      let idx = 0; // Default to Confirmed when newly placed and not yet accepted
+      if (status === 'Delivered') {
+        idx = 3;
+      } else if (status === 'Ready for Pickup' || status === 'Out for Delivery') {
+        idx = 2;
+      } else if (status === 'Preparing' && order?.accepted_by_shopkeeper) {
+        idx = 1; // Only advance to Packing once accepted by a shopkeeper
+      } else {
+        idx = 0; // Order Confirmed, waiting for shopkeeper to accept
+      }
+      return { steps: pickupSteps, currentIdx: idx };
+    }
+
+    const defaultSteps = ['Confirmed', 'Packing', 'Ready for Rider', 'On the way', 'Delivered'];
     let idx = 1;
-    if (status === 'Payment Pending') idx = 0;
-    else if (status === 'Preparing') idx = 1;
-    else if (status === 'Out for Delivery') idx = 2;
-    else if (status === 'Delivered') idx = 3;
+    if (status === 'Payment Pending') {
+      idx = 0;
+    } else if (status === 'Preparing') {
+      idx = order?.accepted_by_shopkeeper ? 1 : 0;
+    } else if (status === 'Ready for Pickup') {
+      idx = 2; // Packed by store, waiting for rider to pick up & start delivery
+    } else if (status === 'Out for Delivery') {
+      idx = 3; // Rider picked up package and is en route to customer
+    } else if (status === 'Delivered') {
+      idx = 4;
+    }
 
     return { steps: defaultSteps, currentIdx: idx };
   };
@@ -389,8 +428,10 @@ const TrackOrderPage = ({ navigate }) => {
                   ))}
                 </div>
 
-                {/* Interactive Map */}
-                {(order.status === 'Out for Delivery' || order.status === 'Preparing' || order.status === 'Payment Pending') && order.delivery_address && (
+                {/* Interactive Map (Only for Home Delivery orders) */}
+                {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && 
+                  (order.status === 'Out for Delivery' || order.status === 'Ready for Pickup' || order.status === 'Preparing' || order.status === 'Payment Pending') && 
+                  order.delivery_address && (
                   <MapErrorBoundary key={order.id}>
                     <DeliveryMap status={order.status} order={order} />
                   </MapErrorBoundary>
@@ -428,9 +469,76 @@ const TrackOrderPage = ({ navigate }) => {
                   </div>
                 )}
 
+                {/* Store Pickup Notice */}
+                {(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && (
+                  <div style={{
+                    background: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    margin: '14px 0',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '14px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                  }}>
+                    <span style={{ fontSize: '30px', lineHeight: 1 }}>🛍️</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                        <div style={{ fontWeight: '800', color: '#166534', fontSize: '14px', letterSpacing: '0.3px' }}>
+                          STORE PICKUP ORDER
+                        </div>
+                        <span style={{
+                          background: order.status === 'Delivered' 
+                            ? '#dcfce7' 
+                            : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') 
+                            ? '#bbf7d0' 
+                            : order.accepted_by_shopkeeper 
+                            ? '#fef3c7' 
+                            : '#e0f2fe',
+                          color: order.status === 'Delivered' 
+                            ? '#15803d' 
+                            : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') 
+                            ? '#166534' 
+                            : order.accepted_by_shopkeeper 
+                            ? '#92400e' 
+                            : '#0369a1',
+                          fontWeight: '800',
+                          fontSize: '11.5px',
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(0,0,0,0.06)'
+                        }}>
+                          {order.status === 'Delivered'
+                            ? '✅ Order Picked Up'
+                            : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery')
+                            ? '🎉 Ready at Pickup Counter'
+                            : order.accepted_by_shopkeeper
+                            ? '⏳ Shopkeeper is Packing Items'
+                            : '📋 Order Confirmed (Waiting for Store)'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '13.5px', color: '#1e293b', marginTop: '6px', fontWeight: '600', lineHeight: '1.4' }}>
+                        Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Zipit Store, Rauza'}</strong>
+                      </div>
+
+                      <div style={{ fontSize: '12.5px', color: '#475467', marginTop: '4px', fontWeight: '500' }}>
+                        ⏰ {order.delivery_address?.pickup_time_estimate || 'Ready in approximately 1 hour after order'}
+                      </div>
+
+                      <div style={{ fontSize: '12px', color: '#166534', marginTop: '6px', fontWeight: '600', background: '#dcfce7', padding: '4px 10px', borderRadius: '6px', display: 'inline-block' }}>
+                        {order.accepted_by_shopkeeper 
+                          ? `✓ Accepted & Prepared by: ${order.accepted_by_shopkeeper}` 
+                          : '⚡ Store will start packing once accepted at the counter'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Dynamic Timeline */}
                 {(() => {
-                  const { steps, currentIdx } = getTimelineSteps(order.status);
+                  const { steps, currentIdx } = getTimelineSteps(order.status, order);
                   return (
                     <div className="track-timeline">
                       {steps.map((label, i) => (

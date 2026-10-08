@@ -1,0 +1,23 @@
+{
+  "name": "Zipit Delivery Rider App",
+  "short_name": "Zipit Rider",
+  "description": "Zipit Delivery & Logistics Management App for Riders",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c831f",
+  "theme_color": "#0c831f",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

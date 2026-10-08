@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { db } from './services/db';
+import { db, supabase } from './services/db';
 import LoginPage from './components/LoginPage';
 import AdminLayout from './components/AdminLayout';
 import Overview from './pages/Overview';
 import Settings from './pages/Settings';
-import AdminDashboard from './components/AdminDashboard'; // Temporary placeholder for others
+import AdminDashboard from './components/AdminDashboard';
+import AccessCodesManager from './components/AccessCodesManager';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 
@@ -19,8 +20,41 @@ function App() {
 
   const checkUser = async () => {
     setLoading(true);
-    const p = await db.user.get();
-    setProfile(p);
+    try {
+      let p = await db.user.get();
+      if (p) {
+        if (p.is_admin === undefined) p.is_admin = true;
+        setProfile(p);
+      } else {
+        const adminId = localStorage.getItem('zipit_active_admin_id');
+        if (adminId) {
+          const { data: adminRows } = await supabase.from('profiles').select('*').eq('id', adminId).limit(1);
+          if (adminRows && adminRows.length > 0) {
+            setProfile({ ...adminRows[0], is_admin: true });
+          } else if (localStorage.getItem('zipit_admin_logged_in') === 'true') {
+            setProfile({ id: adminId || 'admin-fallback', name: 'Zipit Admin', is_admin: true });
+          } else {
+            setProfile(null);
+          }
+        } else if (localStorage.getItem('zipit_admin_logged_in') === 'true') {
+          const { data: anyAdmin } = await supabase.from('profiles').select('*').limit(1);
+          if (anyAdmin && anyAdmin.length > 0) {
+            setProfile({ ...anyAdmin[0], is_admin: true });
+          } else {
+            setProfile({ id: 'admin-fallback', name: 'Zipit Admin', is_admin: true });
+          }
+        } else {
+          setProfile(null);
+        }
+      }
+    } catch (err) {
+      console.error("Auth check failed:", err);
+      if (localStorage.getItem('zipit_admin_logged_in') === 'true') {
+        setProfile({ id: 'admin-fallback', name: 'Zipit Admin', is_admin: true });
+      } else {
+        setProfile(null);
+      }
+    }
     setLoading(false);
   };
 
@@ -32,7 +66,7 @@ function App() {
     );
   }
 
-  const isAdmin = Boolean((profile && profile.is_admin) || localStorage.getItem('zipit_admin_logged_in') === 'true');
+  const isAdmin = Boolean(profile && profile.is_admin);
 
   return (
     <ToastProvider>
@@ -52,6 +86,7 @@ function App() {
               <Route path="refunds" element={<AdminDashboard key="refunds" initialTab="refunds" />} />
               <Route path="coupons" element={<AdminDashboard key="coupons" initialTab="coupons" />} />
               <Route path="users" element={<AdminDashboard key="users" initialTab="users" />} />
+              <Route path="access-codes" element={<AccessCodesManager />} />
               <Route path="settings" element={<Settings profile={profile} setProfile={setProfile} />} />
               <Route path="*" element={<Navigate to="/orders" replace />} />
             </Route>

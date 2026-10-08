@@ -60,12 +60,63 @@ const fuzzyMatch = (productName, query) => {
 
 // --- Component ---
 
+// Number word mapping for Hindi/English quantities
+const parseQuantityWord = (word) => {
+  const map = {
+    '1': 1, 'one': 1, 'ek': 1, 'aik': 1,
+    '2': 2, 'two': 2, 'do': 2,
+    '3': 3, 'three': 3, 'teen': 3, 'tin': 3,
+    '4': 4, 'four': 4, 'char': 4, 'chaar': 4,
+    '5': 5, 'five': 5, 'paanch': 5, 'panch': 5
+  };
+  return map[word.toLowerCase()] || 1;
+};
+
+// Hindi/Hinglish conversational multi-item parser
+const parseNaturalLanguageCartCommand = (text) => {
+  let cleaned = text.toLowerCase().trim();
+  // Check if speech expresses an "add" intent
+  const hasAddIntent = /\b(add|daal|daalo|karo|bhej|bhejo|chahiye|mangwao|pack|packet|kg|litre)\b/i.test(cleaned);
+  
+  // Remove command filler words
+  cleaned = cleaned.replace(/\b(add karo|add kar do|add kar|daal do|daalo|le aao|lao|chahiye|pack|packet|packets|karo|please|kripya)\b/gi, '').trim();
+
+  // Split multiple items separated by 'aur', 'and', 'or', commas
+  const segments = cleaned.split(/\b(aur|and|,)\b/gi).map(s => s.trim()).filter(s => s && s !== 'aur' && s !== 'and' && s !== ',');
+
+  const items = [];
+  for (const seg of segments) {
+    const tokens = seg.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) continue;
+
+    let qty = 1;
+    let queryWords = [];
+
+    for (const token of tokens) {
+      const parsedQty = parseQuantityWord(token);
+      if (parsedQty > 1 || (tokens.length > 1 && ['1','ek','one'].includes(token))) {
+        qty = parsedQty;
+      } else {
+        queryWords.push(token);
+      }
+    }
+
+    const itemName = queryWords.join(' ').trim();
+    if (itemName) {
+      items.push({ name: itemName, qty, hasAddIntent });
+    }
+  }
+
+  return { isCommand: hasAddIntent && items.length > 0, items };
+};
+
 const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearch, onProductClick }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const recognitionRef = useRef(null);
   const { showToast } = useToast();
@@ -108,6 +159,7 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
       setResults([]);
       setActiveFilter('All');
       setIsListening(false);
+      setVoiceTranscript('');
       // Restore body scroll
       document.body.style.overflow = '';
       document.body.style.position = '';
@@ -129,6 +181,36 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
     };
   }, [isOpen, initialVoiceSearch]);
 
+  const handleVoiceIntentProcessing = async (transcriptText) => {
+    setVoiceTranscript(transcriptText);
+    const parsed = parseNaturalLanguageCartCommand(transcriptText);
+
+    if (parsed.isCommand && updateCartQty) {
+      const allProds = await db.products.getAll();
+      const addedNames = [];
+
+      for (const itemCmd of parsed.items) {
+        // Find best match in database
+        const match = allProds.find(p => fuzzyMatch(p.name, itemCmd.name)) ||
+                      allProds.find(p => p.name.toLowerCase().includes(itemCmd.name.toLowerCase()));
+        
+        if (match && !match.is_out_of_stock && match.stock_count !== 0) {
+          updateCartQty(match, itemCmd.qty);
+          addedNames.push(`${itemCmd.qty}x ${match.name}`);
+        }
+      }
+
+      if (addedNames.length > 0) {
+        showToast(`🛒 Added to Cart: ${addedNames.join(', ')}`, 'Success');
+        setQuery(parsed.items.map(i => i.name).join(' '));
+        return;
+      }
+    }
+
+    // Default: set query for regular search
+    setQuery(transcriptText);
+  };
+
   const startVoiceSearch = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -139,19 +221,20 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    recognition.lang = 'en-US';
+    // Use hi-IN with automatic bilingual English fallback
+    recognition.lang = 'hi-IN';
     recognition.interimResults = false;
-    recognition.onstart = () => { setIsListening(true); setQuery(''); };
+    recognition.onstart = () => { setIsListening(true); setVoiceTranscript(''); };
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-      setQuery(transcript);
       setIsListening(false);
+      handleVoiceIntentProcessing(transcript);
     };
     recognition.onerror = (event) => {
       console.error(event.error);
       setIsListening(false);
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        showToast('Voice search failed.', 'Error');
+        showToast('Voice search failed. Please try again.', 'Error');
       }
     };
     recognition.onend = () => { setIsListening(false); };
@@ -220,8 +303,11 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
         <div className="voice-listening-dialog-overlay">
           <div className="voice-listening-dialog">
             <div className="siri-orb"></div>
-            <h3>Listening...</h3>
-            <p>Speak now to search</p>
+            <h3>Listening... / सुन रहे हैं...</h3>
+            <p style={{ marginBottom: 4 }}>Speak product names or quantities</p>
+            <span style={{ fontSize: '12px', color: 'var(--color-primary)', display: 'block', marginBottom: 16 }}>
+              उदा: "2 packet doodh aur bread add karo"
+            </span>
             <button className="voice-cancel-btn" onClick={cancelVoiceSearch}>Cancel</button>
           </div>
         </div>
@@ -293,12 +379,18 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
                       <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
                     </div>
                     <div className="bestseller-img">
-                      {item.sticker && <div className="wafer-sticker">{item.sticker}</div>}
-                      <img src={item.image_url} alt={item.name} />
+                      {item.is_out_of_stock || item.stock_count === 0 ? (
+                        <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(240, 68, 56, 0.9)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap'}}>OUT OF STOCK</div>
+                      ) : item.sticker ? (
+                        <div className="wafer-sticker">{item.sticker}</div>
+                      ) : null}
+                      <img src={item.image_url} alt={item.name} style={{opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1}} />
                     </div>
                     <div className="img-footer-row" onClick={e => e.stopPropagation()}>
                       <span className="item-amount-text">{item.amount}</span>
-                      {qty === 0 ? (
+                      {item.is_out_of_stock || item.stock_count === 0 ? (
+                        <button className="add-btn-small" style={{background: '#f2f4f7', color: '#98a2b3', border: '1px solid #e4e7ec'}} disabled>ADD</button>
+                      ) : qty === 0 ? (
                         <button className="add-btn-small" onClick={() => { saveRecentSearch(query); updateCartQty(item, 1); }}>ADD</button>
                       ) : (
                         <div className="qty-control">

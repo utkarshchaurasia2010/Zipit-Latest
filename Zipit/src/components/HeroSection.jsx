@@ -4,8 +4,19 @@ import HeroCarousel from './HeroCarousel';
 import './HeroSection.css';
 
 const HeroSection = ({ onImageChange, cart, updateCartQty, navigate }) => {
-  const [carouselProducts, setCarouselProducts] = useState([]);
-  const [banners, setBanners] = useState([]);
+  const [carouselProducts, setCarouselProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_products');
+      return cached ? JSON.parse(cached).filter(p => p.is_carousel) : [];
+    } catch (_) { return []; }
+  });
+  
+  const [banners, setBanners] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_banners');
+      return cached ? JSON.parse(cached) : [];
+    } catch (_) { return []; }
+  });
 
   useEffect(() => {
     const fetchBannersAndProducts = async () => {
@@ -14,6 +25,7 @@ const HeroSection = ({ onImageChange, cart, updateCartQty, navigate }) => {
         // Sort by order_index
         const sorted = [...waferData].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
         setBanners(sorted);
+        try { localStorage.setItem('zipit_cached_banners', JSON.stringify(sorted)); } catch (_) {}
         if (onImageChange) {
           const first = sorted[0];
           const bannerUrl = first.image_url && first.image_url !== 'https://none.com/none.png' && first.image_url !== 'NONE'

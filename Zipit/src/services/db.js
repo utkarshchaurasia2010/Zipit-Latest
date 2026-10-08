@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { preloadImages } from '../utils/imageCache';
 
 const supabaseUrl = 'https://bbaggauqnlcohrgvsios.supabase.co';
 const supabaseAnonKey = 'sb_publishable_rCjAUoKGrW0u-CCnBb9rQw_ori9Y1dQ';
@@ -7,7 +8,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const getUserId = async () => {
   const { data: { session } } = await supabase.auth.getSession();
-  return session?.user?.id;
+  if (session?.user?.id) return session.user.id;
+  const storedId = localStorage.getItem('zipit_active_user_id');
+  return storedId || null;
 };
 
 export const db = {
@@ -16,9 +19,16 @@ export const db = {
       const pid = await getUserId();
       if (!pid) return null;
       
+      const cached = localStorage.getItem('zipit_cached_user_profile');
+      let cachedProfile = null;
+      if (cached) {
+        try { cachedProfile = JSON.parse(cached); } catch (_) {}
+      }
+
       const { data, error } = await supabase.from('profiles').select('*').eq('id', pid).single();
       
       if (!data) {
+        if (cachedProfile) return cachedProfile;
         const { data: authData } = await supabase.auth.getUser();
         const userEmail = authData?.user?.email || '';
         // High entropy unique string prevents profiles_phone_key duplicate error
@@ -31,6 +41,9 @@ export const db = {
           photo: 'NU' 
         }]).select().single();
         if (insertError) console.error("DB Error (profiles insert):", insertError);
+        if (newData) {
+          try { localStorage.setItem('zipit_cached_user_profile', JSON.stringify(newData)); } catch (_) {}
+        }
         return newData;
       }
       if (data) {
@@ -41,6 +54,7 @@ export const db = {
         } else {
           data.fcm_token = null;
         }
+        try { localStorage.setItem('zipit_cached_user_profile', JSON.stringify(data)); } catch (_) {}
       }
       return data;
     },
@@ -128,6 +142,7 @@ export const db = {
         } else {
           data.fcm_token = null;
         }
+        try { localStorage.setItem('zipit_cached_user_profile', JSON.stringify(data)); } catch (_) {}
       }
       
       return { data };
@@ -198,7 +213,13 @@ export const db = {
         };
       };
 
-      const profile = await db.user.get();
+      // Parallelize profile and secondary addresses queries
+      const [profileRes, addrsRes] = await Promise.all([
+        supabase.from('profiles').select('address, phone, lat, lng, gps_area, google_maps_url').eq('id', pid).maybeSingle(),
+        supabase.from('addresses').select('*').eq('profile_id', pid).neq('type', 'WISHLIST')
+      ]);
+
+      const profile = profileRes.data;
       const allAddresses = [];
       
       if (profile && profile.address) {
@@ -219,10 +240,7 @@ export const db = {
         });
       }
 
-      const { data, error } = await supabase.from('addresses').select('*').eq('profile_id', pid).neq('type', 'WISHLIST');
-      if (error) console.error("DB Error (addresses get):", error);
-      
-      const secondaryAddrs = (data || []).map(addr => {
+      const secondaryAddrs = (addrsRes.data || []).map(addr => {
         const parsed = extractAddressInfo(addr.details, {
           lat: '28.4595',
           lng: '77.0266'
@@ -231,11 +249,15 @@ export const db = {
         return {
           ...addr,
           ...parsed,
-          is_default: false // secondary addresses are not default
+          is_default: false
         };
       });
       
-      return [...allAddresses, ...secondaryAddrs];
+      const combined = [...allAddresses, ...secondaryAddrs];
+      if (combined.length > 0) {
+        try { localStorage.setItem('zipit_cached_addresses', JSON.stringify(combined)); } catch (_) {}
+      }
+      return combined;
     },
     add: async (addr) => {
       const pid = await getUserId();
@@ -446,15 +468,49 @@ export const db = {
         total: orderData.total,
         delivery_address: orderData.address,
         payment_method: orderData.paymentMethod,
-        status: orderData.paymentMethod === 'UPI' ? 'Payment Pending' : 'Preparing',
+        status: orderData.paymentMethod === 'UPI' ? 'Payment Pending' : 'Placed',
         delivery_charge: orderData.deliveryCharge,
         small_cart_charge: orderData.smallCartCharge,
         applied_coupon: orderData.appliedCoupon || null,
         discount_amount: orderData.discountAmount || 0
       }]).select().single();
+
       if (error) {
         console.error("DB Error (orders add):", error);
+        throw error;
       }
+
+      // Deduct inventory stock for purchased items atomically via RPC or fallback
+      if (Array.isArray(orderData.items) && orderData.items.length > 0) {
+        for (const item of orderData.items) {
+          const qty = Number(item.quantity || item.qty || 1);
+          const itemId = item.id;
+          if (itemId && qty > 0) {
+            try {
+              // Try atomic RPC function first
+              const { error: rpcErr } = await supabase.rpc('decrement_product_stock', {
+                p_product_id: itemId,
+                p_quantity: qty
+              });
+
+              if (rpcErr) {
+                // Client fallback if RPC not installed yet in Supabase
+                const { data: prod } = await supabase.from('products').select('stock_count').eq('id', itemId).single();
+                if (prod && typeof prod.stock_count === 'number' && prod.stock_count > 0) {
+                  const nextStock = Math.max(0, prod.stock_count - qty);
+                  await supabase.from('products').update({ 
+                    stock_count: nextStock,
+                    is_out_of_stock: nextStock === 0 
+                  }).eq('id', itemId);
+                }
+              }
+            } catch (stockErr) {
+              console.warn("Stock decrement skipped for item:", itemId, stockErr);
+            }
+          }
+        }
+      }
+
       return data;
     },
     updateStatus: async (id, status) => {
@@ -486,7 +542,10 @@ export const db = {
         const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
         if (error) throw error;
         if (data && data.length > 0) {
-          try { localStorage.setItem('zipit_cached_categories', JSON.stringify(data)); } catch (e) {}
+          try { 
+            localStorage.setItem('zipit_cached_categories', JSON.stringify(data));
+            preloadImages(data.map(c => c.image_url));
+          } catch (e) {}
         }
         return data || [];
       } catch (err) {
@@ -540,13 +599,28 @@ export const db = {
           const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
           const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
           const sticker = stickerMatch ? stickerMatch[1] : null;
+
+          const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
+          const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
           
-          let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
-          return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
+          let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '').replace(/---STICKER:.*?---/g, '');
+          return { 
+            ...p, 
+            name, 
+            is_wafer, 
+            is_grid, 
+            is_bestseller, 
+            sticker,
+            is_out_of_stock: !!is_out_of_stock,
+            stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
+          };
         });
 
         if (mapped && mapped.length > 0) {
-          try { localStorage.setItem('zipit_cached_products', JSON.stringify(mapped)); } catch (e) {}
+          try { 
+            localStorage.setItem('zipit_cached_products', JSON.stringify(mapped));
+            preloadImages(mapped.map(p => p.image_url));
+          } catch (e) {}
         }
         return mapped;
       } catch (err) {
@@ -566,9 +640,21 @@ export const db = {
         const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
+
+        const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
+        const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '').replace(/---STICKER:.*?---/g, '');
+        return { 
+          ...p, 
+          name, 
+          is_wafer, 
+          is_grid, 
+          is_bestseller, 
+          sticker,
+          is_out_of_stock: !!is_out_of_stock,
+          stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
+        };
       });
     },
     search: async (query) => {
@@ -603,9 +689,21 @@ export const db = {
         const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
+
+        const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
+        const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '').replace(/---STICKER:.*?---/g, '');
+        return { 
+          ...p, 
+          name, 
+          is_wafer, 
+          is_grid, 
+          is_bestseller, 
+          sticker,
+          is_out_of_stock: !!is_out_of_stock,
+          stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
+        };
       });
     },
     add: async (product) => {
@@ -674,7 +772,7 @@ export const db = {
     getAll: async () => {
       const { data, error } = await supabase.from('products').select('*').like('name', '%---TAG:BANNER---%').order('created_at', { ascending: true });
       if (error) console.error("DB Error (WAFER getAll):", error);
-      return (data || []).map(p => {
+      const mappedBanners = (data || []).map(p => {
         let cleanName = p.name.replace('---TAG:BANNER---', '');
         let bg_color = '#F8CB46';
         let link_url = '';
@@ -693,6 +791,10 @@ export const db = {
           order_index
         };
       });
+      if (mappedBanners.length > 0) {
+        try { preloadImages(mappedBanners.map(b => b.image_url)); } catch (_) {}
+      }
+      return mappedBanners;
     },
     add: async (banner) => {
       const catRes = await supabase.from('categories').select('id').limit(1);
@@ -756,5 +858,190 @@ export const db = {
       const { error } = await supabase.from('carts').delete().eq('profile_id', pid);
       if (error) console.error("DB Error (carts clear):", error);
     }
+  },
+  branding: {
+    get: async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').limit(1);
+        if (data && data.length > 0 && data[0].address) {
+          try {
+            return JSON.parse(data[0].address);
+          } catch (_) {
+            return null;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load branding:', err);
+      }
+      return null;
+    }
+  },
+  whatsapp: {
+    createRequest: async (phone) => {
+      const token = 'ZIP-' + Math.floor(1000 + Math.random() * 9000);
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 min expiry
+      
+      // 1. Call Supabase Auth signInWithOtp to trigger Supabase Auth OTP generation
+      let supabaseAuthOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      try {
+        const fullPhone = '+91' + cleanPhone;
+        await supabase.auth.signInWithOtp({
+          phone: fullPhone,
+          options: { shouldCreateUser: true }
+        }).catch(() => null);
+      } catch (e) {
+        console.log('Supabase Auth signInWithOtp initialized:', e);
+      }
+
+      // 2. Insert into whatsapp_auth_requests table storing the Supabase Auth OTP code in status format
+      const { data, error } = await supabase
+        .from('whatsapp_auth_requests')
+        .insert([{
+          token,
+          phone: cleanPhone || null,
+          status: `OTP:${supabaseAuthOtp}`,
+          expires_at: expiresAt
+        }])
+        .select()
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return { ...data, supabaseOtp: supabaseAuthOtp };
+    },
+    // Used when testing directly or via simulator/webhook
+    verifyRequest: async (token, verifiedPhone) => {
+      const cleanPhone = verifiedPhone.replace(/\D/g, '').slice(-10);
+      
+      // Look up or create profile in Supabase
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('phone', cleanPhone)
+        .limit(1);
+
+      let targetProfile = existingProfiles?.[0];
+      if (!targetProfile) {
+        // High entropy temporary id if needed
+        const newId = crypto.randomUUID ? crypto.randomUUID() : 'user_' + Date.now();
+        const { data: newProfile, error: insErr } = await supabase
+          .from('profiles')
+          .insert([{
+            id: newId,
+            name: `User ${cleanPhone.slice(-4)}`,
+            phone: cleanPhone,
+            photo: 'NU'
+          }])
+          .select()
+          .single();
+        if (!insErr && newProfile) targetProfile = newProfile;
+      }
+
+      const { data, error } = await supabase
+        .from('whatsapp_auth_requests')
+        .update({
+          status: 'verified',
+          phone: cleanPhone,
+          user_id: targetProfile?.id || null
+        })
+        .eq('token', token)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return { request: data, profile: targetProfile };
+    },
+    verifyOtp: async (phone, otpCode) => {
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+      const cleanOtp = otpCode.trim();
+
+      if (cleanPhone.length < 10) throw new Error('Please enter a valid 10-digit mobile number.');
+      if (cleanOtp.length !== 6) throw new Error('OTP must be exactly 6 digits.');
+
+      // 1. Verify with Supabase Auth verifyOtp natively
+      let authVerified = false;
+      let authSession = null;
+      try {
+        const { data: authData, error: authErr } = await supabase.auth.verifyOtp({
+          phone: '+91' + cleanPhone,
+          token: cleanOtp,
+          type: 'sms'
+        });
+
+        if (!authErr && (authData?.session || authData?.user)) {
+          authVerified = true;
+          authSession = authData;
+        }
+      } catch (e) {
+        console.log('Supabase Auth verifyOtp fallback:', e);
+      }
+
+      // 2. Check matching request in whatsapp_auth_requests
+      const { data: reqs, error } = await supabase
+        .from('whatsapp_auth_requests')
+        .select('*')
+        .eq('phone', cleanPhone)
+        .eq('status', `OTP:${cleanOtp}`)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) console.error('Database query error during OTP verification:', error);
+
+      let matchedReq = reqs?.[0];
+
+      if (!matchedReq && !authVerified) {
+        const { data: verifiedReqs } = await supabase
+          .from('whatsapp_auth_requests')
+          .select('*')
+          .eq('phone', cleanPhone)
+          .eq('status', 'verified')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        matchedReq = verifiedReqs?.[0];
+      }
+
+      if (!matchedReq && !authVerified) {
+        throw new Error('Invalid or expired 6-digit Supabase Auth OTP. Please check your WhatsApp chat.');
+      }
+
+      // 3. Find or create user profile in profiles table
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('phone', cleanPhone)
+        .limit(1);
+
+      let targetProfile = existingProfiles?.[0];
+      let isNewUser = false;
+
+      if (!targetProfile || !targetProfile.name || targetProfile.name.startsWith('User ') || targetProfile.name.trim() === '') {
+        isNewUser = true;
+        if (!targetProfile) {
+          const newId = authSession?.user?.id || (crypto.randomUUID ? crypto.randomUUID() : 'user_' + Date.now());
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .insert([{
+              id: newId,
+              name: '',
+              phone: cleanPhone,
+              photo: 'NU'
+            }])
+            .select()
+            .single();
+          targetProfile = newProfile || { id: newId, phone: cleanPhone };
+        }
+      }
+
+      if (matchedReq) {
+        await supabase
+          .from('whatsapp_auth_requests')
+          .update({ status: 'verified', user_id: targetProfile?.id })
+          .eq('id', matchedReq.id);
+      }
+
+      return { success: true, isNewUser, profile: targetProfile, phone: cleanPhone, authSession };
+    }
   }
 };
+

@@ -4,20 +4,27 @@ import { Mail, User, Phone, Edit2 } from 'lucide-react';
 import './OnboardingModal.css';
 
 const OnboardingModal = ({ userProfile, onComplete }) => {
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', photo: '' });
+  const [formData, setFormData] = useState({ 
+    name: (userProfile?.name && !userProfile?.name.startsWith('User ') && userProfile?.name !== 'New User') ? userProfile.name : '', 
+    phone: userProfile?.phone || localStorage.getItem('zipit_verified_phone') || '', 
+    email: userProfile?.email || '', 
+    photo: userProfile?.photo || '' 
+  });
   const [loading, setLoading] = useState(false);
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
-    // Attempt to prefill email from auth session or userProfile
-    const fetchEmail = async () => {
+    const prefillData = async () => {
       const { data } = await supabase.auth.getUser();
       const authEmail = data?.user?.email || userProfile?.email || '';
-      if (authEmail) {
-        setFormData(prev => ({ ...prev, email: authEmail }));
-      }
+      const verifiedPhone = userProfile?.phone || localStorage.getItem('zipit_verified_phone') || '';
+      setFormData(prev => ({ 
+        ...prev, 
+        email: authEmail || prev.email,
+        phone: verifiedPhone || prev.phone
+      }));
     };
-    fetchEmail();
+    prefillData();
   }, [userProfile]);
 
   const handleSubmit = async (e) => {

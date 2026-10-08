@@ -13,50 +13,122 @@ const getUserId = async () => {
 export const db = {
   user: {
     get: async () => {
+      let admin = null;
       const pid = await getUserId();
-      if (!pid) return null;
-      
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', pid).single();
-      
-      if (!data) {
-        // Use a random phone to avoid UNIQUE constraint errors if multiple test accounts are made
-        const randomPhone = 'temp_' + Math.floor(Math.random() * 10000);
-        const { data: newData, error: insertError } = await supabase.from('profiles').insert([{ 
-          id: pid,
-          name: 'New User', 
-          phone: randomPhone, 
-          email: '',
-          photo: 'NU' 
-        }]).select().single();
-        if (insertError) console.error("DB Error (profiles insert):", insertError);
-        return newData;
+      if (pid) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', pid).limit(1);
+        if (data && data.length > 0) admin = data[0];
       }
-      return data;
+      
+      if (!admin) {
+        const savedAdminId = localStorage.getItem('zipit_active_admin_id');
+        if (savedAdminId) {
+          const { data } = await supabase.from('profiles').select('*').eq('id', savedAdminId).limit(1);
+          if (data && data.length > 0) admin = data[0];
+        }
+      }
+
+      if (!admin) {
+        const { data: adminUsers } = await supabase.from('profiles').select('*').eq('is_admin', true).limit(1);
+        if (adminUsers && adminUsers.length > 0) admin = adminUsers[0];
+      }
+
+      if (admin) {
+        // Extract 6-digit admin code if stored in address tag format: "---ADMIN_CODE:123456---"
+        const codeMatch = admin.address?.match(/---ADMIN_CODE:(\d{6})---/);
+        const admin_code = codeMatch ? codeMatch[1] : (localStorage.getItem('zipit_admin_custom_code') || '737920');
+        const cleanAddress = admin.address ? admin.address.replace(/---ADMIN_CODE:\d{6}---/g, '').trim() : '';
+        return { ...admin, admin_code, address: cleanAddress };
+      }
+      return null;
     },
     update: async (formData) => {
-      const pid = await getUserId();
-      if (!pid) return null;
+      let pid = await getUserId();
+      if (!pid && formData?.id) {
+        pid = formData.id;
+      }
+      if (!pid) {
+        const admin = await db.user.get();
+        pid = admin?.id;
+      }
+      if (!pid) {
+        return { error: 'No admin profile ID found to update.' };
+      }
       
-      const { id, ...updateData } = formData;
+      const { id, created_at, addresses_list, admin_code, ...rawUpdateData } = formData;
+      const updateData = { ...rawUpdateData };
       
-      // Convert empty strings to null so Postgres doesn't throw a duplicate constraint error 
-      // when multiple users have an empty phone number.
+      // Clean phone number
       if (updateData.phone === '') {
         updateData.phone = null;
       }
       
-      // If email is empty, we remove it from the update payload to avoid crashing
-      // if the 'email' column does not exist yet.
       if (updateData.email === '') {
         delete updateData.email;
       }
 
-      const { data, error } = await supabase.from('profiles').update(updateData).eq('id', pid).select().single();
+      // Check duplicate phone across other profiles
+      if (updateData.phone) {
+        const { data: existingPhone } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('phone', updateData.phone)
+          .neq('id', pid)
+          .limit(1);
+
+        if (existingPhone && existingPhone.length > 0) {
+          return { error: 'This phone number is already registered with another account. Please use a different phone number.' };
+        }
+      }
+
+      // Check duplicate email across other profiles
+      if (updateData.email) {
+        const { data: existingEmail } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .eq('email', updateData.email)
+          .neq('id', pid)
+          .limit(1);
+
+        if (existingEmail && existingEmail.length > 0) {
+          return { error: 'This email address is already registered with another account. Please use a different email address.' };
+        }
+      }
+
+      // Save custom admin 6-digit code into address tag & localStorage so it persists across DB and client
+      if (admin_code && /^\d{6}$/.test(admin_code)) {
+        localStorage.setItem('zipit_admin_custom_code', admin_code);
+        const currentAddr = updateData.address ? updateData.address.replace(/---ADMIN_CODE:\d{6}---/g, '').trim() : '';
+        updateData.address = `${currentAddr}\n---ADMIN_CODE:${admin_code}---`.trim();
+      }
+
+      const { data, error } = await supabase.from('profiles').update(updateData).eq('id', pid).select();
       if (error) {
         console.error("DB Error (profiles update):", error);
-        alert("Database Error: " + error.message);
+        if (error.message.includes('profiles_phone_key') || error.code === '23505') {
+          return { error: 'This phone number is already registered with another account. Please use a different phone number.' };
+        }
+        return { error: error.message };
       }
-      return data;
+
+      let updatedRecord = data && data.length > 0 ? data[0] : null;
+
+      if (!updatedRecord) {
+        // Fallback upsert if no existing profile row matched pid
+        const { data: upsertData, error: upsertErr } = await supabase.from('profiles').upsert([{ id: pid, ...updateData }]).select();
+        if (upsertErr) {
+          console.error("DB Error (profiles upsert):", upsertErr);
+          return { error: upsertErr.message };
+        }
+        updatedRecord = upsertData && upsertData.length > 0 ? upsertData[0] : null;
+      }
+
+      if (!updatedRecord) {
+        return { error: 'Failed to update profile in database.' };
+      }
+
+      const cleanAddress = updatedRecord.address ? updatedRecord.address.replace(/---ADMIN_CODE:\d{6}---/g, '').trim() : '';
+      return { data: { ...updatedRecord, admin_code: admin_code || '737920', address: cleanAddress } };
     },
     getAllUsers: async () => {
       const { data, error } = await supabase.from('profiles').select('*');
@@ -72,8 +144,8 @@ export const db = {
       const cleanAddr = (rawDetails) => {
         if (!rawDetails) return null;
         let details = typeof rawDetails === 'string' ? rawDetails : (rawDetails.details || '');
-        if (details.includes('\n---TAG:')) details = details.split('\n---TAG:')[0];
-        else if (details.includes('---TAG:')) details = details.split('---TAG:')[0];
+        details = details.replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
+        if (details.includes('---')) details = details.split('---')[0].trim();
         return details.trim() || null;
       };
 
@@ -356,8 +428,11 @@ export const db = {
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
+        const stockVal = p.stock !== undefined && p.stock !== null ? Number(p.stock) : (p.stock_count !== undefined && p.stock_count !== null ? Number(p.stock_count) : null);
+        const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (stockVal !== null && stockVal === 0);
+
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '');
+        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, is_out_of_stock, stock_count: stockVal ?? (is_out_of_stock ? 0 : -1) };
       });
     },
     add: async (product) => {
@@ -367,10 +442,20 @@ export const db = {
       if (is_bestseller) dbProduct.name = `${dbProduct.name}---TAG:BESTSELLER---`;
       if (sticker) dbProduct.name = `${dbProduct.name}---STICKER:${sticker}---`;
       
+      if (product.is_out_of_stock || dbProduct.stock_count === 0 || dbProduct.stock === 0) {
+        dbProduct.name = `${dbProduct.name}---TAG:OOS---`;
+        dbProduct.is_out_of_stock = true;
+        dbProduct.stock = 0;
+        dbProduct.stock_count = 0;
+      } else {
+        dbProduct.name = dbProduct.name.replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '');
+        dbProduct.is_out_of_stock = false;
+      }
+
       const { data, error } = await supabase.from('products').insert([dbProduct]).select().single();
       if (error) console.error("DB Error (products add):", error);
       
-      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null } : null;
+      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
     },
     update: async (id, product) => {
       const { is_wafer, is_grid, is_bestseller, sticker, categories, ...dbProduct } = product;
@@ -394,11 +479,23 @@ export const db = {
       if (sticker) {
         dbProduct.name = `${dbProduct.name}---STICKER:${sticker}---`;
       }
+
+      if (product.is_out_of_stock || dbProduct.stock_count === 0 || dbProduct.stock === 0) {
+        if (!dbProduct.name.includes('---TAG:OOS---')) {
+          dbProduct.name = `${dbProduct.name}---TAG:OOS---`;
+        }
+        dbProduct.is_out_of_stock = true;
+        dbProduct.stock = 0;
+        dbProduct.stock_count = 0;
+      } else {
+        dbProduct.name = dbProduct.name.replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '');
+        dbProduct.is_out_of_stock = false;
+      }
       
       const { data, error } = await supabase.from('products').update(dbProduct).eq('id', id).select().single();
       if (error) console.error("DB Error (products update):", error);
       
-      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null } : null;
+      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
     },
     delete: async (id) => {
       const { error } = await supabase.from('products').delete().eq('id', id);
@@ -524,6 +621,56 @@ export const db = {
       if (!pid) return;
       const { error } = await supabase.from('carts').delete().eq('profile_id', pid);
       if (error) console.error("DB Error (carts clear):", error);
+    }
+  },
+  branding: {
+    get: async () => {
+      try {
+        const { data, error } = await supabase.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').limit(1);
+        if (data && data.length > 0 && data[0].address) {
+          try {
+            return JSON.parse(data[0].address);
+          } catch (_) {
+            return null;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load branding:', err);
+      }
+      return null;
+    },
+    uploadLogo: async (roleKey, file) => {
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `logos/${roleKey}_${Date.now()}.${fileExt}`;
+      const { data, error } = await supabase.storage.from('product-images').upload(fileName, file, {
+        contentType: file.type || 'image/png',
+        upsert: true
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+      const { data: pub } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      return pub.publicUrl;
+    },
+    update: async (brandingData) => {
+      const payload = {
+        ...brandingData,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Upsert profile record 00000000-0000-0000-0000-000000000001
+      const { error } = await supabase.from('profiles').upsert({
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'App Branding System',
+        phone: '0000000000',
+        photo: 'SYSTEM',
+        address: JSON.stringify(payload)
+      }, { onConflict: 'id' });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return payload;
     }
   }
 };

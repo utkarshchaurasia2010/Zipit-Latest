@@ -1,87 +1,59 @@
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      manifest: {
-        name: 'Zipit App',
-        short_name: 'Zipit',
-        description: 'Zipit Delivery App',
-        theme_color: '#F8CB46',
-        background_color: '#ffffff',
-        display: 'standalone',
-        icons: [
-          {
-            src: 'logo_full.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'logo_full.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'logo_full.png',
-            sizes: 'any',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      },
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
       workbox: {
-        importScripts: ['/firebase-messaging-sw.js'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*$/,
+            urlPattern: ({ url }) => url.origin.includes('supabase.co') && url.pathname.includes('/storage/v1/object/public/'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'supabase-images-cache',
+              cacheName: 'zipit-supabase-images',
               expiration: {
-                maxEntries: 200,
+                maxEntries: 500,
                 maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
               },
               cacheableResponse: {
                 statuses: [0, 200]
               }
             }
+          }
+        ]
+      },
+      manifest: {
+        name: 'Zipit - India\'s Rural Delivery App',
+        short_name: 'Zipit',
+        description: 'Instant delivery app for rural and semi-urban India',
+        theme_color: '#0a0a0c',
+        background_color: '#0a0a0c',
+        display: 'standalone',
+        orientation: 'portrait',
+        icons: [
+          {
+            src: '/logo_full.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
           },
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/(products|categories|wafer_banners).*$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              networkTimeoutSeconds: 3,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 24 * 60 * 60 // 1 day
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 365 * 24 * 60 * 60
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
+            src: '/logo_full.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }
     })
   ],
+  server: {
+    port: 5175,
+    strictPort: true,
+    host: true
+  }
 })
