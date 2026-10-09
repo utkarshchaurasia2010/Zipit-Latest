@@ -64,7 +64,7 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
     document.head.appendChild(script);
   }, [googleMapsKey]);
 
-  // Live Autocomplete Suggestions as user types (Google Places API -> Esri ArcGIS -> Photon)
+  // Live Autocomplete Suggestions as user types (Google Places API New REST -> Esri ArcGIS -> Photon)
   useEffect(() => {
     if (!searchQuery || searchQuery.trim().length < 2) {
       setSuggestions([]);
@@ -75,77 +75,104 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
     const timer = setTimeout(async () => {
       setIsSearchingSuggestions(true);
       try {
-        const resultsMap = new Map();
         const query = searchQuery.trim();
+        const activeKey = googleMapsKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-        // 0) If Official Google Maps SDK is loaded, use Google Places AutocompleteService (100% synced!)
-        if (window.google && window.google.maps && window.google.maps.places) {
+        // 0) PRIMARY: Google Places API (New) REST with locationBias & country restriction
+        // Finds all local shops, temples, chowks, mandirs, bus stands, and small landmarks
+        if (activeKey) {
           try {
-            const autocompleteService = new window.google.maps.places.AutocompleteService();
-            const centerLatLng = new window.google.maps.LatLng(coords.lat || 25.3176, coords.lng || 82.9739);
-            const gPredictions = await new Promise((resolve) => {
-              autocompleteService.getPlacePredictions({ 
-                input: query, 
-                componentRestrictions: { country: 'in' },
-                location: centerLatLng,
-                radius: 100000
-              }, (predictions, status) => {
-                if (status === 'OK' && predictions) resolve(predictions);
-                else resolve([]);
-              });
+            const centerLat = Number(coords.lat) || 25.596;
+            const centerLng = Number(coords.lng) || 83.584;
+
+            const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': activeKey
+              },
+              body: JSON.stringify({
+                input: query,
+                includedRegionCodes: ['in'],
+                locationBias: {
+                  circle: {
+                    center: { latitude: centerLat, longitude: centerLng },
+                    radius: 35000.0 // 35km radius priority around current location
+                  }
+                }
+              })
             });
-            if (gPredictions && gPredictions.length > 0) {
-              const geocoder = new window.google.maps.Geocoder();
-              const parallelResults = await Promise.all(
-                gPredictions.slice(0, 7).map(pred => new Promise((resolve) => {
-                  geocoder.geocode({ placeId: pred.place_id }, (res, stat) => {
-                    if (stat === 'OK' && res && res.length > 0) {
-                      const loc = res[0].geometry.location;
-                      resolve({
-                        title: pred.structured_formatting?.main_text || pred.description.split(',')[0],
-                        subtitle: pred.structured_formatting?.secondary_text || pred.description,
-                        lat: loc.lat(),
-                        lng: loc.lng()
+
+            if (res.ok) {
+              const data = await res.json();
+              const preds = data.suggestions || [];
+              if (preds.length > 0) {
+                // Fetch high precision coordinates in parallel for the top 5 results
+                const mappedResults = await Promise.all(
+                  preds.slice(0, 5).map(async (item) => {
+                    const p = item.placePrediction;
+                    if (!p) return null;
+                    const placeId = p.placeId;
+                    const title = p.structuredFormat?.mainText?.text || p.text?.text?.split(',')[0];
+                    const subtitle = p.structuredFormat?.secondaryText?.text || p.text?.text;
+
+                    try {
+                      const detRes = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location,formattedAddress`, {
+                        headers: { 'X-Goog-Api-Key': activeKey }
                       });
-                    } else {
-                      resolve(null);
-                    }
-                  });
-                }))
-              );
-              const validGoogleSuggestions = parallelResults.filter(Boolean);
-              if (validGoogleSuggestions.length > 0) {
-                setSuggestions(validGoogleSuggestions);
-                setShowSuggestions(true);
-                setIsSearchingSuggestions(false);
-                return; // 100% Google Maps Synced - Do NOT run fallback geocoders!
+                      if (detRes.ok) {
+                        const detData = await detRes.json();
+                        if (detData.location) {
+                          return {
+                            title,
+                            subtitle: detData.formattedAddress || subtitle,
+                            lat: detData.location.latitude,
+                            lng: detData.location.longitude,
+                            isGoogle: true
+                          };
+                        }
+                      }
+                    } catch (e) {}
+
+                    return null;
+                  })
+                );
+
+                const validGoogle = mappedResults.filter(Boolean);
+                if (validGoogle.length > 0) {
+                  setSuggestions(validGoogle);
+                  setShowSuggestions(true);
+                  setIsSearchingSuggestions(false);
+                  return; // Instant Google Places New resolution!
+                }
               }
             }
-          } catch (err) {}
+          } catch (err) {
+            console.warn('Google Places API (New) REST failed, falling back to multi-provider:', err);
+          }
         }
 
-        // 1) Esri ArcGIS World Geocoding (if not already filled by Google)
-        if (resultsMap.size < 5) {
-          try {
-            const esriRes = await fetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&outFields=Match_addr,Addr_type&maxLocations=5`);
-            const esriData = await esriRes.json();
-            if (esriData?.candidates) {
-              esriData.candidates.forEach(c => {
-                const key = `${c.location.y.toFixed(3)},${c.location.x.toFixed(3)}`;
-                if (!resultsMap.has(key)) {
-                  resultsMap.set(key, {
-                    title: c.address.split(',')[0].trim(),
-                    subtitle: c.address,
-                    lat: Number(c.location.y),
-                    lng: Number(c.location.x)
-                  });
-                }
-              });
-            }
-          } catch (err) {}
-        }
+        // 1) Secondary Fallback: Esri ArcGIS World Geocoding
+        const resultsMap = new Map();
+        try {
+          const esriRes = await fetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&outFields=Match_addr,Addr_type&maxLocations=5`);
+          const esriData = await esriRes.json();
+          if (esriData?.candidates) {
+            esriData.candidates.forEach(c => {
+              const key = `${c.location.y.toFixed(3)},${c.location.x.toFixed(3)}`;
+              if (!resultsMap.has(key)) {
+                resultsMap.set(key, {
+                  title: c.address.split(',')[0].trim(),
+                  subtitle: c.address,
+                  lat: Number(c.location.y),
+                  lng: Number(c.location.x)
+                });
+              }
+            });
+          }
+        } catch (err) {}
 
-        // 2) Photon Komoot fallback
+        // 2) Tertiary Fallback: Photon Komoot / OSM
         if (resultsMap.size < 5) {
           try {
             const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=4`);
@@ -182,7 +209,7 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, isGoogleLoaded]);
+  }, [searchQuery, googleMapsKey, coords.lat, coords.lng]);
 
   // Multi-provider Reverse Geocode: Google Maps Geocoder (100% Synced) + ArcGIS + Nominatim
   const reverseGeocode = async (lat, lng) => {
@@ -353,6 +380,48 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
       if ((!newLat || !newLng) && suggestions && suggestions.length > 0) {
         newLat = suggestions[0].lat;
         newLng = suggestions[0].lng;
+      }
+
+      // 1.5) If not found in suggestions, query Google Places API (New) directly for the exact place
+      const activeKey = googleMapsKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if ((!newLat || !newLng) && activeKey) {
+        try {
+          const centerLat = Number(coords.lat) || 25.596;
+          const centerLng = Number(coords.lng) || 83.584;
+          const gRes = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': activeKey
+            },
+            body: JSON.stringify({
+              input: searchQuery.trim(),
+              includedRegionCodes: ['in'],
+              locationBias: {
+                circle: {
+                  center: { latitude: centerLat, longitude: centerLng },
+                  radius: 35000.0
+                }
+              }
+            })
+          });
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            const topPlaceId = gData.suggestions?.[0]?.placePrediction?.placeId;
+            if (topPlaceId) {
+              const dRes = await fetch(`https://places.googleapis.com/v1/places/${topPlaceId}?fields=location,formattedAddress`, {
+                headers: { 'X-Goog-Api-Key': activeKey }
+              });
+              if (dRes.ok) {
+                const dData = await dRes.json();
+                if (dData.location) {
+                  newLat = dData.location.latitude;
+                  newLng = dData.location.longitude;
+                }
+              }
+            }
+          }
+        } catch (err) {}
       }
 
       // 2) Iterate through hierarchical queries (exact -> village/town -> district -> stripped landmark)

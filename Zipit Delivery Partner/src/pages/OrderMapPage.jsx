@@ -28,13 +28,15 @@ const destIcon = createSvgIcon(`
   </div>
 `, 36, 36);
 
-const storeLocation = [25.5788, 83.5780]; // Mock store location
+const OLA_MAPS_API_KEY = 'cb1_4fid_1_1354e75ad3dae085ce92fc8f';
+const storeLocation = [25.5788, 83.5780]; // Store location
 
 export default function OrderMapPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [myLocation, setMyLocation] = useState(storeLocation);
+  const [routePolyline, setRoutePolyline] = useState(null);
   const watchIdRef = useRef(null);
   const mapRef = useRef(null);
 
@@ -62,6 +64,35 @@ export default function OrderMapPage() {
       }
     };
   }, [id]);
+
+  useEffect(() => {
+    const fetchDirections = async () => {
+      if (!order || !order.delivery_address) return;
+      const destLat = Number(order.delivery_address?.lat) || 25.5900;
+      const destLng = Number(order.delivery_address?.lng) || 83.5850;
+      try {
+        const url = `https://api.olamaps.io/routing/v1/directions?origin=${myLocation[0]},${myLocation[1]}&destination=${destLat},${destLng}&api_key=${OLA_MAPS_API_KEY}`;
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (data && data.routes && data.routes[0]) {
+          const legs = data.routes[0].legs || [];
+          const points = [];
+          legs.forEach(leg => {
+            (leg.steps || []).forEach(step => {
+              if (step.start_location) points.push([step.start_location.lat, step.start_location.lng]);
+              if (step.end_location) points.push([step.end_location.lat, step.end_location.lng]);
+            });
+          });
+          if (points.length > 0) {
+            setRoutePolyline(points);
+          }
+        }
+      } catch (e) {
+        console.warn('Ola Maps directions fallback:', e);
+      }
+    };
+    fetchDirections();
+  }, [order, myLocation[0], myLocation[1]]);
 
   const fetchOrder = async () => {
     const { data } = await supabase.from('orders').select('*').eq('id', id).single();
@@ -159,7 +190,7 @@ export default function OrderMapPage() {
             })} 
           />
 
-          <Polyline positions={[myLocation, destLocation]} color="#2563eb" weight={5} opacity={0.8} dashArray="8, 10" />
+          <Polyline positions={routePolyline || [myLocation, destLocation]} color="#2563eb" weight={5} opacity={0.8} dashArray={routePolyline ? undefined : "8, 10"} />
         </MapContainer>
         
         {/* Recenter Button */}
