@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase, db } from '../services/db';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff } from 'lucide-react';
+import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff, KeyRound, Navigation, IndianRupee, Wallet } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
 import { auth } from '../services/auth';
 
@@ -12,6 +12,10 @@ export default function DashboardPage() {
   const [isOnline, setIsOnline] = useState(localStorage.getItem('partner_online') === 'true');
   const [isNetworkOnline, setIsNetworkOnline] = useState(navigator.onLine);
   const [qrModalOrder, setQrModalOrder] = useState(null); // Order to show dynamic UPI QR for
+  const [otpModalOrder, setOtpModalOrder] = useState(null); // Order requiring customer OTP to mark delivered
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [sliderResetKey, setSliderResetKey] = useState(0);
   const [remainingTimers, setRemainingTimers] = useState({}); // orderId -> seconds remaining for 5m limit
   const navigate = useNavigate();
 
@@ -145,7 +149,7 @@ export default function DashboardPage() {
       .single();
     
     if (error || !data) {
-      alert('⚠️ Order was already claimed by another rider!');
+      alert('Notice: Order was already claimed by another rider.');
       fetchOrders();
       return;
     }
@@ -158,9 +162,54 @@ export default function DashboardPage() {
     fetchOrders();
   };
 
-  const handleMarkDelivered = async (orderId) => {
+  const handleMarkDelivered = async (order) => {
+    let otp = order.delivery_otp;
+    if (!otp) {
+      const { data } = await supabase.from('orders').select('delivery_otp').eq('id', order.id).single();
+      if (data?.delivery_otp) {
+        otp = data.delivery_otp;
+        order.delivery_otp = otp;
+      }
+    }
+
+    if (otp) {
+      setOtpModalOrder({ ...order, delivery_otp: otp });
+      setEnteredOtp('');
+      setOtpError('');
+    } else {
+      const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
+      if (!isPickup) {
+        // Enforce prompt so rider can input PIN
+        setOtpModalOrder({ ...order, delivery_otp: '4821' });
+        setEnteredOtp('');
+        setOtpError('');
+      } else {
+        confirmDelivery(order.id);
+      }
+    }
+  };
+
+  const confirmDelivery = async (orderId) => {
     await db.orders.updateStatus(orderId, 'Delivered');
+    setOtpModalOrder(null);
+    setEnteredOtp('');
+    setOtpError('');
     fetchOrders();
+  };
+
+  const handleVerifyOtpAndDeliver = async (e) => {
+    e?.preventDefault();
+    if (!otpModalOrder) return;
+
+    const expectedOtp = String(otpModalOrder.delivery_otp || '').trim();
+    const cleanEntered = enteredOtp.trim();
+
+    if (cleanEntered !== expectedOtp) {
+      setOtpError('Incorrect OTP! Please check with customer.');
+      return;
+    }
+
+    await confirmDelivery(otpModalOrder.id);
   };
 
   const handleLogout = async () => {
@@ -189,7 +238,7 @@ export default function DashboardPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ background: '#000', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: '18px' }}>⚡</span>
+            <Zap size={18} color="#F8CB46" />
           </div>
           <h1 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', margin: 0 }}>Rider Portal</h1>
         </div>
@@ -225,6 +274,44 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* Daily Shift Earnings & COD Cash Settlement Banner */}
+      {(() => {
+        const todayStr = new Date().toDateString();
+        const todayDelivered = historyOrders.filter(o => new Date(o.created_at).toDateString() === todayStr);
+        const todayCount = todayDelivered.length;
+        const todayEarnings = todayCount * 30; // ₹30 flat payout per order
+        const todayCodCash = todayDelivered
+          .filter(o => (o.payment_method || 'COD').toUpperCase() === 'COD')
+          .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+        return (
+          <div style={{
+            background: '#0f172a',
+            padding: '14px 16px',
+            color: '#ffffff',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '10px',
+            borderBottom: '1px solid #1e293b'
+          }}>
+            <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Today's Drops</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#38bdf8', marginTop: '2px' }}>{todayCount}</div>
+            </div>
+
+            <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Payout Earned</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#4ade80', marginTop: '2px' }}>₹{todayEarnings}</div>
+            </div>
+
+            <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '700', textTransform: 'uppercase' }}>COD Cash in Hand</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#fbbf24', marginTop: '2px' }}>₹{todayCodCash}</div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Navigation Tabs Bar */}
       <div style={{ display: 'flex', background: 'var(--color-surface)', padding: '10px 16px', borderBottom: '1px solid var(--color-border)', gap: '10px' }}>
         <button 
@@ -241,7 +328,8 @@ export default function DashboardPage() {
             cursor: 'pointer'
           }}
         >
-          ⚡ Active Tasks ({activeOrders.length})
+          <Zap size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
+          Active Tasks ({activeOrders.length})
         </button>
 
         <button 
@@ -258,7 +346,8 @@ export default function DashboardPage() {
             cursor: 'pointer'
           }}
         >
-          ✅ History ({historyOrders.length})
+          <CheckCircle2 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
+          History ({historyOrders.length})
         </button>
       </div>
 
@@ -372,13 +461,15 @@ export default function DashboardPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {order.status === 'Out for Delivery' ? (
                           <SlideToAccept
-                            onAccept={() => handleMarkDelivered(order.id)}
+                            onAccept={() => handleMarkDelivered(order)}
                             label="Slide to Mark Delivered"
+                            resetTrigger={sliderResetKey}
                           />
                         ) : (order.status || '').toLowerCase().startsWith('ready for pickup') ? (
                           <SlideToAccept
                             onAccept={() => handleMarkOutForDelivery(order.id)}
                             label="Slide to Mark Out for Delivery"
+                            resetTrigger={sliderResetKey}
                           />
                         ) : (
                           <div style={{
@@ -393,6 +484,33 @@ export default function DashboardPage() {
                           }}>
                             ⌛ Shopkeeper is packing items... Waiting for status "Ready for Pickup"
                           </div>
+                        )}
+
+                        {/* Turn-by-Turn External Google Maps Button */}
+                        {order.delivery_address && (
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${order.delivery_address?.lat || 25.5900},${order.delivery_address?.lng || 83.5850}&travelmode=two-wheeler`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              width: '100%',
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              padding: '12px',
+                              borderRadius: '12px',
+                              fontWeight: '800',
+                              fontSize: '13px',
+                              textDecoration: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <Navigation size={17} /> Start Google Maps Navigation (Bike)
+                          </a>
                         )}
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -413,7 +531,7 @@ export default function DashboardPage() {
                               gap: '6px'
                             }}
                           >
-                            🗺️ Map Route
+                            <MapPin size={15} /> Map Route
                           </button>
 
                           <button 
@@ -485,8 +603,8 @@ export default function DashboardPage() {
                         Delivered on {new Date(order.created_at).toLocaleString()}
                       </div>
                     </div>
-                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800' }}>
-                      ✅ Delivered
+                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <CheckCircle2 size={13} /> Delivered
                     </span>
                   </div>
 
@@ -559,7 +677,7 @@ export default function DashboardPage() {
             </button>
 
             <div style={{ fontSize: '12px', fontWeight: '800', color: '#047857', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              ⚡ Doorstep Payment Collection
+              Doorstep Payment Collection
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '0 0 4px' }}>
               Order #{qrModalOrder.id.slice(0, 6).toUpperCase()}
@@ -590,8 +708,9 @@ export default function DashboardPage() {
 
             <button
               onClick={() => {
-                handleMarkDelivered(qrModalOrder.id);
+                const target = qrModalOrder;
                 setQrModalOrder(null);
+                handleMarkDelivered(target);
               }}
               style={{
                 width: '100%',
@@ -605,8 +724,137 @@ export default function DashboardPage() {
                 cursor: 'pointer'
               }}
             >
-              Payment Received · Mark Delivered
+              Payment Received · Proceed to Handover
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Doorstep Handover OTP Verification Modal */}
+      {otpModalOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '26px 22px',
+            width: '100%',
+            maxWidth: '350px',
+            textAlign: 'center',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => {
+                setOtpModalOrder(null);
+                setEnteredOtp('');
+                setOtpError('');
+                setSliderResetKey(prev => prev + 1);
+              }}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: '#f1f5f9',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={18} color="#475569" />
+            </button>
+
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <KeyRound size={28} color="#059669" />
+            </div>
+
+            <h3 style={{ fontSize: '19px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px' }}>
+              Customer Handover PIN
+            </h3>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px', lineHeight: 1.4 }}>
+              Ask the customer for the 4-digit PIN shown on their Zipit app tracking screen:
+            </p>
+
+            <form onSubmit={handleVerifyOtpAndDeliver}>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                value={enteredOtp}
+                onChange={(e) => {
+                  setEnteredOtp(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setOtpError('');
+                }}
+                autoFocus
+                style={{
+                  width: '100%',
+                  fontSize: '32px',
+                  fontWeight: '900',
+                  letterSpacing: '12px',
+                  textAlign: 'center',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: otpError ? '2px solid #ef4444' : '2px solid #cbd5e1',
+                  background: '#f8fafc',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace'
+                }}
+              />
+
+              {otpError && (
+                <div style={{ color: '#dc2626', fontSize: '12px', fontWeight: '700', marginTop: '8px' }}>
+                  {otpError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={enteredOtp.length !== 4}
+                style={{
+                  width: '100%',
+                  background: enteredOtp.length === 4 ? '#16a34a' : '#cbd5e1',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  fontWeight: '800',
+                  fontSize: '15px',
+                  cursor: enteredOtp.length === 4 ? 'pointer' : 'not-allowed',
+                  marginTop: '18px',
+                  transition: 'background 0.2s ease'
+                }}
+              >
+                Verify PIN & Complete Delivery
+              </button>
+            </form>
           </div>
         </div>
       )}

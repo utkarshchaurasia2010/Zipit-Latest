@@ -313,7 +313,8 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
         </div>
       )}
 
-      <div className="search-overlay-header">
+      {/* Mobile Header (<1024px) */}
+      <div className="search-overlay-header mobile-only-search-header">
         <div className="search-input-box">
           <button className="search-back-btn" onClick={onClose} aria-label="Go back">
             <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
@@ -332,6 +333,62 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
             className={`mic-icon ${isListening ? 'listening' : ''}`}
             onClick={startVoiceSearch}
           />
+        </div>
+      </div>
+
+      {/* Desktop Header (>=1024px, inspired by Blinkit /s/ search page) */}
+      <div className="desktop-search-page-header">
+        <div className="desktop-search-header-container">
+          <div className="desktop-search-brand" onClick={onClose}>
+            <span className="brand-zip">Zip</span>
+            <span className="brand-it">it</span>
+          </div>
+
+          <div className="desktop-search-input-box">
+            <Search size={18} color="var(--color-text-light)" />
+            <input
+              type="text"
+              placeholder="Search for atta dal and more"
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+            {query && (
+              <button className="desktop-clear-query-btn" onClick={() => setQuery('')}>
+                <X size={16} />
+              </button>
+            )}
+            <Mic
+              size={18}
+              color={isListening ? "#0C831F" : "var(--color-text-light)"}
+              className={`mic-icon ${isListening ? 'listening' : ''}`}
+              onClick={startVoiceSearch}
+            />
+          </div>
+
+          <div className="desktop-search-header-right">
+            <button
+              type="button"
+              className="desktop-search-close-btn"
+              onClick={onClose}
+            >
+              Close
+            </button>
+            {cart && (
+              <button
+                type="button"
+                className={`desktop-cart-pill-btn ${cart.length === 0 ? 'empty' : ''}`}
+                onClick={onClose}
+              >
+                <span>My Cart</span>
+                {cart.length > 0 && (
+                  <span className="desktop-cart-count">
+                    {cart.reduce((s, i) => s + (i.qty || 1), 0)}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

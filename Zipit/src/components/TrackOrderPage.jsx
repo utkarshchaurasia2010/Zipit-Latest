@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PackageCheck, ShoppingBag, X, Check, AlertCircle, MapPin, Navigation, ChevronLeft, RefreshCw, ArrowRight } from 'lucide-react';
+import { PackageCheck, ShoppingBag, X, Check, AlertCircle, MapPin, Navigation, ChevronLeft, RefreshCw, ArrowRight, Phone, ShieldCheck, Package, Store, Clock, CheckCircle2 } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -15,7 +15,7 @@ class MapErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ background: 'var(--color-surface-muted, #f1f5f9)', borderRadius: 12, padding: '16px', textAlign: 'center', color: 'var(--color-text-light)', fontSize: 13, margin: '8px 0' }}>
-          📍 Map unavailable — <strong>tracking your order</strong> is still active.
+          Map unavailable — <strong>tracking your order</strong> is still active.
         </div>
       );
     }
@@ -35,19 +35,19 @@ const createSvgIcon = (svgContent, width = 36, height = 36) => {
 
 const storeIcon = createSvgIcon(`
   <div style="background: #0c831f; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff;">
-    <span style="font-size: 18px;">🏪</span>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
   </div>
 `, 34, 34);
 
 const destIcon = createSvgIcon(`
   <div style="background: #ef4444; width: 36px; height: 36px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff;">
-    <div style="transform: rotate(45deg); font-size: 16px;">🏠</div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   </div>
 `, 36, 36);
 
 const driverIcon = createSvgIcon(`
   <div style="background: #2563eb; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid #ffffff; box-shadow: 0 0 15px rgba(37, 99, 235, 0.6); animation: pulse-ring 2s infinite;">
-    <span style="font-size: 20px;">🛵</span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
   </div>
 `, 38, 38);
 
@@ -161,11 +161,11 @@ const DeliveryMap = ({ status, order }) => {
       {/* Floating Status Badge */}
       <div className="map-eta-badge" style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', zIndex: 2, background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', padding: '8px 18px', borderRadius: '30px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', fontSize: '13px', fontWeight: '700', color: '#1e293b', border: '1px solid rgba(255, 255, 255, 0.6)', display: 'flex', alignItems: 'center', gap: '6px' }}>
         {isDelivered ? (
-          <span>✅ Order Delivered</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={14} color="#15803d" /> Order Delivered</span>
         ) : isOnTheWay ? (
           <>
             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#2563eb', animation: 'pulse 1.5s infinite' }}></span>
-            <span>{order.delivery_lat ? '🛰️ Live Rider Location' : 'Rider is on the way · ~8 mins'}</span>
+            <span>{order.delivery_lat ? 'Live Rider Location' : 'Rider is on the way · ~8 mins'}</span>
           </>
         ) : status === 'Ready for Pickup' ? (
           <>
@@ -210,6 +210,17 @@ const TrackOrderPage = ({ navigate }) => {
     if (!isSilent) setLoading(true);
     const data = await db.orders.getAll();
     const active = (data || []).filter(o => ACTIVE_STATUSES.includes(o.status));
+    
+    // Ensure every active home delivery order has a 4-digit PIN
+    for (const ord of active) {
+      const isPickup = ord.delivery_address?.is_pickup || ord.delivery_address?.order_type === 'PICKUP';
+      if (!isPickup && !ord.delivery_otp && ord.status !== 'Delivered' && ord.status !== 'Cancelled') {
+        const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
+        ord.delivery_otp = generatedPin;
+        supabase.from('orders').update({ delivery_otp: generatedPin }).eq('id', ord.id).then();
+      }
+    }
+
     setOrders(active);
     if (!isSilent) setLoading(false);
   };
@@ -394,7 +405,7 @@ const TrackOrderPage = ({ navigate }) => {
       <div className="track-orders-list">
         {orders.length === 0 ? (
           <div className="track-empty">
-            <div className="track-empty-icon">📦</div>
+            <Package size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
             <h3>No active orders</h3>
             <p>Your active orders will appear here in real time.</p>
             <button onClick={() => navigate('/')} style={{ marginTop: '24px', padding: '14px 32px', backgroundColor: 'var(--color-text)', color: 'var(--color-background)', border: 'none', borderRadius: '24px', fontWeight: '700', fontSize: '15px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
@@ -438,6 +449,62 @@ const TrackOrderPage = ({ navigate }) => {
                   <MapErrorBoundary key={order.id}>
                     <DeliveryMap status={order.status} order={order} />
                   </MapErrorBoundary>
+                )}
+
+                {/* Doorstep Handover OTP & Rider Contact Section (Home Delivery only) */}
+                {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && order.status !== 'Delivered' && (
+                  <div style={{
+                    background: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    margin: '12px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    boxShadow: '0 2px 8px rgba(12, 131, 31, 0.05)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ background: '#dcfce7', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <ShieldCheck size={22} color="#15803d" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#166534', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Delivery Handover PIN
+                        </div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '2px', fontFamily: 'monospace' }}>
+                          {order.delivery_otp || '••••'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#475467', marginTop: '2px' }}>
+                          Share with rider at doorstep to collect items
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Call Delivery Partner: ONLY visible when Ready for Pickup or Out for Delivery */}
+                    {(order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') && order.accepted_by_rider && (
+                      <a 
+                        href="tel:9651568829"
+                        style={{
+                          background: '#0c831f',
+                          color: '#ffffff',
+                          padding: '10px 14px',
+                          borderRadius: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          textDecoration: 'none',
+                          fontWeight: '700',
+                          fontSize: '12.5px',
+                          boxShadow: '0 4px 12px rgba(12, 131, 31, 0.25)',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Phone size={15} /> Call Rider
+                      </a>
+                    )}
+                  </div>
                 )}
 
                 {/* Substitution Alert Banner */}
@@ -485,7 +552,9 @@ const TrackOrderPage = ({ navigate }) => {
                     gap: '14px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
                   }}>
-                    <span style={{ fontSize: '30px', lineHeight: 1 }}>🛍️</span>
+                    <div style={{ width: 42, height: 42, borderRadius: 12, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <ShoppingBag size={22} color="#15803d" />
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
                         <div style={{ fontWeight: '800', color: '#166534', fontSize: '14px', letterSpacing: '0.3px' }}>
@@ -513,12 +582,12 @@ const TrackOrderPage = ({ navigate }) => {
                           border: '1px solid rgba(0,0,0,0.06)'
                         }}>
                           {order.status === 'Delivered'
-                            ? '✅ Order Picked Up'
+                            ? 'Order Picked Up'
                             : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery')
-                            ? '🎉 Ready at Pickup Counter'
+                            ? 'Ready at Pickup Counter'
                             : order.accepted_by_shopkeeper
-                            ? '⏳ Shopkeeper is Packing Items'
-                            : '📋 Order Confirmed (Waiting for Store)'}
+                            ? 'Shopkeeper is Packing Items'
+                            : 'Order Confirmed (Waiting for Store)'}
                         </span>
                       </div>
 
@@ -526,14 +595,15 @@ const TrackOrderPage = ({ navigate }) => {
                         Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Zipit Store, Rauza'}</strong>
                       </div>
 
-                      <div style={{ fontSize: '12.5px', color: '#475467', marginTop: '4px', fontWeight: '500' }}>
-                        ⏰ {order.delivery_address?.pickup_time_estimate || 'Ready in approximately 1 hour after order'}
+                      <div style={{ fontSize: '12.5px', color: '#475467', marginTop: '4px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={13} color="#64748b" />
+                        <span>{order.delivery_address?.pickup_time_estimate || 'Ready in approximately 1 hour after order'}</span>
                       </div>
 
                       <div style={{ fontSize: '12px', color: '#166534', marginTop: '6px', fontWeight: '600', background: '#dcfce7', padding: '4px 10px', borderRadius: '6px', display: 'inline-block' }}>
                         {order.accepted_by_shopkeeper 
-                          ? `✓ Accepted & Prepared by: ${order.accepted_by_shopkeeper}` 
-                          : '⚡ Store will start packing once accepted at the counter'}
+                          ? `Accepted & Prepared by: ${order.accepted_by_shopkeeper}` 
+                          : 'Store will start packing once accepted at the counter'}
                       </div>
                     </div>
                   </div>

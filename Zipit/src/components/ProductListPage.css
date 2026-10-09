@@ -362,3 +362,77 @@ body[data-theme="dark"] .add-btn-small {
   border-radius: 0;
   margin: 2px 0;
 }
+
+/* ── Responsive Tablet & Desktop Layout for Products ── */
+@media (min-width: 768px) {
+  .product-list-grid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 16px 14px;
+    padding: 16px 20px;
+  }
+
+  .pinnacle-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 14px 12px;
+  }
+
+  .all-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px 12px;
+    padding: 16px;
+  }
+
+  .sidebar-categories {
+    width: 90px;
+  }
+
+  .sidebar-category-item {
+    font-size: 11px;
+    padding: 14px 6px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-list-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .product-list-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px 16px;
+    padding: 24px;
+  }
+
+  .pinnacle-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+  }
+
+  .all-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px 16px;
+    padding: 24px;
+  }
+
+  /* Keep desktop card sizes standard and compact, not blown up */
+  .bestseller-card {
+    max-width: 210px;
+  }
+
+  .bestseller-img {
+    height: 140px;
+  }
+
+  .sidebar-categories {
+    width: 100px;
+  }
+
+  .sidebar-category-item {
+    font-size: 11.5px;
+    padding: 16px 8px;
+  }
+}
+
+

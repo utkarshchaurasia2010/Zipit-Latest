@@ -86,3 +86,11 @@ body[data-theme="dark"] .nav-item.active {
   transform: scale(0.88) translateY(2px);
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ── Hide Mobile Floating Nav on Desktop & Large Tablets ── */
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none !important;
+  }
+}
+

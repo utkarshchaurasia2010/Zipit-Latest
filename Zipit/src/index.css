@@ -107,19 +107,77 @@ body {
 }
 
 /* 
- * We set a max-width to simulate a mobile app on desktop, 
- * but it will take full 100% width on actual mobile devices.
+ * Responsive Device Layout:
+ * Mobile & Phone (<768px): Native full-width 100% mobile view (max-width 480px)
+ * Tablets & iPad (768px - 1024px): Comfortable tablet canvas (max-width 768px)
+ * Desktop & Computers (>1024px): Expansive desktop web layout (max-width 1200px)
  */
 #root {
   width: 100%;
-  max-width: 430px; 
+  max-width: 480px; 
   min-height: 100vh;
   background-color: var(--color-background);
   position: relative;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 40px rgba(0,0,0,0.1);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+@media (min-width: 768px) {
+  #root {
+    max-width: 768px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (min-width: 1024px) {
+  #root {
+    max-width: 1240px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* ── Explicit Phone Mode Override for Desktop Users ── */
+body.force-phone-mode #root {
+  max-width: 480px !important;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.force-phone-mode .desktop-header-row {
+  display: none !important;
+}
+
+body.force-phone-mode .mobile-header-wrapper {
+  display: flex !important;
+}
+
+body.force-phone-mode .bottom-nav {
+  display: flex !important;
+}
+
+body.force-phone-mode .desktop-search-page-header {
+  display: none !important;
+}
+
+body.force-phone-mode .mobile-only-search-header {
+  display: flex !important;
+}
+
+body.force-phone-mode .search-overlay {
+  max-width: 480px !important;
+}
+
+body.force-phone-mode .product-list-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px 12px !important;
+  padding: 16px 12px !important;
+}
+
+body.force-phone-mode .category-grid-layout {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+
 
 @keyframes pageFadeScale {
   0% { opacity: 0; transform: scale(0.97); }

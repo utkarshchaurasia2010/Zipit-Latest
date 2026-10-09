@@ -1161,3 +1161,56 @@
   0% { transform: scale(0.95) translateY(10px); opacity: 0; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
+
+/* ── Responsive Tablet & Desktop Layout for Checkout Page ── */
+@media (min-width: 768px) {
+  .checkout-section {
+    margin: 12px 24px;
+    padding: 20px;
+  }
+
+  .fulfillment-selector-section {
+    margin: 12px 24px;
+    padding: 20px;
+  }
+
+  .checkout-bottom-bar {
+    max-width: 768px;
+    left: 50% !important;
+    transform: translateX(-50%);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
+  }
+}
+
+@media (min-width: 1024px) {
+  .checkout-page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px 180px;
+  }
+
+  .checkout-section {
+    margin: 14px 0;
+  }
+
+  .fulfillment-selector-section {
+    margin: 16px 0;
+  }
+
+  .checkout-bottom-bar {
+    max-width: 1080px;
+    left: 50% !important;
+    transform: translateX(-50%);
+  }
+
+  .checkout-action-row {
+    padding: 14px 24px;
+  }
+
+  .checkout-place-order-btn {
+    padding: 16px 28px;
+    font-size: 16px;
+  }
+}
+

@@ -2,12 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowRight, Check } from 'lucide-react';
 import './SlideToAccept.css';
 
-export default function SlideToAccept({ onAccept, label = "Slide to Accept", disabled = false }) {
+export default function SlideToAccept({ onAccept, label = "Slide to Accept", disabled = false, resetTrigger = null }) {
   const [sliderPosition, setSliderPosition] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const containerRef = useRef(null);
   const handleRef = useRef(null);
+
+  useEffect(() => {
+    if (resetTrigger !== null && resetTrigger !== undefined) {
+      setIsCompleted(false);
+      setSliderPosition(0);
+      setIsDragging(false);
+    }
+  }, [resetTrigger]);
 
   const getContainerWidth = () => {
     if (!containerRef.current) return 280;
@@ -97,7 +105,7 @@ export default function SlideToAccept({ onAccept, label = "Slide to Accept", dis
       />
       
       <span className="slide-text">
-        {isCompleted ? 'ACCEPTED! ✓' : label}
+        {isCompleted ? 'CONFIRMED' : label}
       </span>
 
       <div

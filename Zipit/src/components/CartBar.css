@@ -133,3 +133,16 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ── Desktop CartBar Positioning (since BottomNav is hidden on desktop) ── */
+@media (min-width: 768px) {
+  .cart-bar-container {
+    bottom: 24px !important;
+  }
+
+  .cart-bar-pill {
+    min-width: 320px;
+    padding: 8px 12px 8px 16px;
+  }
+}
+

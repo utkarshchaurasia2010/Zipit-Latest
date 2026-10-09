@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/db';
-import { Plus, Trash2, Key, X, CheckSquare, User, Phone, ShieldCheck, Mail, FileText, Truck, Eye } from 'lucide-react';
+import { Plus, Trash2, Key, X, CheckSquare, User, Phone, ShieldCheck, Mail, FileText, Truck, Eye, Store, Bike } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 export default function AccessCodesManager() {
@@ -56,6 +56,8 @@ export default function AccessCodesManager() {
       email: '',
       fssai: '',
       vehicle_no: '',
+      shop_address: '',
+      shop_landmark: '',
       agreed_terms: false
     });
   };
@@ -90,6 +92,8 @@ export default function AccessCodesManager() {
       email: formData.email.trim(),
       fssai: role === 'shopkeeper' ? (formData.fssai.trim() || null) : null,
       vehicle_no: role === 'rider' ? (formData.vehicle_no.trim() || null) : null,
+      shop_address: role === 'shopkeeper' ? (formData.shop_address?.trim() || null) : null,
+      shop_landmark: role === 'shopkeeper' ? (formData.shop_landmark?.trim() || null) : null,
       agreed_terms: true
     };
 
@@ -248,11 +252,13 @@ export default function AccessCodesManager() {
                     border: role === 'shopkeeper' ? '2px solid #2563eb' : '1px solid var(--color-border)',
                     background: role === 'shopkeeper' ? 'rgba(37, 99, 235, 0.12)' : 'var(--color-surface-muted)',
                     color: role === 'shopkeeper' ? '#3b82f6' : 'var(--color-text-light)',
-                    fontWeight: '700',
-                    cursor: 'pointer'
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
                   }}
                 >
-                  🏪 Shopkeeper
+                  <Store size={16} /> Shopkeeper
                 </button>
                 <button
                   type="button"
@@ -265,10 +271,14 @@ export default function AccessCodesManager() {
                     background: role === 'rider' ? 'rgba(217, 119, 6, 0.12)' : 'var(--color-surface-muted)',
                     color: role === 'rider' ? '#f59e0b' : 'var(--color-text-light)',
                     fontWeight: '700',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
                   }}
                 >
-                  🛵 Rider
+                  <Bike size={16} /> Rider
                 </button>
               </div>
 
@@ -326,16 +336,40 @@ export default function AccessCodesManager() {
 
               {/* FSSAI Number (Shopkeeper only, optional) */}
               {role === 'shopkeeper' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>FSSAI Number <span style={{ fontWeight: '400', color: 'var(--color-text-light)' }}>(Optional)</span></label>
-                  <input
-                    type="text"
-                    value={formData.fssai}
-                    onChange={(e) => setFormData({ ...formData, fssai: e.target.value })}
-                    placeholder="Enter FSSAI license number (if available)"
-                    style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
-                  />
-                </div>
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>FSSAI Number <span style={{ fontWeight: '400', color: 'var(--color-text-light)' }}>(Optional)</span></label>
+                    <input
+                      type="text"
+                      value={formData.fssai}
+                      onChange={(e) => setFormData({ ...formData, fssai: e.target.value })}
+                      placeholder="Enter FSSAI license number (if available)"
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>Shop / Dark Store Address</label>
+                    <textarea
+                      rows={2}
+                      value={formData.shop_address}
+                      onChange={(e) => setFormData({ ...formData, shop_address: e.target.value })}
+                      placeholder="e.g. Plot No. 12, Main Market, Ghazipur, UP"
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text)' }}>Nearby Landmark</label>
+                    <input
+                      type="text"
+                      value={formData.shop_landmark}
+                      onChange={(e) => setFormData({ ...formData, shop_landmark: e.target.value })}
+                      placeholder="e.g. Near City Hospital / Opp. Post Office"
+                      style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                    />
+                  </div>
+                </>
               )}
 
               {/* Vehicle Number (Rider only, compulsory) */}
@@ -397,7 +431,13 @@ export default function AccessCodesManager() {
               <div><strong style={{ color: 'var(--color-text-light)' }}>Mobile:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.mobile || 'N/A'}</span></div>
               <div><strong style={{ color: 'var(--color-text-light)' }}>Aadhar:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.aadhar || 'N/A'}</span></div>
               <div><strong style={{ color: 'var(--color-text-light)' }}>Email:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.email || 'N/A'}</span></div>
-              {viewingCode.role === 'shopkeeper' && <div><strong style={{ color: 'var(--color-text-light)' }}>FSSAI No:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.fssai || 'Not provided'}</span></div>}
+              {viewingCode.role === 'shopkeeper' && (
+                <>
+                  <div><strong style={{ color: 'var(--color-text-light)' }}>FSSAI No:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.fssai || 'Not provided'}</span></div>
+                  <div><strong style={{ color: 'var(--color-text-light)' }}>Shop Address:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.shop_address || 'Not set'}</span></div>
+                  <div><strong style={{ color: 'var(--color-text-light)' }}>Landmark:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.shop_landmark || 'Not set'}</span></div>
+                </>
+              )}
               {viewingCode.role === 'rider' && <div><strong style={{ color: 'var(--color-text-light)' }}>Vehicle No:</strong> <span style={{ marginLeft: '6px' }}>{viewingCode.vehicle_no || 'N/A'}</span></div>}
               <div><strong style={{ color: 'var(--color-text-light)' }}>Created:</strong> <span style={{ marginLeft: '6px' }}>{new Date(viewingCode.created_at).toLocaleString()}</span></div>
             </div>

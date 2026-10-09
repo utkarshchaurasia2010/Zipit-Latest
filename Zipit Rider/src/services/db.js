@@ -316,7 +316,13 @@ export const db = {
       }
 
       try {
-        const { data, error } = await supabase.from('orders').update({ status }).eq('id', id).select().single();
+        const updatePayload = { status };
+        // When delivered, nullify delivery_otp to consume 0 bytes lingering in database!
+        if (status === 'Delivered') {
+          updatePayload.delivery_otp = null;
+        }
+
+        const { data, error } = await supabase.from('orders').update(updatePayload).eq('id', id).select().single();
         if (error) {
           console.error("DB Error (orders updateStatus):", error);
           queueOfflineUpdate(id, status);

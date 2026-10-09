@@ -462,6 +462,11 @@ export const db = {
     add: async (orderData) => {
       const pid = await getUserId();
       if (!pid) return null;
+      
+      // Generate a 4-digit delivery handover OTP for non-pickup orders
+      const isPickup = orderData.address?.is_pickup === true || orderData.address?.order_type === 'PICKUP';
+      const deliveryOtp = isPickup ? null : String(Math.floor(1000 + Math.random() * 9000));
+
       const { data, error } = await supabase.from('orders').insert([{
         profile_id: pid,
         items: orderData.items,
@@ -472,7 +477,8 @@ export const db = {
         delivery_charge: orderData.deliveryCharge,
         small_cart_charge: orderData.smallCartCharge,
         applied_coupon: orderData.appliedCoupon || null,
-        discount_amount: orderData.discountAmount || 0
+        discount_amount: orderData.discountAmount || 0,
+        delivery_otp: deliveryOtp
       }]).select().single();
 
       if (error) {

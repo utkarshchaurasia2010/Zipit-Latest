@@ -31,6 +31,46 @@ const AdminDashboard = ({ initialTab }) => {
   const [showSelectedGridOnly, setShowSelectedGridOnly] = useState(false);
   const [selectedBestsellerCategory, setSelectedBestsellerCategory] = useState(null);
 
+  // Manual Rider Re-assignment State
+  const [reassignModalOrder, setReassignModalOrder] = useState(null);
+  const [activeRidersList, setActiveRidersList] = useState([]);
+  const [isAssigningRider, setIsAssigningRider] = useState(false);
+
+  const openReassignModal = async (order) => {
+    setReassignModalOrder(order);
+    try {
+      const { data: riders } = await supabase
+        .from('access_codes')
+        .select('*')
+        .eq('role', 'rider');
+      setActiveRidersList(riders || []);
+    } catch (e) {
+      console.error('Error fetching riders:', e);
+    }
+  };
+
+  const handleAssignRider = async (orderId, riderCode) => {
+    setIsAssigningRider(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ accepted_by_rider: riderCode })
+        .eq('id', orderId);
+
+      if (error) {
+        showToast('Failed to assign rider: ' + error.message, 'error');
+      } else {
+        showToast(riderCode ? `Assigned to rider ${riderCode}` : 'Order unassigned (re-opened for claims)', 'success');
+        setData(prev => prev.map(o => o.id === orderId ? { ...o, accepted_by_rider: riderCode } : o));
+        setReassignModalOrder(null);
+      }
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setIsAssigningRider(false);
+    }
+  };
+
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -686,7 +726,7 @@ const AdminDashboard = ({ initialTab }) => {
                         alignItems: 'center',
                         gap: '4px'
                       }}>
-                        🛍️ STORE PICKUP (Pack & Keep)
+                        STORE PICKUP
                       </span>
                     ) : (
                       <span style={{ 
@@ -701,7 +741,7 @@ const AdminDashboard = ({ initialTab }) => {
                         alignItems: 'center',
                         gap: '4px'
                       }}>
-                        🛵 HOME DELIVERY
+                        HOME DELIVERY
                       </span>
                     )}
                   </div>
@@ -801,16 +841,16 @@ const AdminDashboard = ({ initialTab }) => {
                         gap: '4px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', fontWeight: 800, color: '#15803d' }}>
-                          <span>🛍️ CUSTOMER WILL PICK UP FROM STORE</span>
+                          <span>CUSTOMER WILL PICK UP FROM STORE</span>
                         </div>
                         <div style={{ fontSize: '12.5px', color: '#166534', fontWeight: 600 }}>
-                          ⏰ Ready Estimate: {o.delivery_address?.pickup_time_estimate || 'Ready in ~1 hour'}
+                          Ready Estimate: {o.delivery_address?.pickup_time_estimate || 'Ready in ~1 hour'}
                         </div>
                         <div style={{ fontSize: '12px', color: '#14532d' }}>
-                          📍 Store Location: {o.delivery_address?.store_location || 'Zipit Hub & Store, Rauza'}
+                          Store Location: {o.delivery_address?.store_location || 'Zipit Hub & Store, Rauza'}
                         </div>
                         <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 700, marginTop: '2px' }}>
-                          ⚡ Pack all items and keep aside on the pickup counter. NO RIDER ASSIGNED.
+                          Pack all items and keep aside on the pickup counter. NO RIDER ASSIGNED.
                         </div>
                       </div>
                     ) : (
@@ -831,13 +871,13 @@ const AdminDashboard = ({ initialTab }) => {
 
                         {o.delivery_address.landmark && (
                           <div style={{ fontSize: '13px', fontWeight: 700, color: '#dc2626' }}>
-                            🚩 Landmark: {o.delivery_address.landmark}
+                            Landmark: {o.delivery_address.landmark}
                           </div>
                         )}
 
                         {o.delivery_address.family_head && (
                           <div style={{ fontSize: '12.5px', color: 'var(--color-text)', fontWeight: 600 }}>
-                            🏠 House / Family: {o.delivery_address.family_head}
+                            House / Family: {o.delivery_address.family_head}
                           </div>
                         )}
 
@@ -880,7 +920,7 @@ const AdminDashboard = ({ initialTab }) => {
                         </span>
                       ) : (
                         <span style={{ background: '#f1f5f9', color: '#64748b', fontWeight: 600, padding: '2px 8px', borderRadius: '6px' }}>
-                          ⏳ Pending Acceptance
+                          Pending Acceptance
                         </span>
                       )}
                     </div>
@@ -888,21 +928,42 @@ const AdminDashboard = ({ initialTab }) => {
                     <span style={{ color: 'var(--color-border)' }}>•</span>
 
                     {/* Rider Status */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', flexWrap: 'wrap' }}>
                       <Bike size={15} color={(o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') ? '#94a3b8' : o.accepted_by_rider ? '#0284c7' : '#94a3b8'} />
                       <span style={{ color: 'var(--color-text-light)' }}>Rider / Delivery:</span>
                       {(o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') ? (
                         <span style={{ background: '#f3f4f6', color: '#6b7280', fontWeight: 700, padding: '2px 8px', borderRadius: '6px' }}>
-                          🚫 No Rider (Store Pickup)
+                          No Rider (Store Pickup)
                         </span>
                       ) : o.accepted_by_rider ? (
                         <span style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', border: '1px solid #bae6fd' }}>
-                          🛵 {o.accepted_by_rider}
+                          {o.accepted_by_rider}
                         </span>
                       ) : (
                         <span style={{ background: '#fef3c7', color: '#b45309', fontWeight: 600, padding: '2px 8px', borderRadius: '6px' }}>
-                          ⏳ Unclaimed (Waiting for Rider)
+                          Unclaimed (Waiting for Rider)
                         </span>
+                      )}
+
+                      {/* Manual Rider Re-assignment trigger button */}
+                      {!(o.delivery_address?.is_pickup || o.delivery_address?.order_type === 'PICKUP') && (
+                        <button
+                          type="button"
+                          onClick={() => openReassignModal(o)}
+                          style={{
+                            background: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            color: '#334155',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            marginLeft: '4px'
+                          }}
+                        >
+                          Re-assign Rider
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1337,6 +1398,152 @@ const AdminDashboard = ({ initialTab }) => {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* MANUAL RIDER RE-ASSIGNMENT MODAL */}
+      {reassignModalOrder && createPortal(
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setReassignModalOrder(null)}
+        >
+          <div 
+            style={{
+              background: 'var(--color-surface, #ffffff)',
+              borderRadius: '16px',
+              maxWidth: '460px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--color-text)' }}>
+                  Re-assign Rider
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: '13px', color: 'var(--color-text-light)' }}>
+                  Order #{reassignModalOrder.id.slice(0, 8).toUpperCase()}
+                </p>
+              </div>
+              <button 
+                onClick={() => setReassignModalOrder(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-light)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ fontSize: '13px', color: 'var(--color-text)' }}>
+              Current Rider: <strong>{reassignModalOrder.accepted_by_rider || 'None (Unclaimed)'}</strong>
+            </div>
+
+            {/* List of active riders from access_codes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
+              {activeRidersList.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-light)', fontSize: '13px' }}>
+                  No registered riders found in access_codes table.
+                </div>
+              ) : (
+                activeRidersList.map(rider => {
+                  const isCurrent = reassignModalOrder.accepted_by_rider === rider.code;
+                  return (
+                    <div 
+                      key={rider.code}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        border: isCurrent ? '1.5px solid #0284c7' : '1px solid var(--color-border)',
+                        background: isCurrent ? 'rgba(2, 132, 199, 0.08)' : 'var(--color-surface-muted, #f8fafc)'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {rider.name || 'Rider'} ({rider.code})
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>
+                          {rider.mobile || 'No Mobile'} {rider.vehicle_no ? `• ${rider.vehicle_no}` : ''}
+                        </div>
+                      </div>
+
+                      <button
+                        disabled={isAssigningRider || isCurrent}
+                        onClick={() => handleAssignRider(reassignModalOrder.id, rider.code)}
+                        style={{
+                          background: isCurrent ? '#94a3b8' : '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: isCurrent ? 'default' : 'pointer'
+                        }}
+                      >
+                        {isCurrent ? 'Assigned' : 'Assign'}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '14px', marginTop: '4px' }}>
+              <button
+                type="button"
+                disabled={isAssigningRider || !reassignModalOrder.accepted_by_rider}
+                onClick={() => handleAssignRider(reassignModalOrder.id, null)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#dc2626',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: !reassignModalOrder.accepted_by_rider ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Unassign (Make Unclaimed)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReassignModalOrder(null)}
+                style={{
+                  background: 'var(--color-surface-muted, #f1f5f9)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>,

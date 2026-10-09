@@ -263,3 +263,39 @@ body[data-theme="dark"] .menu-icon-purple { background: #4c1d9533; }
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ── Responsive Tablet & Desktop Layout for Profile Page ── */
+@media (min-width: 768px) {
+  .profile-page {
+    padding: 0 32px 100px;
+  }
+
+  .menu-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .menu-item {
+    background: var(--color-surface);
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    padding: 16px 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .profile-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 48px 100px;
+  }
+
+  .profile-header {
+    padding: 28px 36px;
+    border-radius: 20px;
+    margin-top: 16px;
+  }
+}

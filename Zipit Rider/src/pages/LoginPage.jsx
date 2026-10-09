@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../services/auth';
+import { Bike, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const [code, setCode] = useState('');
@@ -64,7 +65,7 @@ export default function LoginPage() {
           marginBottom: '14px',
           boxShadow: '0 8px 20px rgba(0,0,0,0.15)'
         }}>
-          <span style={{ fontSize: '32px' }}>🛵</span>
+          <Bike size={32} color="#0f172a" />
         </div>
         <h1 style={{ fontSize: '28px', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>Zipit Rider Portal</h1>
         <p style={{ fontSize: '14px', fontWeight: '700', opacity: 0.85, marginTop: '6px' }}>
@@ -82,8 +83,9 @@ export default function LoginPage() {
         </p>
         
         {error && (
-          <div style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '12px 16px', borderRadius: '12px', marginBottom: '20px', fontSize: '13.5px', fontWeight: '600', lineHeight: '1.4' }}>
-            ⚠️ {error}
+          <div style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '12px 16px', borderRadius: '12px', marginBottom: '20px', fontSize: '13.5px', fontWeight: '600', lineHeight: '1.4', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
           </div>
         )}
 

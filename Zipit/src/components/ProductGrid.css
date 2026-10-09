@@ -287,3 +287,52 @@ body[data-theme="light"] .category-window-grid {
 .wishlist-btn-corner:active {
   transform: scale(0.9);
 }
+
+/* ── Responsive Tablet & Desktop Layout Enhancements ── */
+@media (min-width: 768px) {
+  .product-grid-container {
+    padding: 24px 32px 100px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px 20px;
+  }
+
+  .bestseller-categories-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+  }
+
+  .category-name {
+    font-size: 13px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-grid-container {
+    padding: 32px 48px 80px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 28px 24px;
+  }
+
+  .bestseller-categories-grid {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 18px;
+  }
+
+  .explore-all-btn {
+    max-width: 480px;
+    margin: 28px auto 0;
+    padding: 12px 24px;
+  }
+}
+

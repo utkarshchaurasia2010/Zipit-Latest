@@ -126,7 +126,7 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
         // Verify it was not already claimed
         const { data: checkData } = await supabase.from('orders').select('accepted_by_shopkeeper').eq('id', orderId).single();
         if (checkData?.accepted_by_shopkeeper && checkData.accepted_by_shopkeeper !== userCode) {
-          setClaimError('⚠️ Order was already accepted by another shopkeeper!');
+          setClaimError('Notice: Order was already accepted by another shopkeeper.');
           setTimeout(() => setIncomingOrder(null), 3000);
           setClaiming(false);
           return;
@@ -138,7 +138,7 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
         // Verify it was not already claimed
         const { data: checkData } = await supabase.from('orders').select('accepted_by_rider').eq('id', orderId).single();
         if (checkData?.accepted_by_rider && checkData.accepted_by_rider !== userCode) {
-          setClaimError('⚠️ Order was already claimed by another rider!');
+          setClaimError('Notice: Order was already claimed by another rider.');
           setTimeout(() => setIncomingOrder(null), 3000);
           setClaiming(false);
           return;
@@ -207,7 +207,7 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
             </div>
             {(incomingOrder.delivery_address?.is_pickup || incomingOrder.delivery_address?.order_type === 'PICKUP') && (
               <div style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>
-                🛍️ STORE PICKUP
+                Store Pickup
               </div>
             )}
             <div className="order-amount-badge">

@@ -316,3 +316,158 @@
 .search-product-action .search-qty-control { display: flex; align-items: center; background: #0c831f; color: white; border-radius: 12px; overflow: hidden; }
 .search-product-action .search-qty-control button { background: none; border: none; color: white; font-size: 16px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .search-product-action .search-qty-control span { font-weight: 600; font-size: 14px; width: 20px; text-align: center; }
+
+/* ── Responsive Tablet & Desktop Layout for Search Overlay ── */
+.desktop-search-page-header {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .search-overlay {
+    max-width: 768px;
+  }
+
+  .search-results-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .search-overlay {
+    max-width: 100vw;
+    width: 100vw;
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    animation: none;
+  }
+
+  body[data-theme="dark"] .search-overlay {
+    background-color: #121212;
+  }
+
+  /* Hide mobile search header on desktop */
+  .mobile-only-search-header {
+    display: none !important;
+  }
+
+  /* Show Blinkit-style clean top search bar */
+  .desktop-search-page-header {
+    display: flex;
+    width: 100%;
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px 32px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  }
+
+  body[data-theme="dark"] .desktop-search-page-header {
+    background: #1E1E1E;
+    border-color: #333333;
+  }
+
+  .desktop-search-header-container {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .desktop-search-brand {
+    font-size: 30px;
+    font-weight: 900;
+    cursor: pointer;
+    line-height: 1;
+    user-select: none;
+    letter-spacing: -0.5px;
+  }
+
+  .desktop-search-input-box {
+    flex: 1;
+    max-width: 720px;
+    display: flex;
+    align-items: center;
+    background: #F8FAFC;
+    border: 1.5px solid var(--color-border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    gap: 12px;
+    transition: all 0.2s ease;
+  }
+
+  body[data-theme="dark"] .desktop-search-input-box {
+    background: #27272A;
+    border-color: #3F3F46;
+  }
+
+  .desktop-search-input-box:focus-within {
+    background: #FFFFFF;
+    border-color: #0C831F;
+    box-shadow: 0 4px 16px rgba(12, 131, 31, 0.12);
+  }
+
+  .desktop-search-input-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    outline: none;
+    color: var(--color-text);
+    font-family: inherit;
+  }
+
+  .desktop-clear-query-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 50%;
+  }
+
+  .desktop-clear-query-btn:hover {
+    color: var(--color-text);
+  }
+
+  .desktop-search-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .desktop-search-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-light);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+  }
+
+  .desktop-search-close-btn:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+  }
+
+  .search-body {
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  .search-body .pinnacle-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px 16px;
+  }
+}

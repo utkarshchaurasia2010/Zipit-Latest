@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Phone, Key, Store, Bike, LogOut, ShieldCheck, Mail, FileText, Lock, ArrowLeft } from 'lucide-react';
+import { User, Phone, Key, Store, Bike, LogOut, ShieldCheck, Mail, FileText, Lock, ArrowLeft, MapPin, Check } from 'lucide-react';
 import { auth } from '../services/auth';
 import { supabase } from '../services/db';
 import './ProfilePage.css';
@@ -12,6 +12,10 @@ export default function ProfilePage() {
 
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [shopAddress, setShopAddress] = useState('');
+  const [shopLandmark, setShopLandmark] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     const fetchProfileDetails = async () => {
@@ -25,6 +29,8 @@ export default function ProfilePage() {
           
         if (data) {
           setProfileData(data);
+          setShopAddress(data.shop_address || '');
+          setShopLandmark(data.shop_landmark || '');
         }
       }
       setLoading(false);
@@ -32,6 +38,25 @@ export default function ProfilePage() {
 
     fetchProfileDetails();
   }, [code]);
+
+  const handleSaveShopAddress = async () => {
+    setIsSaving(true);
+    const { error } = await supabase
+      .from('access_codes')
+      .update({
+        shop_address: shopAddress.trim(),
+        shop_landmark: shopLandmark.trim()
+      })
+      .eq('code', code);
+
+    setIsSaving(false);
+    if (!error) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } else {
+      alert('Error updating store address: ' + error.message);
+    }
+  };
 
   const handleLogout = () => {
     auth.logout();
@@ -60,8 +85,8 @@ export default function ProfilePage() {
             <User size={48} color="#0f172a" />
           </div>
           <h2>{loading ? 'Loading Profile...' : displayName}</h2>
-          <span className={`role-badge ${role}`}>
-            {role === 'shopkeeper' ? '🏪 Shopkeeper' : '🛵 Delivery Partner'}
+          <span className={`role-badge ${role}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            {role === 'shopkeeper' ? <><Store size={14} /> Shopkeeper</> : <><Bike size={14} /> Delivery Partner</>}
           </span>
         </div>
 
@@ -94,10 +119,83 @@ export default function ProfilePage() {
           </div>
 
           {role === 'shopkeeper' ? (
-            <div className="form-group readonly">
-              <label><FileText size={16} /> FSSAI Number</label>
-              <input type="text" value={displayFssai} readOnly />
-            </div>
+            <>
+              <div className="form-group readonly">
+                <label><FileText size={16} /> FSSAI Number</label>
+                <input type="text" value={displayFssai} readOnly />
+              </div>
+
+              {/* Editable Dark Store Address */}
+              <div className="form-group" style={{ background: '#f8fafc', padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0' }}>
+                <label style={{ color: '#0f172a', fontWeight: '800' }}>
+                  <MapPin size={16} color="#2563eb" /> Shop / Dark Store Address
+                </label>
+                <textarea
+                  rows={2}
+                  value={shopAddress}
+                  onChange={(e) => setShopAddress(e.target.value)}
+                  placeholder="e.g. Plot No. 12, Main Market, Ghazipur, UP"
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '13.5px',
+                    fontFamily: 'inherit',
+                    resize: 'none',
+                    outline: 'none',
+                    background: '#ffffff'
+                  }}
+                />
+
+                <label style={{ color: '#0f172a', fontWeight: '800', marginTop: '6px' }}>
+                  Nearby Landmark
+                </label>
+                <input
+                  type="text"
+                  value={shopLandmark}
+                  onChange={(e) => setShopLandmark(e.target.value)}
+                  placeholder="e.g. Near City Hospital / Opp. Post Office"
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    background: '#ffffff'
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleSaveShopAddress}
+                  disabled={isSaving}
+                  style={{
+                    marginTop: '10px',
+                    background: saveSuccess ? '#16a34a' : 'var(--color-primary, #F8CB46)',
+                    color: saveSuccess ? '#ffffff' : '#000000',
+                    border: 'none',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontWeight: '800',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {saveSuccess ? (
+                    <>
+                      <Check size={16} /> Saved Successfully
+                    </>
+                  ) : (
+                    isSaving ? 'Saving...' : 'Save Shop Address'
+                  )}
+                </button>
+              </div>
+            </>
           ) : (
             <div className="form-group readonly">
               <label><Bike size={16} /> Vehicle Number</label>

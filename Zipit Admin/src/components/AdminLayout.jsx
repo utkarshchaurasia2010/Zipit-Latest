@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import './AdminLayout.css';
 
@@ -24,6 +24,42 @@ const AdminLayout = ({ profile, setProfile }) => {
 
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('admin_theme') || 'dark');
+
+  // Store Open / Close Master Switch State
+  const [isStoreOpen, setIsStoreOpen] = useState(profile?.store_open ?? true);
+  const [togglingStore, setTogglingStore] = useState(false);
+
+  useEffect(() => {
+    if (profile && typeof profile.store_open === 'boolean') {
+      setIsStoreOpen(profile.store_open);
+    }
+  }, [profile]);
+
+  const handleToggleStoreOpen = async () => {
+    setTogglingStore(true);
+    const nextStatus = !isStoreOpen;
+    setIsStoreOpen(nextStatus);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ store_open: nextStatus })
+        .eq('is_admin', true);
+
+      if (error) {
+        setIsStoreOpen(!nextStatus); // rollback
+        alert('Could not update store status: ' + error.message);
+      } else {
+        if (setProfile && profile) {
+          setProfile({ ...profile, store_open: nextStatus });
+        }
+      }
+    } catch (e) {
+      setIsStoreOpen(!nextStatus);
+      alert('Error: ' + e.message);
+    } finally {
+      setTogglingStore(false);
+    }
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -440,6 +476,38 @@ const AdminLayout = ({ profile, setProfile }) => {
                 <ExternalLink size={13} />
               </a>
             </div>
+
+            {/* Store Open / Close Master Switch */}
+            <button
+              onClick={handleToggleStoreOpen}
+              disabled={togglingStore}
+              title={isStoreOpen ? 'Click to pause store (stop accepting orders)' : 'Click to resume store (accept orders)'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: isStoreOpen ? '1px solid #86efac' : '1px solid #fca5a5',
+                background: isStoreOpen ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                color: isStoreOpen ? '#15803d' : '#b91c1c',
+                fontWeight: 700,
+                fontSize: '12.5px',
+                cursor: togglingStore ? 'not-allowed' : 'pointer',
+                marginRight: '8px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Power size={14} color={isStoreOpen ? '#15803d' : '#b91c1c'} />
+              <span>{isStoreOpen ? 'Store Online' : 'Store Paused'}</span>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isStoreOpen ? '#22c55e' : '#ef4444',
+                display: 'inline-block'
+              }} />
+            </button>
 
             <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}

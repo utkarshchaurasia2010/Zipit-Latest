@@ -779,3 +779,28 @@ body[data-theme="dark"] .map-eta-badge {
 .track-cancel-btn:active {
   background: #FCA5A5;
 }
+
+/* ── Responsive Tablet & Desktop Layout for Track Order Page ── */
+@media (min-width: 768px) {
+  .track-page {
+    padding: 0 24px 100px;
+  }
+
+  .track-orders-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .track-page {
+    padding: 0 40px 100px;
+  }
+
+  .track-orders-list {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 24px;
+  }
+}
+

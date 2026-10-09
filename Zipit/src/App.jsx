@@ -30,9 +30,11 @@ import TermsPage from './components/TermsPage';
 import LegalPoliciesPage from './components/LegalPoliciesPage';
 import ProductDetailsSheet from './components/ProductDetailsSheet';
 import PullToRefresh from './components/PullToRefresh';
+import CartDrawer from './components/CartDrawer';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { DeviceModeProvider, useDeviceMode } from './context/DeviceModeContext';
 import { useToast } from './context/ToastContext';
 import { playNotificationSound, triggerHapticFeedback } from './utils/audio';
 import { db, supabase } from './services/db';
@@ -59,12 +61,14 @@ function AppContent() {
   const location = useLocation();
   const navType = useNavigationType();
   const viewName = location.pathname;
+  const { effectiveIsDesktop } = useDeviceMode();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cart, setCart] = useState([]);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [deliveryTime, setDeliveryTime] = useState(16);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -573,7 +577,13 @@ function AppContent() {
     document.body.style.overflow = '';
     document.body.style.position = '';
     document.body.style.width = '';
-    navigate('/checkout');
+    
+    // On desktop, open the Blinkit-style right side drawer!
+    if (effectiveIsDesktop) {
+      setIsCartDrawerOpen(true);
+    } else {
+      navigate('/checkout');
+    }
   };
 
   const handleRefreshApp = async () => {
@@ -607,6 +617,8 @@ function AppContent() {
               cart={cart}
               userProfile={userProfile}
               setUserProfile={setUserProfile}
+              navigate={navigate}
+              openCart={handleOpenCart}
             />
           )}
           {viewName === '/' && (
@@ -656,6 +668,23 @@ function AppContent() {
         />
       )}
       
+      <CartDrawer 
+        isOpen={isCartDrawerOpen}
+        onClose={() => setIsCartDrawerOpen(false)}
+        cart={cart}
+        updateCartQty={updateCartQty}
+        itemTotal={itemTotal}
+        smallCartCharge={smallCartCharge}
+        deliveryCharge={deliveryCharge}
+        discountAmount={discountAmount}
+        grandTotal={grandTotal}
+        navigate={navigate}
+        onProceedToCheckout={() => {
+          setIsCartDrawerOpen(false);
+          navigate('/checkout');
+        }}
+      />
+
       <AddressModal 
         isOpen={isAddressModalOpen} 
         onClose={() => setIsAddressModalOpen(false)} 
@@ -733,13 +762,15 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <WishlistProvider>
-          <ToastProvider>
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
-          </ToastProvider>
-        </WishlistProvider>
+        <DeviceModeProvider>
+          <WishlistProvider>
+            <ToastProvider>
+              <BrowserRouter>
+                <AppContent />
+              </BrowserRouter>
+            </ToastProvider>
+          </WishlistProvider>
+        </DeviceModeProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

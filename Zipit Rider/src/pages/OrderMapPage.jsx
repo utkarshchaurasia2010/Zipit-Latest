@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, db } from '../services/db';
-import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X } from 'lucide-react';
+import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import SlideToAccept from '../components/SlideToAccept';
@@ -19,13 +19,13 @@ const createSvgIcon = (svgContent, width = 36, height = 36) => {
 
 const storeIcon = createSvgIcon(`
   <div style="background: #0c831f; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff;">
-    <span style="font-size: 18px;">🏪</span>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
   </div>
 `, 34, 34);
 
 const destIcon = createSvgIcon(`
   <div style="background: #ef4444; width: 36px; height: 36px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff;">
-    <div style="transform: rotate(45deg); font-size: 16px;">🏠</div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   </div>
 `, 36, 36);
 
@@ -38,6 +38,10 @@ export default function OrderMapPage() {
   const [order, setOrder] = useState(null);
   const [myLocation, setMyLocation] = useState(storeLocation);
   const [showUpiQr, setShowUpiQr] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [sliderResetKey, setSliderResetKey] = useState(0);
   const [routePolyline, setRoutePolyline] = useState(null);
   const watchIdRef = useRef(null);
   const mapRef = useRef(null);
@@ -107,6 +111,49 @@ export default function OrderMapPage() {
     if (status === 'Delivered') {
       navigate('/');
     }
+  };
+
+  const handleMarkDelivered = async (ord) => {
+    let otp = ord?.delivery_otp;
+    if (!otp && ord?.id) {
+      const { data } = await supabase.from('orders').select('delivery_otp').eq('id', ord.id).single();
+      if (data?.delivery_otp) {
+        otp = data.delivery_otp;
+        setOrder(prev => prev ? { ...prev, delivery_otp: otp } : prev);
+      }
+    }
+
+    if (otp) {
+      setShowOtpModal(true);
+      setEnteredOtp('');
+      setOtpError('');
+    } else {
+      const isPickup = ord?.delivery_address?.is_pickup || ord?.delivery_address?.order_type === 'PICKUP';
+      if (!isPickup) {
+        setShowOtpModal(true);
+        setEnteredOtp('');
+        setOtpError('');
+      } else {
+        handleUpdateStatus('Delivered');
+      }
+    }
+  };
+
+  const handleVerifyOtpAndDeliver = async (e) => {
+    e?.preventDefault();
+    if (!order) return;
+    const expectedOtp = String(order.delivery_otp || '').trim();
+    const cleanEntered = enteredOtp.trim();
+
+    if (cleanEntered !== expectedOtp) {
+      setOtpError('Invalid OTP! Please check with customer.');
+      return;
+    }
+
+    setShowOtpModal(false);
+    setEnteredOtp('');
+    setOtpError('');
+    await handleUpdateStatus('Delivered');
   };
 
   if (!order) {
@@ -300,9 +347,35 @@ export default function OrderMapPage() {
         
         {order.status === 'Out for Delivery' && (
           <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Google Maps Turn-by-Turn External Bike Navigation */}
+            {destLocation[0] && destLocation[1] && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${destLocation[0]},${destLocation[1]}&travelmode=two-wheeler`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  padding: '12px 16px',
+                  borderRadius: '14px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                  border: '1px solid #bfdbfe'
+                }}
+              >
+                Open Turn-by-Turn (Google Maps)
+              </a>
+            )}
+
             <SlideToAccept
-              onAccept={() => handleUpdateStatus('Delivered')}
+              onAccept={() => handleMarkDelivered(order)}
               label="Slide to Mark Delivered"
+              resetTrigger={sliderResetKey}
             />
 
             <button 
@@ -376,7 +449,7 @@ export default function OrderMapPage() {
             </button>
 
             <div style={{ fontSize: '12px', fontWeight: '800', color: '#047857', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              ⚡ Doorstep Payment Collection
+              Doorstep Payment Collection
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '0 0 4px' }}>
               Order #{order.id.slice(0, 6).toUpperCase()}
@@ -407,7 +480,7 @@ export default function OrderMapPage() {
             <button
               onClick={() => {
                 setShowUpiQr(false);
-                handleUpdateStatus('Delivered');
+                handleMarkDelivered(order);
               }}
               style={{
                 width: '100%',
@@ -421,8 +494,137 @@ export default function OrderMapPage() {
                 cursor: 'pointer'
               }}
             >
-              Payment Collected · Mark Delivered
+              Payment Collected · Proceed to Delivery
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Doorstep Handover OTP Verification Modal */}
+      {showOtpModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '26px 22px',
+            width: '100%',
+            maxWidth: '350px',
+            textAlign: 'center',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => {
+                setShowOtpModal(false);
+                setEnteredOtp('');
+                setOtpError('');
+                setSliderResetKey(prev => prev + 1);
+              }}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: '#f1f5f9',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={18} color="#475569" />
+            </button>
+
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <KeyRound size={28} color="#059669" />
+            </div>
+
+            <h3 style={{ fontSize: '19px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px' }}>
+              Customer Handover PIN
+            </h3>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px', lineHeight: 1.4 }}>
+              Ask the customer for the 4-digit PIN shown on their Zipit app tracking screen:
+            </p>
+
+            <form onSubmit={handleVerifyOtpAndDeliver}>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                value={enteredOtp}
+                onChange={(e) => {
+                  setEnteredOtp(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setOtpError('');
+                }}
+                autoFocus
+                style={{
+                  width: '100%',
+                  fontSize: '32px',
+                  fontWeight: '900',
+                  letterSpacing: '12px',
+                  textAlign: 'center',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: otpError ? '2px solid #ef4444' : '2px solid #cbd5e1',
+                  background: '#f8fafc',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace'
+                }}
+              />
+
+              {otpError && (
+                <div style={{ color: '#dc2626', fontSize: '12px', fontWeight: '700', marginTop: '8px' }}>
+                  {otpError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={enteredOtp.length !== 4}
+                style={{
+                  width: '100%',
+                  background: enteredOtp.length === 4 ? '#16a34a' : '#cbd5e1',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  fontWeight: '800',
+                  fontSize: '15px',
+                  cursor: enteredOtp.length === 4 ? 'pointer' : 'not-allowed',
+                  marginTop: '18px',
+                  transition: 'background 0.2s ease'
+                }}
+              >
+                Verify PIN & Complete Delivery
+              </button>
+            </form>
           </div>
         </div>
       )}

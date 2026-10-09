@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, Clock, MapPin, ChevronRight, Tag, X, Check, Trash2, Package, Search, Share2, QrCode, Banknote, CheckCircle, FileText, ShoppingBag, ShoppingCart, Bike, Store, Sparkles } from 'lucide-react';
-import { db } from '../services/db';
+import { db, supabase } from '../services/db';
 import { getCartDeliveryTime, getProductDeliveryTime } from '../utils/time';
 import { triggerConfetti, triggerMoneyConfetti } from '../utils/confetti';
 import { useToast } from '../context/ToastContext';
@@ -124,6 +124,22 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
     setProcessing(true);
     try {
+      // 0. Check store open status set by Admin
+      try {
+        const { data: adminProf } = await supabase
+          .from('profiles')
+          .select('store_open')
+          .eq('is_admin', true)
+          .limit(1)
+          .single();
+
+        if (adminProf && adminProf.store_open === false) {
+          showToast('The store is currently paused and not taking new orders. Please check back shortly!', 'Store Paused');
+          setProcessing(false);
+          return;
+        }
+      } catch (_) {}
+
       // 1. Automatically fetch customer profile for contact phone number
       let customerPhone = (address?.phone || pickupPhone || '').trim();
       if (!customerPhone) {

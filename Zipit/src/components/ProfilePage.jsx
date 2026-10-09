@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, Smartphone } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
+import { useDeviceMode } from '../context/DeviceModeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
 import Toast from './Toast';
 
@@ -15,6 +16,7 @@ const SolidUserIcon = ({ size = 24, color = "currentColor" }) => (
 
 const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   const { theme, toggleTheme } = useTheme();
+  const { isPhoneForced, togglePhoneMode } = useDeviceMode();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(userProfile || { name: 'New User', phone: '', email: '', photo: 'NU' });
   const [saving, setSaving] = useState(false);
@@ -112,7 +114,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
       {!isEditing && (
         <>
         <div className="profile-menu" style={{marginBottom: 16}}>
-          <div className="menu-item" onClick={toggleTheme} style={{borderBottom: 'none'}}>
+          <div className="menu-item" onClick={toggleTheme} style={{borderBottom: '1px solid var(--color-border)'}}>
             <div className="menu-item-left">
               <span style={{fontWeight: 600, color: 'var(--color-text)', fontSize: '15px'}}>Appearance</span>
             </div>
@@ -121,6 +123,35 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
               <div className="fancy-theme-decor fancy-clouds"></div>
               <div className="fancy-toggle-circle"></div>
             </div>
+          </div>
+
+          <div className="menu-item" onClick={togglePhoneMode} style={{borderBottom: 'none'}}>
+            <div className="menu-item-left">
+              <div className="menu-icon-box" style={{ background: '#F0FDF4' }}>
+                <Smartphone size={18} color="#15803D" />
+              </div>
+              <div>
+                <span style={{fontWeight: 600, color: 'var(--color-text)', fontSize: '15px', display: 'block'}}>Display Layout</span>
+                <span style={{fontSize: '11px', color: 'var(--color-text-light)'}}>
+                  {isPhoneForced ? "Phone Layout (Forced)" : "Adaptive / Computer View"}
+                </span>
+              </div>
+            </div>
+            <button 
+              type="button"
+              style={{
+                background: isPhoneForced ? '#0C831F' : 'var(--color-surface-muted)',
+                color: isPhoneForced ? '#FFFFFF' : 'var(--color-text)',
+                border: '1px solid var(--color-border)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              {isPhoneForced ? "Phone" : "Desktop"}
+            </button>
           </div>
         </div>
 

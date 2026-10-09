@@ -108,3 +108,46 @@
   font-size: 11px;
   font-weight: 700;
 }
+
+/* ── Responsive Tablet & Desktop Layout for Hero Section ── */
+@media (min-width: 768px) {
+  .hero-products-container {
+    grid-template-columns: repeat(6, 1fr);
+    padding: 0 32px;
+    gap: 16px;
+  }
+
+  .hero-product-card {
+    height: 90px;
+  }
+
+  .hero-prod-img-container img {
+    height: 50px;
+  }
+
+  .hero-prod-title {
+    font-size: 11px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-products-container {
+    grid-template-columns: repeat(8, 1fr);
+    padding: 0 48px;
+    gap: 20px;
+  }
+
+  .hero-product-card {
+    height: 105px;
+    border-radius: 12px;
+  }
+
+  .hero-prod-img-container img {
+    height: 60px;
+  }
+
+  .hero-prod-title {
+    font-size: 12px;
+  }
+}
+

@@ -60,8 +60,8 @@ export default function ProfilePage() {
             <User size={48} color="#0f172a" />
           </div>
           <h2>{loading ? 'Loading Profile...' : displayName}</h2>
-          <span className={`role-badge ${role}`}>
-            {role === 'shopkeeper' ? '🏪 Shopkeeper' : '🛵 Delivery Partner'}
+          <span className={`role-badge ${role}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            {role === 'shopkeeper' ? <><Store size={14} /> Shopkeeper</> : <><Bike size={14} /> Delivery Partner</>}
           </span>
         </div>
 
