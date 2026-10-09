@@ -138,8 +138,11 @@ const DeliveryMap = ({ status, order }) => {
   return (
     <div className="delivery-map-wrapper" style={{ height: '230px', position: 'relative', overflow: 'hidden', borderRadius: '16px', marginTop: '14px', zIndex: 0, border: '1px solid var(--color-border, #e2e8f0)' }}>
       <MapContainer center={storeLocation} zoom={14} style={{ height: '100%', width: '100%' }} zoomControl={false} attributionControl={false}>
-        {/* High Definition Map Tiles */}
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" maxZoom={19} />
+        <TileLayer 
+          url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+          subdomains={['0', '1', '2', '3']}
+          maxZoom={20} 
+        />
         
         {/* Route Line */}
         <Polyline positions={routePositions} color="#0c831f" weight={5} opacity={0.8} dashArray="6, 8" />

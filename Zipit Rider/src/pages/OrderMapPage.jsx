@@ -177,7 +177,11 @@ export default function OrderMapPage() {
           attributionControl={false}
           ref={mapRef}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" maxZoom={19} />
+          <TileLayer 
+            url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+            subdomains={['0', '1', '2', '3']}
+            maxZoom={20} 
+          />
           
           <Marker position={storeLocation} icon={storeIcon} />
           <Marker position={destLocation} icon={destIcon} />

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Search, Crosshair, Layers, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Search, Crosshair, Layers, Navigation, Loader2, X } from 'lucide-react';
 import './MapPinPicker.css';
 
 const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) => {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const isSelectingSuggestionRef = useRef(false);
 
   const [mapStyle, setMapStyle] = useState('google-streets'); // 'google-streets' or 'google-hybrid'
   const [isDragging, setIsDragging] = useState(false);
@@ -66,6 +67,13 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
 
   // Live Autocomplete Suggestions as user types (Google Places API New REST -> Esri ArcGIS -> Photon)
   useEffect(() => {
+    if (isSelectingSuggestionRef.current) {
+      isSelectingSuggestionRef.current = false;
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     if (!searchQuery || searchQuery.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -671,6 +679,19 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button 
+              type="button" 
+              onClick={() => {
+                setSearchQuery('');
+                setSuggestions([]);
+                setShowSuggestions(false);
+              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', color: '#94a3b8', display: 'flex', alignItems: 'center' }}
+            >
+              <X size={16} />
+            </button>
+          )}
           <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--color-primary)', fontWeight: 700, fontSize: '13px' }}>
             Search
           </button>
@@ -787,7 +808,9 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
               key={idx} 
               className="zipit-map-suggestion-item"
               onClick={() => {
+                isSelectingSuggestionRef.current = true;
                 setSearchQuery(sug.title);
+                setSuggestions([]);
                 setShowSuggestions(false);
                 setCoords({ lat: sug.lat, lng: sug.lng });
                 if (leafletMapRef.current) {
