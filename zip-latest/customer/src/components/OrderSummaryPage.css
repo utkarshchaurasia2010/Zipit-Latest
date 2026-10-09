@@ -1,0 +1,86 @@
+.order-summary-page {
+  flex: 1;
+  background-color: var(--color-background);
+  padding: 0 0 100px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.summary-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.delivery-card, .items-card, .bill-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.delivery-card h4, .items-card h4, .bill-card h4 {
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 12px;
+}
+
+.delivery-card p {
+  font-size: 14px;
+  color: var(--color-text-light);
+  line-height: 1.4;
+}
+
+.summary-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.summary-item-qty {
+  font-weight: 800;
+  color: var(--color-success);
+  width: 24px;
+}
+
+.summary-item-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.summary-item-price {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.bill-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--color-text-light);
+  padding: 6px 0;
+}
+
+.total-row {
+  border-top: 1px dashed var(--color-border);
+  margin-top: 8px;
+  padding-top: 12px;
+  color: var(--color-text);
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.bottom-pay-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 16px;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}

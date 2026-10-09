@@ -1,0 +1,554 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power } from 'lucide-react';
+import { db, supabase } from '../services/db';
+import './AdminLayout.css';
+
+const AdminLayout = ({ profile, setProfile }) => {
+  const navigate = useNavigate();
+  
+  // Mobile Menu Drawer State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({ products: [], categories: [], orders: [] });
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+  
+  // Notification State
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifRef = useRef(null);
+
+  // Theme State
+  const [theme, setTheme] = useState(() => localStorage.getItem('admin_theme') || 'dark');
+
+  // Store Open / Close Master Switch State
+  const [isStoreOpen, setIsStoreOpen] = useState(profile?.store_open ?? true);
+  const [togglingStore, setTogglingStore] = useState(false);
+
+  useEffect(() => {
+    if (profile && typeof profile.store_open === 'boolean') {
+      setIsStoreOpen(profile.store_open);
+    }
+  }, [profile]);
+
+  const handleToggleStoreOpen = async () => {
+    setTogglingStore(true);
+    const nextStatus = !isStoreOpen;
+    setIsStoreOpen(nextStatus);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ store_open: nextStatus })
+        .eq('is_admin', true);
+
+      if (error) {
+        setIsStoreOpen(!nextStatus); // rollback
+        alert('Could not update store status: ' + error.message);
+      } else {
+        if (setProfile && profile) {
+          setProfile({ ...profile, store_open: nextStatus });
+        }
+      }
+    } catch (e) {
+      setIsStoreOpen(!nextStatus);
+      alert('Error: ' + e.message);
+    } finally {
+      setTogglingStore(false);
+    }
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('admin_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) setIsSearchOpen(false);
+      if (notifRef.current && !notifRef.current.contains(event.target)) setShowNotifications(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Real-time Notification & Order Siren Listener
+  useEffect(() => {
+    const fetchInitialRecent = async () => {
+      const recent = await db.orders.getAllAdmin();
+      const top5 = recent.slice(0, 5);
+      setNotifications(top5);
+    };
+    fetchInitialRecent();
+
+    const ordersChannel = supabase.channel('admin-orders-live-siren')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        setNotifications(prev => [payload.new, ...prev].slice(0, 10));
+        setUnreadCount(prev => prev + 1);
+
+        // Native browser notification if granted
+        if (Notification.permission === 'granted') {
+          new Notification('🚨 NEW ORDER RECEIVED!', { body: `Order #${payload.new.id.split('-')[0].toUpperCase()} for ₹${payload.new.total}` });
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload.new.status === 'Cancellation Requested' && payload.old.status !== 'Cancellation Requested') {
+          setNotifications(prev => [payload.new, ...prev].slice(0, 10)); 
+          setUnreadCount(prev => prev + 1);
+          
+          if (Notification.permission === 'granted') {
+            new Notification('Refund Requested!', { body: `Order #${payload.new.id.split('-')[0]} wants to cancel` });
+          }
+        }
+      })
+      .subscribe();
+
+    // Realtime Profile Listener
+    const profileChannel = supabase.channel('admin-profile-sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, async (payload) => {
+        if (payload.new.id === profile?.id || payload.new.is_admin) {
+          const fresh = await db.user.get();
+          if (fresh) setProfile(fresh);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(profileChannel);
+    };
+  }, []);
+
+  // Search Effect
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults({ products: [], categories: [], orders: [] });
+        return;
+      }
+      
+      const q = searchQuery.toLowerCase();
+      
+      const [allProds, allCats, allOrders] = await Promise.all([
+        db.products.getAll(),
+        db.categories.getAll(),
+        db.orders.getAllAdmin()
+      ]);
+      
+      setSearchResults({
+        products: allProds.filter(p => p.name.toLowerCase().includes(q)).slice(0, 5),
+        categories: allCats.filter(c => c.name.toLowerCase().includes(q)).slice(0, 5),
+        orders: allOrders.filter(o => {
+          const idMatch = o.id.toLowerCase().includes(q);
+          const statusMatch = o.status && o.status.toLowerCase().includes(q);
+          const custNameMatch = (o.profiles?.name || o.delivery_address?.name || '').toLowerCase().includes(q);
+          const phoneMatch = (o.profiles?.phone || o.delivery_address?.phone || '').includes(q);
+          const addrMatch = (o.delivery_address?.details || o.delivery_address?.address || '').toLowerCase().includes(q);
+          return idMatch || statusMatch || custNameMatch || phoneMatch || addrMatch;
+        }).slice(0, 5)
+      });
+    };
+    
+    const timeoutId = setTimeout(() => {
+      performSearch();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const handleLogout = async () => {
+    localStorage.removeItem('zipit_admin_logged_in');
+    await supabase.auth.signOut();
+    setProfile(null);
+    navigate('/login');
+  };
+
+  const navItems = [
+    { name: 'Overview', path: '/', icon: <LayoutDashboard size={20} /> },
+    { name: 'Orders', path: '/orders', icon: <ShoppingBag size={20} /> },
+    { name: 'Categories', path: '/categories', icon: <Grid size={20} /> },
+    { name: 'Products', path: '/products', icon: <List size={20} /> },
+    { name: 'Pinnacle Showcase', path: '/grid-products', icon: <Grid size={20} /> },
+    { name: 'Bestsellers', path: '/bestsellers', icon: <Tag size={20} /> },
+    { name: 'Banners', path: '/banners', icon: <LayoutDashboard size={20} /> },
+    { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
+    { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
+    { name: 'Access Codes', path: '/access-codes', icon: <Key size={20} /> },
+  ];
+
+  // Pending Refund Badge State
+  const [pendingRefundCount, setPendingRefundCount] = useState(0);
+
+  useEffect(() => {
+    const fetchRefundCount = async () => {
+      const allOrders = await db.orders.getAllAdmin();
+      const pendingRefunds = allOrders.filter(o => 
+        o.status === 'Refund Requested' || 
+        o.status === 'Cancellation Requested'
+      );
+      setPendingRefundCount(pendingRefunds.length);
+    };
+
+    fetchRefundCount();
+
+    const channel = supabase.channel('refund-badge-listener')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchRefundCount();
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  // Dynamic Branding Logo Listener
+  const [adminLogo, setAdminLogo] = useState(() => localStorage.getItem('zipit_cached_admin_logo') || '/logo_full.png');
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b?.admin_logo) {
+        setAdminLogo(b.admin_logo);
+        localStorage.setItem('zipit_cached_admin_logo', b.admin_logo);
+      }
+    });
+
+    const brandingChannel = supabase.channel('admin-branding-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'id=eq.00000000-0000-0000-0000-000000000001' }, (payload) => {
+        if (payload.new?.address) {
+          try {
+            const data = JSON.parse(payload.new.address);
+            if (data.admin_logo) {
+              setAdminLogo(data.admin_logo);
+              localStorage.setItem('zipit_cached_admin_logo', data.admin_logo);
+            }
+          } catch (_) {}
+        }
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(brandingChannel);
+  }, []);
+
+  return (
+    <div className="admin-layout">
+      {/* Mobile Drawer Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="admin-mobile-backdrop" 
+          onClick={() => setIsMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`admin-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <img src={adminLogo} alt="Zipit Admin" className="sidebar-logo" style={{ objectFit: 'contain', borderRadius: '10px' }} />
+            <button 
+              className="mobile-sidebar-close"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <span className="admin-badge">Admin Workspace</span>
+        </div>
+
+        <nav className="sidebar-nav">
+          <p className="nav-section-title">MAIN MENU</p>
+          {navItems.map(item => (
+            <NavLink 
+              key={item.path}
+              to={item.path} 
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              end={item.path === '/'}
+              style={{ position: 'relative' }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              {item.icon}
+              <span>{item.name}</span>
+              {item.path === '/refunds' && pendingRefundCount > 0 && (
+                <span className="sidebar-refund-badge">
+                  {pendingRefundCount > 9 ? '9+' : pendingRefundCount}
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="admin-user-profile">
+            <div className="admin-avatar">{profile?.name?.charAt(0) || 'A'}</div>
+            <div className="admin-user-info">
+              <h4>{profile?.name || 'Administrator'}</h4>
+              <p>Super Admin</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="sidebar-logout-btn">
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="admin-main">
+        <header className="admin-topbar">
+          <button 
+            className="mobile-menu-toggle" 
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open Navigation Menu"
+          >
+            <Menu size={22} />
+          </button>
+
+          <div className="search-container" ref={searchRef}>
+            <div className={`search-bar ${isSearchOpen && searchQuery ? 'focused' : ''}`}>
+              <Search size={18} className="search-icon" />
+              <input 
+                type="text" 
+                placeholder="Search orders, products, or categories..." 
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => setIsSearchOpen(true)}
+              />
+              {searchQuery && (
+                <X size={16} className="search-clear" onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }} />
+              )}
+            </div>
+            
+            {/* Search Dropdown */}
+            {isSearchOpen && searchQuery && (
+              <div className="search-dropdown">
+                {searchResults.orders.length > 0 && (
+                  <div className="search-group">
+                    <h4>Orders</h4>
+                    {searchResults.orders.map(o => (
+                      <div key={o.id} className="search-result-item" onClick={() => { navigate(`/orders?search=${encodeURIComponent(o.id.split('-')[0])}`); setIsSearchOpen(false); }}>
+                        <ShoppingBag size={14} /> 
+                        <span>
+                          #{o.id.split('-')[0].toUpperCase()} - {(o.profiles?.name || o.delivery_address?.name || 'Customer')} {(o.profiles?.phone || o.delivery_address?.phone ? `(${o.profiles?.phone || o.delivery_address?.phone})` : '')}
+                        </span>
+                        <span className="status-badge" style={{ marginLeft: 'auto' }}>{o.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {searchResults.products.length > 0 && (
+                  <div className="search-group">
+                    <h4>Products</h4>
+                    {searchResults.products.map(p => (
+                      <div key={p.id} className="search-result-item" onClick={() => { navigate(`/products?search=${encodeURIComponent(p.name)}`); setIsSearchOpen(false); }}>
+                        <List size={14} /> {p.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {searchResults.categories.length > 0 && (
+                  <div className="search-group">
+                    <h4>Categories</h4>
+                    {searchResults.categories.map(c => (
+                      <div key={c.id} className="search-result-item" onClick={() => { navigate('/categories'); setIsSearchOpen(false); }}>
+                        <Grid size={14} /> {c.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {searchResults.orders.length === 0 && searchResults.products.length === 0 && searchResults.categories.length === 0 && (
+                  <div className="search-no-results">No results found for "{searchQuery}"</div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="topbar-actions">
+            
+            {/* Google Sheets Cloud Sync Buttons */}
+            <div style={{display: 'flex', gap: '8px', marginRight: '16px', alignItems: 'center'}}>
+              <button 
+                onClick={async (e) => {
+                  const btn = e.currentTarget;
+                  btn.disabled = true;
+                  const originalText = btn.innerText;
+                  btn.innerText = 'Pushing...';
+                  const syncUrl = import.meta.env.VITE_SYNC_SERVER_URL || localStorage.getItem('zipit_sync_url') || 'https://zipit-sync.onrender.com';
+                  const targetEndpoint = `${syncUrl.replace(/\/$/, '')}/sync/to-sheets`;
+                  try {
+                    let res = await fetch(targetEndpoint, { method: 'POST' }).catch(() => null);
+                    if (!res || !res.ok) {
+                      // Fallback to local sync server or alternate path
+                      res = await fetch('http://localhost:4000/sync/to-sheets', { method: 'POST' }).catch(() => null);
+                    }
+                    if (res && res.ok) {
+                      const data = await res.json();
+                      alert(data.message || 'Successfully pushed latest data to Google Sheets!');
+                    } else if (res) {
+                      let errData = await res.json().catch(() => null);
+                      let errMsg = errData?.error || `HTTP ${res.status} Error`;
+                      if (errMsg.includes('Invalid JWT Signature') || errMsg.includes('invalid_grant')) {
+                        alert('Sync Service Key Error: Google service account credentials on Render need single-line formatting. Details: ' + errMsg);
+                      } else {
+                        alert('Could not push to Google Sheets: ' + errMsg);
+                      }
+                    } else {
+                      alert('Could not reach cloud sync service. Please ensure zipit-sync.onrender.com is awake.');
+                    }
+                  } catch (err) {
+                    alert('Sync error: ' + err.message);
+                  } finally {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                  }
+                }}
+                style={{background: '#0c831f', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'}}
+                title="Push all products, orders, profiles to Google Sheets (Cloud: https://zipit-sync.onrender.com)"
+              >
+                Push to Sheets
+              </button>
+              
+              <button 
+                onClick={async (e) => {
+                  const btn = e.currentTarget;
+                  btn.disabled = true;
+                  const originalText = btn.innerText;
+                  btn.innerText = 'Pulling...';
+                  const syncUrl = import.meta.env.VITE_SYNC_SERVER_URL || localStorage.getItem('zipit_sync_url') || 'https://zipit-sync.onrender.com';
+                  const targetEndpoint = `${syncUrl.replace(/\/$/, '')}/sync/from-sheets`;
+                  try {
+                    let res = await fetch(targetEndpoint, { method: 'POST' }).catch(() => null);
+                    if (!res || !res.ok) {
+                      // Fallback to local sync server
+                      res = await fetch('http://localhost:4000/sync/from-sheets', { method: 'POST' }).catch(() => null);
+                    }
+                    if (res && res.ok) {
+                      const data = await res.json();
+                      alert(data.message || 'Successfully pulled latest changes from Google Sheets!');
+                    } else if (res) {
+                      let errData = await res.json().catch(() => null);
+                      let errMsg = errData?.error || `HTTP ${res.status} Error`;
+                      alert('Could not pull from Google Sheets: ' + errMsg);
+                    } else {
+                      alert('Could not reach cloud sync service. Please ensure zipit-sync.onrender.com is awake.');
+                    }
+                  } catch (err) {
+                    alert('Sync error: ' + err.message);
+                  } finally {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                  }
+                }}
+                style={{background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)', padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'}}
+                title="Pull updated product prices/stock from Google Sheets (Cloud: https://zipit-sync.onrender.com)"
+              >
+                Pull from Sheets
+              </button>
+
+              <a
+                href="https://docs.google.com/spreadsheets/d/1nIK_sYkNurKoVkXch9WBuxT_TfLI_-R4s83uxrGL1is/edit"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'var(--color-text-light)',
+                  textDecoration: 'none',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface-muted)'
+                }}
+                title="Open Google Sheet in new tab"
+              >
+                <span>Sheet</span>
+                <ExternalLink size={13} />
+              </a>
+            </div>
+
+            {/* Store Open / Close Master Switch */}
+            <button
+              onClick={handleToggleStoreOpen}
+              disabled={togglingStore}
+              title={isStoreOpen ? 'Click to pause store (stop accepting orders)' : 'Click to resume store (accept orders)'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: isStoreOpen ? '1px solid #86efac' : '1px solid #fca5a5',
+                background: isStoreOpen ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                color: isStoreOpen ? '#15803d' : '#b91c1c',
+                fontWeight: 700,
+                fontSize: '12.5px',
+                cursor: togglingStore ? 'not-allowed' : 'pointer',
+                marginRight: '8px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Power size={14} color={isStoreOpen ? '#15803d' : '#b91c1c'} />
+              <span>{isStoreOpen ? 'Store Online' : 'Store Paused'}</span>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isStoreOpen ? '#22c55e' : '#ef4444',
+                display: 'inline-block'
+              }} />
+            </button>
+
+            <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+            <div className="notification-wrapper" ref={notifRef}>
+              <button className="icon-btn" onClick={() => { setShowNotifications(!showNotifications); setUnreadCount(0); }}>
+                <Bell size={20} />
+                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              </button>
+              
+              {showNotifications && (
+                <div className="notification-dropdown">
+                  <div className="notif-header">
+                    <h4>Notifications</h4>
+                  </div>
+                  <div className="notif-list">
+                    {notifications.length > 0 ? notifications.map(notif => (
+                      <div key={notif.id} className="notif-item" onClick={() => navigate('/orders')}>
+                        <div className="notif-icon"><ShoppingBag size={16} color="#027A48" /></div>
+                        <div className="notif-content">
+                          <p><strong>New Order Received!</strong></p>
+                          <span>Order #{notif.id.split('-')[0]} for ₹{notif.total_amount}</span>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="notif-empty">No recent notifications.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <button className="icon-btn" onClick={() => navigate('/settings')}><Settings size={20} /></button>
+          </div>
+        </header>
+        
+        <div className="admin-content-scroll">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default AdminLayout;

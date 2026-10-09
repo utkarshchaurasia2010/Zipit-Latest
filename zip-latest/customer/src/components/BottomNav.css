@@ -1,0 +1,96 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateZ(0);
+  width: calc(100% - 48px);
+  max-width: 400px;
+  height: 68px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border-radius: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 
+    0 20px 48px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 1.5px rgba(255, 255, 255, 1),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 50;
+  transition: transform 0.3s ease-in-out, background 0.3s, box-shadow 0.3s;
+}
+
+.bottom-nav.hidden {
+  transform: translate(-50%, calc(100% + 40px)) translateZ(0);
+}
+
+.nav-item {
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.nav-item.active {
+  color: #0f172a;
+  animation: navPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.5) forwards;
+}
+
+body[data-theme="dark"] .bottom-nav {
+  background: rgba(24, 24, 27, 0.94);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 
+    0 20px 48px rgba(0, 0, 0, 0.7),
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5);
+}
+
+body[data-theme="dark"] .nav-item {
+  color: #94a3b8;
+}
+
+body[data-theme="dark"] .nav-item.active {
+  color: #ffffff;
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+  transition: all 0.2s ease;
+}
+
+.nav-item.active .nav-label {
+  font-weight: 700;
+}
+
+@keyframes navPop {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-3px) scale(1.15); }
+  70% { transform: translateY(1px) scale(0.95); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.nav-item:active {
+  transform: scale(0.88) translateY(2px);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Hide Mobile Floating Nav on Desktop & Large Tablets ── */
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none !important;
+  }
+}
+

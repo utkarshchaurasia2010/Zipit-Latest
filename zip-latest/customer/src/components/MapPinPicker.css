@@ -1,0 +1,393 @@
+.zipit-map-picker-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(14px);
+}
+
+.zipit-map-topbar {
+  padding: 12px 16px;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.zipit-map-searchform {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.zipit-map-searchform:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.zipit-map-searchinput {
+  border: none;
+  background: transparent;
+  width: 100%;
+  flex: 1;
+  outline: none;
+  font-size: 13.5px;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.zipit-map-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 340px;
+  background-color: #0f172a;
+}
+
+.zipit-map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Premium Floating Map Style Toggle Button (Top Right) */
+.zipit-map-style-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFF;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.zipit-map-style-toggle:hover {
+  background: var(--color-primary);
+  color: #FFF;
+  border-color: var(--color-primary);
+  transform: scale(1.03);
+}
+
+/* North Up Compass Pill (Top Left) */
+.zipit-map-north-pill {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 13px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFF;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.zipit-map-north-pill:hover {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: #EF4444;
+  transform: scale(1.03);
+}
+
+/* Blinkit & Zepto Fixed Center Delivery Pin Overlay */
+.zipit-center-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.zipit-center-pin.dragging {
+  transform: translate(-50%, -125%);
+}
+
+.zipit-pin-tooltip {
+  background: #0f172a;
+  color: #FFF;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: opacity 0.2s ease;
+}
+
+.zipit-center-pin.dragging .zipit-pin-tooltip {
+  opacity: 0.7;
+}
+
+.zipit-pin-icon-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.zipit-pin-dot-shadow {
+  width: 14px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  position: absolute;
+  bottom: -4px;
+  filter: blur(2px);
+  transition: all 0.2s ease;
+}
+
+.zipit-center-pin.dragging .zipit-pin-dot-shadow {
+  transform: scale(0.6);
+  opacity: 0.3;
+}
+
+/* Use my current location Button (Bottom Right) */
+.zipit-map-gps-pill {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+.zipit-map-gps-pill:hover {
+  background: var(--color-primary);
+  color: #FFF;
+  transform: scale(1.04);
+}
+
+.zipit-map-footer {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--color-surface);
+}
+
+.zipit-map-footer-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.zipit-map-footer-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.zipit-map-coords-text {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--color-text-light);
+}
+
+.zipit-map-deliver-card {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zipit-map-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.zipit-map-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.zipit-map-card-titlebox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zipit-map-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.zipit-map-card-subtitle {
+  font-size: 13px;
+  color: var(--color-text-light);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.zipit-map-confirm-btn {
+  width: 100%;
+  padding: 15px 24px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0c831f 0%, #10b981 100%);
+  color: #FFF;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 20px rgba(12, 131, 31, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.zipit-map-confirm-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(12, 131, 31, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.zipit-map-confirm-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@keyframes zipitSpin {
+  to { transform: rotate(360deg); }
+}
+
+.zipit-spin-icon {
+  animation: zipitSpin 1s linear infinite;
+}
+
+/* Autocomplete Suggestions Dropdown */
+.zipit-map-suggestions-dropdown {
+  position: absolute;
+  top: 66px;
+  left: 20px;
+  right: 20px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  z-index: 99999;
+  backdrop-filter: blur(16px);
+  padding: 6px 0;
+}
+
+.zipit-map-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s ease;
+}
+
+.zipit-map-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.zipit-map-suggestion-item:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.zipit-sug-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.zipit-sug-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.zipit-sug-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zipit-sug-subtitle {
+  font-size: 11.5px;
+  color: var(--color-text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

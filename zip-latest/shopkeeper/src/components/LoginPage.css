@@ -1,0 +1,136 @@
+.admin-login-wrapper {
+  flex: 1;
+  background-color: #F9FAFB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.admin-login-card {
+  background: white;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo-box {
+  margin-bottom: 24px;
+}
+
+.login-logo-container {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  display: flex;
+}
+
+.login-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #101828;
+  margin: 0 0 8px 0;
+}
+
+.sub-title {
+  font-size: 14px;
+  color: #667085;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modern-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.email-prefix {
+  position: absolute;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-input-group input {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  border: 1px solid #D0D5DD;
+  border-radius: 8px;
+  background: white;
+  font-size: 15px;
+  color: #101828;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.modern-input-group input:focus {
+  border-color: #F8CB46;
+  box-shadow: 0 0 0 4px rgba(248, 203, 70, 0.15);
+}
+
+.modern-input-group input:disabled {
+  background: #F9FAFB;
+  color: #98A2B3;
+}
+
+.modern-continue-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #F8CB46;
+  color: #101828;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 8px;
+}
+
+.modern-continue-btn:hover:not(:disabled) {
+  background-color: #E5B834;
+}
+
+.modern-continue-btn:disabled {
+  background-color: #F2F4F7;
+  color: #98A2B3;
+  cursor: not-allowed;
+}
+
+.change-email-btn {
+  background: transparent;
+  border: none;
+  color: #F8CB46;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+.change-email-btn:hover {
+  text-decoration: underline;
+}
