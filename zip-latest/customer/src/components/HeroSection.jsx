@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../services/db';
+import { db, supabase } from '../services/db';
 import HeroCarousel from './HeroCarousel';
 import './HeroSection.css';
 
@@ -40,6 +40,20 @@ const HeroSection = ({ onImageChange, cart, updateCartQty, navigate }) => {
       setCarouselProducts(specials);
     };
     fetchBannersAndProducts();
+
+    // Realtime subscription for banners (products table rows with ---TAG:BANNER---)
+    const channel = supabase.channel('realtime:hero_banners')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        // If a banner was added/updated/deleted, immediately re-fetch banners
+        if (payload?.new?.name?.includes?.('---TAG:BANNER---') || payload?.old?.name?.includes?.('---TAG:BANNER---')) {
+          fetchBannersAndProducts();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [onImageChange]);
 
   const handleBannerClick = (banner) => {
