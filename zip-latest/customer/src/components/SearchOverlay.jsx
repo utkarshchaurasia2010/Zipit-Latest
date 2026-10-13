@@ -58,44 +58,131 @@ const fuzzyMatch = (productName, query) => {
   });
 };
 
-// --- Component ---
+// --- Hindi / Hinglish Transliteration & Vocabulary Dictionary ---
+const HINDI_TRANSLITERATION_MAP = {
+  // Common grocery nouns (Devanagari -> English search term)
+  'आलू': 'potato aloo',
+  'आलु': 'potato aloo',
+  'aaloo': 'potato aloo',
+  'aalu': 'potato aloo',
+  'प्याज': 'onion pyaaz',
+  'प्यास': 'onion pyaaz',
+  'pyaaz': 'onion pyaaz',
+  'pyaz': 'onion pyaaz',
+  'टमाटर': 'tomato',
+  'tamatar': 'tomato',
+  'मिर्च': 'chilli mirch',
+  'हरी मिर्च': 'chilli mirch',
+  'mirch': 'chilli mirch',
+  'धनिया': 'corriander dhaniya',
+  'dhaniya': 'corriander dhaniya',
+  'दूध': 'milk',
+  'doodh': 'milk',
+  'दही': 'curd',
+  'dahi': 'curd',
+  'मक्खन': 'butter',
+  'ब्रेड': 'bread',
+  'अंडा': 'egg',
+  'अंडे': 'egg',
+  'अण्ड': 'egg',
+  'ande': 'egg',
+  'अट्ठा': 'atta',
+  'आटा': 'atta',
+  'chawal': 'rice',
+  'चावल': 'rice',
+  'दाल': 'dal',
+  'daal': 'dal',
+  'तेल': 'oil',
+  'कुर्की': 'kurkure',
+  'कुरकुरे': 'kurkure',
+  'चिप्स': 'chips',
+  'बिस्कुट': 'biscuits',
+  'बिस्किट': 'biscuits',
+  'चॉकलेट': 'chocolate',
+  'चाय': 'tea',
+  'कॉफी': 'coffee',
+  'नमक': 'salt',
+  'चीनी': 'sugar',
+  'मैगी': 'maggi',
+  'साबुन': 'soap',
+  'सर्फ': 'surf',
+
+  // Quantity numbers
+  'एक': 1, 'do': 2, 'दो': 2, 'teen': 3, 'तीन': 3, 'char': 4, 'चार': 4, 'panch': 5, 'पांच': 5, 'paanch': 5,
+  'आधा': 1, // half
+
+  // Metric units (ignore in name matching)
+  'किलो': '', 'kilo': '', 'kg': '', 'ग्राम': '', 'gram': '', 'gm': '', 'लीटर': '', 'litre': '', 'ltr': '',
+  'पैकेट': '', 'packet': '', 'pack': '', 'डिब्बा': '',
+
+  // Action / intent phrases
+  'ऐड': 'add', 'एड': 'add', 'डाल': 'add', 'डालो': 'add', 'दीजिए': 'add', 'दे': 'add', 'दो': 2,
+  'कर दो': 'add', 'करदो': 'add', 'कर दीजिए': 'add', 'रख दो': 'add', 'chahiye': 'add', 'चाहिए': 'add',
+  'mangwa do': 'add', 'मंगवा दो': 'add', 'भेज दो': 'add'
+};
 
 // Number word mapping for Hindi/English quantities
 const parseQuantityWord = (word) => {
+  const clean = word.toLowerCase().trim();
   const map = {
-    '1': 1, 'one': 1, 'ek': 1, 'aik': 1,
-    '2': 2, 'two': 2, 'do': 2,
-    '3': 3, 'three': 3, 'teen': 3, 'tin': 3,
-    '4': 4, 'four': 4, 'char': 4, 'chaar': 4,
-    '5': 5, 'five': 5, 'paanch': 5, 'panch': 5
+    '1': 1, 'one': 1, 'ek': 1, 'aik': 1, 'एक': 1,
+    '2': 2, 'two': 2, 'do': 2, 'दो': 2,
+    '3': 3, 'three': 3, 'teen': 3, 'tin': 3, 'तीन': 3,
+    '4': 4, 'four': 4, 'char': 4, 'chaar': 4, 'चार': 4,
+    '5': 5, 'five': 5, 'paanch': 5, 'panch': 5, 'पांच': 5
   };
-  return map[word.toLowerCase()] || 1;
+  return map[clean] || 1;
 };
 
 // Hindi/Hinglish conversational multi-item parser
 const parseNaturalLanguageCartCommand = (text) => {
-  let cleaned = text.toLowerCase().trim();
-  // Check if speech expresses an "add" intent
-  const hasAddIntent = /\b(add|daal|daalo|karo|bhej|bhejo|chahiye|mangwao|pack|packet|kg|litre)\b/i.test(cleaned);
-  
-  // Remove command filler words
-  cleaned = cleaned.replace(/\b(add karo|add kar do|add kar|daal do|daalo|le aao|lao|chahiye|pack|packet|packets|karo|please|kripya)\b/gi, '').trim();
+  let raw = text.toLowerCase().trim();
 
-  // Split multiple items separated by 'aur', 'and', 'or', commas
-  const segments = cleaned.split(/\b(aur|and|,)\b/gi).map(s => s.trim()).filter(s => s && s !== 'aur' && s !== 'and' && s !== ',');
+  // Normalize Hindi / Hinglish intent words (Devanagari characters are non-ASCII so \b cannot be used directly)
+  const hasAddIntent = /(add|daal|daalo|karo|kardo|bhej|bhejo|chahiye|mangwao|pack|packet|kg|kilo|litre|ऐड|एड|डाल|डालो|करदो|कर दो|चाहिए|मंगवा|भेज)/i.test(raw);
+
+  // Normalize Devanagari numerals and common conjunctions
+  let normalized = raw
+    .replace(/aur/gi, ' aur ')
+    .replace(/और/g, ' aur ')
+    .replace(/तथा/g, ' aur ')
+    .replace(/एवं/g, ' aur ')
+    .replace(/and/gi, ' aur ')
+    .replace(/,/g, ' aur ');
+
+  // Split multiple items separated by conjunctions
+  const segments = normalized.split(/\s+aur\s+/i).map(s => s.trim()).filter(Boolean);
 
   const items = [];
   for (const seg of segments) {
-    const tokens = seg.split(/\s+/).filter(Boolean);
+    // Strip command phrases in both English and Devanagari
+    let cleanSeg = seg.replace(/(add karo|add kar do|add kardo|add kar|daal do|daaldo|daalo|le aao|lao|chahiye|karo|please|kripya|ऐड कर दो|ऐड करदो|डाल दो|डालदो|कर दो|करदो|चाहिए|लाओ)/gi, '').trim();
+
+    const tokens = cleanSeg.split(/\s+/).filter(Boolean);
     if (tokens.length === 0) continue;
 
     let qty = 1;
     let queryWords = [];
 
     for (const token of tokens) {
+      // Check if it's a number/quantity
       const parsedQty = parseQuantityWord(token);
-      if (parsedQty > 1 || (tokens.length > 1 && ['1','ek','one'].includes(token))) {
+      if (parsedQty > 1 || (tokens.length > 1 && ['1','ek','one','एक'].includes(token))) {
         qty = parsedQty;
+        continue;
+      }
+
+      // Check if token is a metric unit to discard (kg, kilo, packet, etc.)
+      if (['kg', 'kilo', 'किलो', 'gram', 'gm', 'ग्राम', 'litre', 'ltr', 'लीटर', 'pack', 'packet', 'पैकेट', 'डिब्बा'].includes(token.toLowerCase())) {
+        continue;
+      }
+
+      // Check if word maps to English product search keyword (e.g. आलू -> potato aloo)
+      const mapped = HINDI_TRANSLITERATION_MAP[token] || HINDI_TRANSLITERATION_MAP[token.toLowerCase()];
+      if (mapped !== undefined) {
+        if (mapped !== 'add' && mapped !== '') {
+          queryWords.push(mapped);
+        }
       } else {
         queryWords.push(token);
       }
@@ -103,7 +190,7 @@ const parseNaturalLanguageCartCommand = (text) => {
 
     const itemName = queryWords.join(' ').trim();
     if (itemName) {
-      items.push({ name: itemName, qty, hasAddIntent });
+      items.push({ name: itemName, original: cleanSeg, qty, hasAddIntent });
     }
   }
 
@@ -190,25 +277,40 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
       const addedNames = [];
 
       for (const itemCmd of parsed.items) {
-        // Find best match in database
-        const match = allProds.find(p => fuzzyMatch(p.name, itemCmd.name)) ||
-                      allProds.find(p => p.name.toLowerCase().includes(itemCmd.name.toLowerCase()));
+        const queryTokens = itemCmd.name.toLowerCase().split(/\s+/).filter(Boolean);
+
+        // Find best match in catalog:
+        // 1. Direct contains match
+        // 2. Token match (e.g. potato or aloo matches "Potato Aloo")
+        // 3. Fuzzy match
+        const match = allProds.find(p => {
+          const pLower = p.name.toLowerCase();
+          return pLower.includes(itemCmd.name.toLowerCase());
+        }) || allProds.find(p => {
+          const pLower = p.name.toLowerCase();
+          return queryTokens.some(tok => tok.length >= 3 && pLower.includes(tok));
+        }) || allProds.find(p => fuzzyMatch(p.name, itemCmd.name));
         
         if (match && !match.is_out_of_stock && match.stock_count !== 0) {
           updateCartQty(match, itemCmd.qty);
-          addedNames.push(`${itemCmd.qty}x ${match.name}`);
+          addedNames.push(`${itemCmd.qty}x ${match.name.split('---')[0].trim()}`);
         }
       }
 
       if (addedNames.length > 0) {
-        showToast(`🛒 Added to Cart: ${addedNames.join(', ')}`, 'Success');
+        showToast(`Added to Cart: ${addedNames.join(', ')}`, 'Success');
         setQuery(parsed.items.map(i => i.name).join(' '));
         return;
       }
     }
 
-    // Default: set query for regular search
-    setQuery(transcriptText);
+    // Default: If not an explicit add command, convert Devanagari query to transliterated English keywords for catalog search
+    const transliteratedQuery = transcriptText.split(/\s+/).map(w => {
+      const mapped = HINDI_TRANSLITERATION_MAP[w] || HINDI_TRANSLITERATION_MAP[w.toLowerCase()];
+      return mapped !== undefined && mapped !== '' && mapped !== 'add' ? mapped : w;
+    }).join(' ');
+
+    setQuery(transliteratedQuery);
   };
 
   const startVoiceSearch = () => {
