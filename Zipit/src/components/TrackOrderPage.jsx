@@ -93,16 +93,18 @@ const DeliveryMap = ({ status, order }) => {
   const [animatedPos, setAnimatedPos] = useState(storeLocation);
 
   useEffect(() => {
-    if (!isOnTheWay) {
+    if (!isOnTheWay && status !== 'Preparing') {
       setAnimatedPos(storeLocation);
       return;
     }
     
+    // 1. If Rider has reported real GPS coordinates via phone geolocation
     if (order.delivery_lat && order.delivery_lng) {
       setAnimatedPos([Number(order.delivery_lat), Number(order.delivery_lng)]);
-      return; // use real GPS from delivery partner
+      return;
     }
     
+    // 2. Smooth bezier simulated animation only while waiting for initial rider GPS fix
     let startTime = Date.now();
     const duration = 16000; // 16 seconds loop
     let animationFrame;
@@ -133,7 +135,7 @@ const DeliveryMap = ({ status, order }) => {
     
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [isOnTheWay, storeLocation[0], storeLocation[1], destLocation[0], destLocation[1]]);
+  }, [isOnTheWay, status, order.delivery_lat, order.delivery_lng, storeLocation[0], storeLocation[1], destLocation[0], destLocation[1]]);
 
   return (
     <div className="delivery-map-wrapper" style={{ height: '230px', position: 'relative', overflow: 'hidden', borderRadius: '16px', marginTop: '14px', zIndex: 0, border: '1px solid var(--color-border, #e2e8f0)' }}>

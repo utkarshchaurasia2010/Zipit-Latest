@@ -55,6 +55,39 @@ export default function DashboardPage() {
     }
   };
 
+  // Real-time GPS location beacon when Rider is marked 'Online'
+  useEffect(() => {
+    let watchId = null;
+    let lastPing = 0;
+
+    if (isOnline && 'geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const now = Date.now();
+          // Update rider_status GPS every 5 seconds while online
+          if (now - lastPing >= 5000) {
+            lastPing = now;
+            supabase.from('rider_status').upsert({
+              rider_code: riderCode,
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              is_online: true,
+              last_ping: new Date().toISOString()
+            }, { onConflict: 'rider_code' }).then();
+          }
+        },
+        (err) => console.warn('Rider beacon GPS error:', err),
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+      );
+    }
+
+    return () => {
+      if (watchId !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [isOnline, riderCode]);
+
   useEffect(() => {
     fetchOrders();
     const channel = supabase.channel('partner-orders')

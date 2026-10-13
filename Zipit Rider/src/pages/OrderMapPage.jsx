@@ -49,18 +49,38 @@ export default function OrderMapPage() {
   useEffect(() => {
     fetchOrder();
 
+    const lastReportTimeRef = { current: 0 };
+    const riderCode = localStorage.getItem('zipit_sales_code') || 'RIDER';
+
     if ('geolocation' in navigator) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           setMyLocation([lat, lng]);
-          if (id) {
-            db.orders.updateLocation(id, lat, lng);
+
+          const now = Date.now();
+          // Throttle network writes to once every 3 seconds to preserve battery & avoid flooding DB
+          if (now - lastReportTimeRef.current >= 3000) {
+            lastReportTimeRef.current = now;
+
+            // 1. Update order location for customer live tracking map
+            if (id) {
+              db.orders.updateLocation(id, lat, lng);
+            }
+
+            // 2. Update rider_status table for admin fleet tracking
+            supabase.from('rider_status').upsert({
+              rider_code: riderCode,
+              lat: lat,
+              lng: lng,
+              is_online: true,
+              last_ping: new Date().toISOString()
+            }, { onConflict: 'rider_code' }).then();
           }
         },
         (err) => console.warn('Geolocation Error:', err),
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
       );
     }
 
