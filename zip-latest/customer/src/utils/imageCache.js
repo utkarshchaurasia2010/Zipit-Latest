@@ -9,41 +9,8 @@ const memoryLoaded = new Set();
  * @param {string[]} urls
  */
 export const preloadImages = async (urls) => {
-  if (!urls || !Array.isArray(urls)) return;
-  const validUrls = [...new Set(urls.filter(u => u && typeof u === 'string' && u.startsWith('http') && !u.includes('none.com')))];
-
-  // Try modern CacheStorage API first for 100% offline & zero-latency persistence
-  let cache = null;
-  if ('caches' in window) {
-    try {
-      cache = await caches.open(CACHE_NAME);
-    } catch (_) {}
-  }
-
-  validUrls.forEach(url => {
-    if (memoryLoaded.has(url)) return;
-    memoryLoaded.add(url);
-
-    // 1. In-browser Image object prefetch (populates browser memory cache)
-    const img = new Image();
-    img.decoding = 'async';
-    img.src = url;
-
-    // 2. CacheStorage prefetch if not already stored
-    if (cache) {
-      cache.match(url).then(cachedResp => {
-        if (!cachedResp) {
-          fetch(url, { mode: 'cors', credentials: 'omit' })
-            .then(resp => {
-              if (resp.ok) {
-                cache.put(url, resp);
-              }
-            })
-            .catch(() => {});
-        }
-      }).catch(() => {});
-    }
-  });
+  // Respect user bandwidth & network payloads: let browser native loading="lazy" load images as scrolled
+  return;
 };
 
 /**

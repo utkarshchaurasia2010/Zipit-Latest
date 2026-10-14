@@ -1,35 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams, useNavigationType } from 'react-router-dom';
-import LoginPage from './components/LoginPage';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import CategoriesPage from './components/CategoriesPage';
-import PlacedOrdersPage from './components/PlacedOrdersPage';
-import ProfilePage from './components/ProfilePage';
-import SavedAddressesPage from './components/SavedAddressesPage';
-import PaymentMethodsPage from './components/PaymentMethodsPage';
-import ProductListPage from './components/ProductListPage';
-import AllProductsPage from './components/AllProductsPage';
-import PaymentPage from './components/PaymentPage';
 import CartBar from './components/CartBar';
 import BottomNav from './components/BottomNav';
-import HeroSection from './components/HeroSection';
-import CheckoutPage from './components/CheckoutPage';
-import AddressModal from './components/AddressModal';
-import SearchOverlay from './components/SearchOverlay';
-import OnboardingModal from './components/OnboardingModal';
-import OfflineBanner from './components/OfflineBanner';
-import UpdatePrompt from './components/UpdatePrompt';
 import SkeletonLoader from './components/SkeletonLoader';
 import SplashScreen from './components/SplashScreen';
-import WishlistPage from './components/WishlistPage';
-import TrackOrderPage from './components/TrackOrderPage';
-import SubstituteSelectionPage from './components/SubstituteSelectionPage';
-import PastOrdersPage from './components/PastOrdersPage';
-import TermsPage from './components/TermsPage';
-import LegalPoliciesPage from './components/LegalPoliciesPage';
-import ProductDetailsSheet from './components/ProductDetailsSheet';
 import PullToRefresh from './components/PullToRefresh';
+
+// Code-split secondary route components to drastically reduce initial JS payload
+const LoginPage = React.lazy(() => import('./components/LoginPage'));
+const PlacedOrdersPage = React.lazy(() => import('./components/PlacedOrdersPage'));
+const ProfilePage = React.lazy(() => import('./components/ProfilePage'));
+const SavedAddressesPage = React.lazy(() => import('./components/SavedAddressesPage'));
+const PaymentMethodsPage = React.lazy(() => import('./components/PaymentMethodsPage'));
+const ProductListPage = React.lazy(() => import('./components/ProductListPage'));
+const AllProductsPage = React.lazy(() => import('./components/AllProductsPage'));
+const PaymentPage = React.lazy(() => import('./components/PaymentPage'));
+const CheckoutPage = React.lazy(() => import('./components/CheckoutPage'));
+const AddressModal = React.lazy(() => import('./components/AddressModal'));
+const SearchOverlay = React.lazy(() => import('./components/SearchOverlay'));
+const WishlistPage = React.lazy(() => import('./components/WishlistPage'));
+const TrackOrderPage = React.lazy(() => import('./components/TrackOrderPage'));
+const SubstituteSelectionPage = React.lazy(() => import('./components/SubstituteSelectionPage'));
+const PastOrdersPage = React.lazy(() => import('./components/PastOrdersPage'));
+const LegalPoliciesPage = React.lazy(() => import('./components/LegalPoliciesPage'));
+const ProductDetailsSheet = React.lazy(() => import('./components/ProductDetailsSheet'));
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -393,37 +390,6 @@ function AppContent() {
       } finally {
         if (!silent) setIsLoading(false);
       }
-
-      if (!silent) {
-        setTimeout(async () => {
-          try {
-            const allProducts = await db.products.getAll();
-            const allCategories = await db.categories.getAll();
-            
-            const urls = [
-              ...allCategories.map(c => c.image_url),
-              ...allProducts.slice(0, 15).map(p => p.image_url)
-            ].filter(Boolean);
-            
-            const uniqueUrls = [...new Set(urls)];
-            
-            // Preload via Image object to ensure browser cache gets them
-            uniqueUrls.forEach(url => {
-              const img = new Image();
-              img.src = url;
-            });
-            
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.controller.postMessage({
-                type: 'PRECACHE_IMAGES',
-                urls: uniqueUrls
-              });
-            }
-          } catch (err) {
-            console.error('Preload error:', err);
-          }
-        }, 1000);
-      }
     };
     
     initDB();
@@ -556,7 +522,11 @@ function AppContent() {
   }
 
   if (!isLoggedIn) {
-    return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+    return (
+      <React.Suspense fallback={<SplashScreen />}>
+        <LoginPage onLogin={() => setIsLoggedIn(true)} />
+      </React.Suspense>
+    );
   }
 
   const showBottomNav = ['/', '/categories', '/track'].includes(viewName);
@@ -616,27 +586,29 @@ function AppContent() {
           )}
           
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
-            <Routes>
-              <Route path="/" element={<ProductGrid cart={cart} updateCartQty={updateCartQty} navigate={navigate} onProductClick={openProductSheet} />} />
-              <Route path="/categories" element={<CategoriesPage navigate={navigate} />} />
-              <Route path="/orders" element={<PlacedOrdersPage navigate={navigate} />} />
-              <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
-              <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} />} />
-              <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
-              <Route path="/terms" element={<LegalPoliciesPage navigate={navigate} />} />
-              <Route path="/privacy" element={<LegalPoliciesPage navigate={navigate} />} />
-              <Route path="/refund" element={<LegalPoliciesPage navigate={navigate} />} />
-              <Route path="/legal" element={<LegalPoliciesPage navigate={navigate} />} />
-              <Route path="/category/:categoryId" element={<ProductListPageWrapper navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
-              <Route path="/all-products" element={<AllProductsPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
-              <Route path="/wishlist" element={<WishlistPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} />} />
-              <Route path="/track" element={<TrackOrderPage navigate={navigate} />} />
-              <Route path="/substitute-selection" element={<SubstituteSelectionPage navigate={navigate} />} />
-              <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
-              <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
-              <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+            <React.Suspense fallback={<SkeletonLoader />}>
+              <Routes>
+                <Route path="/" element={<ProductGrid cart={cart} updateCartQty={updateCartQty} navigate={navigate} onProductClick={openProductSheet} />} />
+                <Route path="/categories" element={<CategoriesPage navigate={navigate} />} />
+                <Route path="/orders" element={<PlacedOrdersPage navigate={navigate} />} />
+                <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
+                <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} />} />
+                <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
+                <Route path="/terms" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/privacy" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/refund" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/legal" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/category/:categoryId" element={<ProductListPageWrapper navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
+                <Route path="/all-products" element={<AllProductsPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
+                <Route path="/wishlist" element={<WishlistPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} />} />
+                <Route path="/track" element={<TrackOrderPage navigate={navigate} />} />
+                <Route path="/substitute-selection" element={<SubstituteSelectionPage navigate={navigate} />} />
+                <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
+                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
+                <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </React.Suspense>
           </div>
         </div>
       </PullToRefresh>
@@ -659,32 +631,36 @@ function AppContent() {
           isNavHidden={isNavHidden}
         />
       )}
-      
-      <AddressModal 
-        isOpen={isAddressModalOpen} 
-        onClose={() => setIsAddressModalOpen(false)} 
-        addresses={addresses}
-        navigate={navigate}
-        onSelectAddress={handleSetDefaultAddress}
-        currentRoute={viewName}
-      />
-      <SearchOverlay 
-        isOpen={isSearchOpen} 
-        onClose={closeSearch} 
-        cart={cart}
-        updateCartQty={updateCartQty}
-        initialVoiceSearch={isVoiceSearchOpen}
-        onProductClick={openProductSheet}
-      />
-      
-      {selectedProduct && (
-        <ProductDetailsSheet 
-          product={selectedProduct} 
-          cart={cart}
-          updateCartQty={updateCartQty}
-          onClose={closeProductSheet} 
-        />
-      )}
+      <React.Suspense fallback={null}>
+        {isAddressModalOpen && (
+          <AddressModal 
+            isOpen={isAddressModalOpen} 
+            onClose={() => setIsAddressModalOpen(false)} 
+            addresses={addresses}
+            navigate={navigate}
+            onSelectAddress={handleSetDefaultAddress}
+            currentRoute={viewName}
+          />
+        )}
+        {isSearchOpen && (
+          <SearchOverlay 
+            isOpen={isSearchOpen} 
+            onClose={closeSearch} 
+            cart={cart}
+            updateCartQty={updateCartQty}
+            initialVoiceSearch={isVoiceSearchOpen}
+            onProductClick={openProductSheet}
+          />
+        )}
+        {selectedProduct && (
+          <ProductDetailsSheet 
+            product={selectedProduct} 
+            cart={cart}
+            updateCartQty={updateCartQty}
+            onClose={closeProductSheet} 
+          />
+        )}
+      </React.Suspense>
       
       {(!userProfile?.name || userProfile?.name === 'New User' || userProfile?.name.startsWith('User ') || userProfile?.name.trim() === '') && (
         <OnboardingModal 
