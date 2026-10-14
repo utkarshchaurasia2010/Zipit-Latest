@@ -22,7 +22,15 @@ const SplashScreen = () => {
   return (
     <div className="splash-screen">
       <div className="splash-logo-container">
-        <img src={logo} alt="Zipit Logo" className="splash-logo" />
+        <img 
+          src={logo} 
+          alt="Zipit Logo" 
+          className="splash-logo" 
+          width="148" 
+          height="148" 
+          fetchPriority="high" 
+          decoding="async" 
+        />
       </div>
       <div className="splash-brand-text">zipit</div>
       <div className="splash-tagline">Rural India's Instant Delivery</div>

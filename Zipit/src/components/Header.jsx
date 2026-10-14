@@ -245,6 +245,9 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               className="notification-icon" 
               onClick={handleEnableNotifications} 
               title={hasNotificationsEnabled ? "Notifications enabled" : "Click to enable Notifications"}
+              aria-label={hasNotificationsEnabled ? "Notifications enabled" : "Enable order notifications"}
+              role="button"
+              tabIndex={0}
               style={{ 
                 position: 'relative', 
                 width: 44, 
@@ -269,6 +272,9 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             <div 
               className="profile-pic" 
               onClick={onProfileClick} 
+              aria-label="User Profile"
+              role="button"
+              tabIndex={0}
               style={{ 
                 backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.15)' : '#FFFFFF', 
                 boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.12)',
@@ -283,7 +289,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
           </div>
         </div>
         
-        <div className="search-container" onClick={onSearchClick}>
+        <div className="search-container" onClick={onSearchClick} role="search" aria-label="Search products">
           <Search size={20} color={theme === 'dark' ? '#9CA3AF' : '#6B7280'} />
           <div className="search-placeholder-wrapper">
             <span>Search for </span>
@@ -292,7 +298,13 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             </div>
           </div>
           <div className="divider"></div>
-          <div className="mic-icon-wrapper" onClick={(e) => { e.stopPropagation(); onSearchClick(true); }}>
+          <div 
+            className="mic-icon-wrapper" 
+            onClick={(e) => { e.stopPropagation(); onSearchClick(true); }}
+            aria-label="Voice Search"
+            role="button"
+            tabIndex={0}
+          >
             <Mic size={20} color={theme === 'dark' ? '#FFFFFF' : '#000000'} />
           </div>
         </div>

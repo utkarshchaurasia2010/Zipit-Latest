@@ -193,7 +193,9 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
               return (
                 <div key={idx} className="bestseller-category-card stagger-item" onClick={() => setSelectedBestsellerCategory(cat)}>
                   <div className="category-window-grid">
-                    {gridImgs.map((img, i) => <img key={i} src={img} alt="" />)}
+                    {gridImgs.map((img, i) => (
+                      <img key={i} src={img} alt={`${cat.name} product ${i + 1}`} loading="lazy" decoding="async" />
+                    ))}
                     {remainingCount > 0 && (
                       <div className="category-more-pill">+{remainingCount} more</div>
                     )}
@@ -655,24 +657,50 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
       {/* 7. Categories Grid */}
       <CategoriesPage navigate={navigate} isEmbedded={true} />
 
-      {/* 8. App Motto Section */}
-      <section className="grid-products-section app-motto-section" style={{ marginTop: 40, marginBottom: 80, padding: '20px 16px', border: 'none', background: 'transparent' }}>
-        <h1 style={{ fontSize: '42px', fontWeight: 900, color: 'var(--color-text-muted, #444)', lineHeight: '1.1', letterSpacing: '-1.5px', marginBottom: '24px' }}>
-          India's rural<br />delivery app <Heart fill="#ff5252" color="#ff5252" style={{ display: 'inline-block', verticalAlign: 'middle', width: '36px', height: '36px' }} />
-        </h1>
-        <div style={{ position: 'relative', height: '1px', background: 'var(--color-border)', width: '100%', marginBottom: '24px' }}>
+      {/* 8. App Motto Section & Footer Links */}
+      <footer className="grid-products-section app-motto-section" style={{ marginTop: 40, marginBottom: 80, padding: '20px 16px', border: 'none', background: 'transparent' }}>
+        <h2 style={{ fontSize: '38px', fontWeight: 900, color: 'var(--color-text-muted, #444)', lineHeight: '1.1', letterSpacing: '-1.5px', marginBottom: '24px' }}>
+          India's rural<br />delivery app <Heart fill="#ff5252" color="#ff5252" style={{ display: 'inline-block', verticalAlign: 'middle', width: '32px', height: '32px' }} />
+        </h2>
+        <div style={{ position: 'relative', height: '1px', background: 'var(--color-border)', width: '100%', marginBottom: '20px' }}>
           <div style={{ position: 'absolute', right: 0, top: '-4px', borderTop: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)', width: '8px', height: '8px', transform: 'rotate(45deg)' }}></div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', fontSize: '13px', fontWeight: '600' }}>
+          <button 
+            type="button" 
+            onClick={() => navigate && navigate('/privacy')} 
+            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-text-light)', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Privacy Policy
+          </button>
+          <button 
+            type="button" 
+            onClick={() => navigate && navigate('/terms')} 
+            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-text-light)', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Terms of Service
+          </button>
+          <button 
+            type="button" 
+            onClick={() => navigate && navigate('/refund')} 
+            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-text-light)', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Refund & Cancellation
+          </button>
         </div>
         <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-muted, #555)', letterSpacing: '-1px' }}>
           zipit
         </div>
-      </section>
+        <p style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '8px' }}>
+          © {new Date().getFullYear()} Zipit Inc. Fast grocery delivery in rural & semi-urban India.
+        </p>
+      </footer>
 
       {/* Bestseller Bottom Sheet */}
       {selectedBestsellerCategory && createPortal(
         <div className="bestseller-bottom-sheet-overlay" onClick={() => setSelectedBestsellerCategory(null)}>
           <div className="bestseller-bottom-sheet" onClick={e => e.stopPropagation()}>
-            <button className="bestseller-sheet-close-btn" onClick={() => setSelectedBestsellerCategory(null)}>
+            <button className="bestseller-sheet-close-btn" onClick={() => setSelectedBestsellerCategory(null)} aria-label="Close bestsellers view">
               <X size={20} />
             </button>
             <div className="bestseller-sheet-header">
@@ -691,7 +719,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                         </div>
                         <div className="bestseller-img">
                           {item.sticker && <div className="wafer-sticker">{item.sticker}</div>}
-                          <img src={item.image_url} alt={item.name} />
+                          <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
                         </div>
                         <div className="img-footer-row" onClick={e => e.stopPropagation()}>
                           <span className="item-amount-text">{item.amount}</span>

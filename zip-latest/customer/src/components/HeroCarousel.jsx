@@ -116,9 +116,12 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
                 {hasImage ? (
                   <img
                     src={banner.image_url}
-                    alt={`Banner ${i + 1}`}
+                    alt={`Zipit Offer Banner ${i + 1}`}
                     className="hero-carousel-img"
                     draggable={false}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "high" : "low"}
+                    decoding="async"
                   />
                 ) : (
                   <div

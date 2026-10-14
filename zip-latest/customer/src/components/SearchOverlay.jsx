@@ -423,17 +423,25 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
           <input
             type="text"
             placeholder="Search for groceries, snacks..."
+            aria-label="Search for groceries, snacks"
             autoFocus
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
           <div className="divider"></div>
-          <Mic
-            size={20}
-            color={isListening ? "var(--color-primary)" : "var(--color-text-light)"}
-            className={`mic-icon ${isListening ? 'listening' : ''}`}
+          <button
+            type="button"
+            className={`mic-button-wrapper ${isListening ? 'listening' : ''}`}
             onClick={startVoiceSearch}
-          />
+            aria-label="Search with voice"
+            style={{ background: 'none', border: 'none', padding: 0, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+          >
+            <Mic
+              size={20}
+              color={isListening ? "var(--color-primary)" : "var(--color-text-light)"}
+              className={`mic-icon ${isListening ? 'listening' : ''}`}
+            />
+          </button>
         </div>
       </div>
 
@@ -486,7 +494,13 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
                       ) : item.sticker ? (
                         <div className="wafer-sticker">{item.sticker}</div>
                       ) : null}
-                      <img src={item.image_url} alt={item.name} style={{opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1}} />
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        loading="lazy" 
+                        decoding="async" 
+                        style={{opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1}} 
+                      />
                     </div>
                     <div className="img-footer-row" onClick={e => e.stopPropagation()}>
                       <span className="item-amount-text">{item.amount}</span>
