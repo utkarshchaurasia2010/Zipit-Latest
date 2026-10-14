@@ -120,7 +120,13 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
                     ) : item.sticker ? (
                       <div className="wafer-sticker">{item.sticker}</div>
                     ) : null}
-                    <img src={item.image_url} alt={item.name} style={{opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1}} />
+                    <img 
+                      src={item.image_url} 
+                      alt={item.name} 
+                      loading="lazy" 
+                      decoding="async" 
+                      style={{opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1}} 
+                    />
                   </div>
                   <div className="img-footer-row" onClick={(e) => e.stopPropagation()}>
                     <span className="item-amount-text">{item.amount}</span>
