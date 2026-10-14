@@ -9,6 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
+        globIgnores: ['**/firebase-messaging-sw.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin.includes('supabase.co') && url.pathname.includes('/storage/v1/object/public/'),
@@ -27,6 +28,7 @@ export default defineConfig({
         ]
       },
       manifest: {
+        id: '/',
         name: 'Zipit - India\'s Rural Delivery App',
         short_name: 'Zipit',
         description: 'Instant delivery app for rural and semi-urban India',
@@ -34,18 +36,25 @@ export default defineConfig({
         background_color: '#0a0a0c',
         display: 'standalone',
         orientation: 'portrait',
+        categories: ['shopping', 'food'],
         icons: [
           {
-            src: '/logo_full.png',
+            src: '/icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/logo_full.png',
+            src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/icons/icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }

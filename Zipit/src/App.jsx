@@ -623,7 +623,9 @@ function AppContent() {
               <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
               <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} />} />
               <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
-              <Route path="/terms" element={<TermsPage navigate={navigate} />} />
+              <Route path="/terms" element={<LegalPoliciesPage navigate={navigate} />} />
+              <Route path="/privacy" element={<LegalPoliciesPage navigate={navigate} />} />
+              <Route path="/refund" element={<LegalPoliciesPage navigate={navigate} />} />
               <Route path="/legal" element={<LegalPoliciesPage navigate={navigate} />} />
               <Route path="/category/:categoryId" element={<ProductListPageWrapper navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
               <Route path="/all-products" element={<AllProductsPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />

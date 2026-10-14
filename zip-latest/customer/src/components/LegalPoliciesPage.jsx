@@ -112,14 +112,22 @@ const POLICIES = {
 
 const LegalPoliciesPage = ({ navigate, onBack }) => {
   const location = useLocation();
-  const initialTab = location.state?.policy || 'terms';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const getInitialTab = () => {
+    if (location.pathname === '/privacy') return 'privacy';
+    if (location.pathname === '/terms') return 'terms';
+    if (location.pathname === '/refund') return 'refund';
+    return location.state?.policy || 'terms';
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab);
 
   useEffect(() => {
-    if (location.state?.policy && POLICIES[location.state.policy]) {
+    if (location.pathname === '/privacy') setActiveTab('privacy');
+    else if (location.pathname === '/terms') setActiveTab('terms');
+    else if (location.pathname === '/refund') setActiveTab('refund');
+    else if (location.state?.policy && POLICIES[location.state.policy]) {
       setActiveTab(location.state.policy);
     }
-  }, [location.state]);
+  }, [location.pathname, location.state]);
 
   const handleBack = () => {
     if (onBack) {
