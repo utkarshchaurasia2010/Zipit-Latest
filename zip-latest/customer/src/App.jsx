@@ -27,6 +27,9 @@ const SubstituteSelectionPage = React.lazy(() => import('./components/Substitute
 const PastOrdersPage = React.lazy(() => import('./components/PastOrdersPage'));
 const LegalPoliciesPage = React.lazy(() => import('./components/LegalPoliciesPage'));
 const ProductDetailsSheet = React.lazy(() => import('./components/ProductDetailsSheet'));
+const OfflineBanner = React.lazy(() => import('./components/OfflineBanner'));
+const UpdatePrompt = React.lazy(() => import('./components/UpdatePrompt'));
+const OnboardingModal = React.lazy(() => import('./components/OnboardingModal'));
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -660,19 +663,17 @@ function AppContent() {
             onClose={closeProductSheet} 
           />
         )}
+        {(!userProfile?.name || userProfile?.name === 'New User' || userProfile?.name.startsWith('User ') || userProfile?.name.trim() === '') && (
+          <OnboardingModal 
+            userProfile={userProfile} 
+            onComplete={(newData) => {
+              setUserProfile(prev => ({ ...prev, ...newData }));
+            }} 
+          />
+        )}
+        <OfflineBanner />
+        <UpdatePrompt />
       </React.Suspense>
-      
-      {(!userProfile?.name || userProfile?.name === 'New User' || userProfile?.name.startsWith('User ') || userProfile?.name.trim() === '') && (
-        <OnboardingModal 
-          userProfile={userProfile} 
-          onComplete={(newData) => {
-            setUserProfile(prev => ({ ...prev, ...newData }));
-          }} 
-        />
-      )}
-      
-      <OfflineBanner />
-      <UpdatePrompt />
     </>
   );
 }
