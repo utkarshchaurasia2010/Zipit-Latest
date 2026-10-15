@@ -7,6 +7,7 @@ import Overview from './pages/Overview';
 import Settings from './pages/Settings';
 import AdminDashboard from './components/AdminDashboard';
 import AccessCodesManager from './components/AccessCodesManager';
+import SectionsManager from './pages/SectionsManager';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 
@@ -86,6 +87,7 @@ function App() {
               <Route path="refunds" element={<AdminDashboard key="refunds" initialTab="refunds" />} />
               <Route path="coupons" element={<AdminDashboard key="coupons" initialTab="coupons" />} />
               <Route path="users" element={<AdminDashboard key="users" initialTab="users" />} />
+              <Route path="sections" element={<SectionsManager />} />
               <Route path="access-codes" element={<AccessCodesManager />} />
               <Route path="settings" element={<Settings profile={profile} setProfile={setProfile} />} />
               <Route path="*" element={<Navigate to="/orders" replace />} />

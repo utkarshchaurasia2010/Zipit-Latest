@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import './AdminLayout.css';
 
@@ -177,6 +177,7 @@ const AdminLayout = ({ profile, setProfile }) => {
     { name: 'Pinnacle Showcase', path: '/grid-products', icon: <Grid size={20} /> },
     { name: 'Bestsellers', path: '/bestsellers', icon: <Tag size={20} /> },
     { name: 'Banners', path: '/banners', icon: <LayoutDashboard size={20} /> },
+    { name: 'Sections', path: '/sections', icon: <Layers size={20} /> },
     { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
     { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
     { name: 'Access Codes', path: '/access-codes', icon: <Key size={20} /> },

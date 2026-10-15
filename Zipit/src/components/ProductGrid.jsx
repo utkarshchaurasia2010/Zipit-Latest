@@ -105,6 +105,48 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
 
   const [orderCounts, setOrderCounts] = useState({});
 
+  // Dynamic Homepage Sections configuration synced live from Admin Panel
+  const [sectionsConfig, setSectionsConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      if (stored) {
+        const b = JSON.parse(stored);
+        if (b && Array.isArray(b.homepage_sections) && b.homepage_sections.length > 0) {
+          return b.homepage_sections;
+        }
+      }
+    } catch (_) {}
+    return null;
+  });
+
+  useEffect(() => {
+    const loadSectionsConfig = async () => {
+      try {
+        const b = await db.branding.get();
+        if (b && Array.isArray(b.homepage_sections) && b.homepage_sections.length > 0) {
+          setSectionsConfig(b.homepage_sections);
+        }
+      } catch (_) {}
+    };
+
+    loadSectionsConfig();
+
+    const sectionsChannel = supabase.channel('customer-homepage-sections-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+      }, () => {
+        loadSectionsConfig();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(sectionsChannel);
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     const fetchOrderStats = async () => {
@@ -178,14 +220,24 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
 
   const [activeBudgetTab, setActiveBudgetTab] = useState('under49');
 
-  return (
-    <main className="product-grid-container">
+  // Render Individual Section by ID or Custom Type
+  const renderSectionItem = (sec) => {
+    if (!sec || sec.enabled === false) return null;
 
-      {/* 1. Bestsellers Categories Window */}
-      {categoryCards.length > 0 && (
-        <section className="grid-products-section" style={{marginBottom: 24}}>
+    // 1. Bestsellers Categories Window
+    if (sec.id === 'sec_bestsellers' || sec.type === 'bestsellers_window') {
+      if (categoryCards.length === 0) return null;
+      return (
+        <section key={sec.id} className="grid-products-section" style={{marginBottom: 24}}>
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
-            <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px'}}>Bestsellers</h2>
+            <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px'}}>
+              {sec.title || 'Bestsellers'}
+            </h2>
+            {sec.badge && (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px' }}>
+                {sec.badge}
+              </span>
+            )}
           </div>
           <div className="bestseller-categories-grid">
             {categoryCards.map((cat, idx) => {
@@ -207,16 +259,28 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
             })}
           </div>
         </section>
-      )}
+      );
+    }
 
-      {/* 2. Pinnacle of Collection */}
-      {gridProducts.length > 0 && (
-        <section className="grid-products-section" style={{marginBottom: 32}}>
+    // 2. Pinnacle of Collection
+    if (sec.id === 'sec_pinnacle' || sec.type === 'pinnacle_grid') {
+      if (gridProducts.length === 0) return null;
+      return (
+        <section key={sec.id} className="grid-products-section" style={{marginBottom: 32}}>
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 0 }}>
-              <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px', margin: 0, padding: 0}}>Pinnacle of our collection</h2>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px', display: 'block', margin: '2px 0 0 0', padding: 0 }}>Finest selection of products</span>
+              <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px', margin: 0, padding: 0}}>
+                {sec.title || 'Pinnacle of our collection'}
+              </h2>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px', display: 'block', margin: '2px 0 0 0', padding: 0 }}>
+                {sec.subtitle || 'Finest selection of products'}
+              </span>
             </div>
+            {sec.badge && (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
+                {sec.badge}
+              </span>
+            )}
           </div>
           <div className="pinnacle-grid">
             {gridProducts.slice(0, 6).map((item, idx) => {
@@ -224,62 +288,51 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
               const qty = cartItem ? cartItem.qty : 0;
               return (
                 <div key={item.id || idx} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                <div className="bestseller-img-wrapper">
-                  <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                    <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                  <div className="bestseller-img-wrapper">
+                    <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                      <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                    </div>
+                    <div className="bestseller-img">
+                      {item.is_out_of_stock || item.stock_count === 0 ? (
+                        <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(240, 68, 56, 0.9)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap'}}>OUT OF STOCK</div>
+                      ) : item.sticker ? (
+                        <div className="wafer-sticker">{item.sticker}</div>
+                      ) : null}
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        loading={idx < 4 ? "eager" : "lazy"} 
+                        decoding="async"
+                        style={{ opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1 }} 
+                      />
+                    </div>
+                    <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                      <span className="item-amount-text">{item.amount}</span>
+                      {item.is_out_of_stock || item.stock_count === 0 ? (
+                        <button className="add-btn-small" style={{background: '#f2f4f7', color: '#98a2b3', border: '1px solid #e4e7ec'}} disabled>ADD</button>
+                      ) : qty === 0 ? (
+                        <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                      ) : (
+                        <div className="qty-control">
+                          <button onClick={() => updateCartQty(item, -1)}>-</button>
+                          <span>{qty}</span>
+                          <button onClick={() => updateCartQty(item, 1)}>+</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="bestseller-img">
-                    {item.is_out_of_stock || item.stock_count === 0 ? (
-                      <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(240, 68, 56, 0.9)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', zIndex: 10, whiteSpace: 'nowrap'}}>OUT OF STOCK</div>
-                    ) : item.sticker ? (
-                      <div className="wafer-sticker">{item.sticker}</div>
-                    ) : null}
-                    <img 
-                      src={item.image_url} 
-                      alt={item.name} 
-                      loading={idx < 4 ? "eager" : "lazy"} 
-                      decoding="async"
-                      style={{ opacity: (item.is_out_of_stock || item.stock_count === 0) ? 0.4 : 1 }} 
-                    />
-                  </div>
-                  <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                    <span className="item-amount-text">{item.amount}</span>
-                    {item.is_out_of_stock || item.stock_count === 0 ? (
-                      <button className="add-btn-small" style={{background: '#f2f4f7', color: '#98a2b3', border: '1px solid #e4e7ec'}} disabled>ADD</button>
-                    ) : qty === 0 ? (
-                      <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                    ) : (
-                      <div className="qty-control">
-                        <button onClick={() => updateCartQty(item, -1)}>-</button>
-                        <span>{qty}</span>
-                        <button onClick={() => {
-                           if (item.stock_count > 0 && qty >= item.stock_count) {
-                             alert(`Only ${item.stock_count} left in stock!`);
-                           } else {
-                             updateCartQty(item, 1);
-                           }
-                        }}>+</button>
-                      </div>
-                    )}
+                  <div className="bestseller-info">
+                    <div className="item-price">
+                      {item.is_wafer ? (
+                        <span className="wafer-price-tag">₹{item.price}</span>
+                      ) : (
+                        <>₹{item.price}</>
+                      )}
+                    </div>
+                    <h3 className="item-name">{item.name}</h3>
+                    <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
                   </div>
                 </div>
-                <div className="bestseller-info">
-                  <div className="item-price">
-                    {item.is_wafer ? (
-                      <span className="wafer-price-tag">₹{item.price}</span>
-                    ) : (
-                      <>₹{item.price}</>
-                    )}
-                  </div>
-                  <h3 className="item-name">{item.name}</h3>
-                  {item.stock_count > 0 && item.stock_count <= 2 ? (
-                    <div style={{color: '#d92d20', fontSize: '10px', fontWeight: 'bold', marginTop: '2px'}}>{item.stock_count} left!</div>
-                  ) : item.stock_count > 2 && item.stock_count < 10 ? (
-                    <div style={{color: '#f79009', fontSize: '10px', fontWeight: 'bold', marginTop: '2px'}}>Only few left</div>
-                  ) : null}
-                  <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                </div>
-              </div>
               );
             })}
           </div>
@@ -295,42 +348,49 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
             </div>
           </button>
         </section>
-      )}
+      );
+    }
 
-      {/* 4. Trust Banner */}
-      <div style={{ background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)', color: '#ffffff', borderRadius: '18px', padding: '16px 20px', margin: '10px 0 28px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center', boxShadow: '0 4px 14px rgba(22, 101, 52, 0.2)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <Zap size={20} color="#fef08a" />
-          <span style={{ fontSize: '11.5px', fontWeight: 800, lineHeight: 1.2 }}>15-30 Mins</span>
-          <span style={{ fontSize: '10px', opacity: 0.85 }}>Ultra Fast Delivery</span>
+    // 3. Trust Banner
+    if (sec.id === 'sec_trust' || sec.type === 'trust_banner') {
+      return (
+        <div key={sec.id} style={{ background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)', color: '#ffffff', borderRadius: '18px', padding: '16px 20px', margin: '10px 0 28px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center', boxShadow: '0 4px 14px rgba(22, 101, 52, 0.2)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <Zap size={20} color="#fef08a" />
+            <span style={{ fontSize: '11.5px', fontWeight: 800, lineHeight: 1.2 }}>15-30 Mins</span>
+            <span style={{ fontSize: '10px', opacity: 0.85 }}>Ultra Fast Delivery</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderLeft: '1px solid rgba(255,255,255,0.2)', borderRight: '1px solid rgba(255,255,255,0.2)' }}>
+            <ShieldCheck size={20} color="#fef08a" />
+            <span style={{ fontSize: '11.5px', fontWeight: 800, lineHeight: 1.2 }}>100% Quality</span>
+            <span style={{ fontSize: '10px', opacity: 0.85 }}>Freshness Assured</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <Sparkles size={20} color="#fef08a" />
+            <span style={{ fontSize: '11.5px', fontWeight: 800, lineHeight: 1.2 }}>Best Prices</span>
+            <span style={{ fontSize: '10px', opacity: 0.85 }}>COD Available</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderLeft: '1px solid rgba(255,255,255,0.2)', borderRight: '1px solid rgba(255,255,255,0.2)' }}>
-          <ShieldCheck size={20} color="#fef08a" />
-          <span style={{ fontSize: '11.5px', fontWeight: 800, lineHeight: 1.2 }}>100% Quality</span>
-          <span style={{ fontSize: '10px', opacity: 0.85 }}>Freshness Assured</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <Sparkles size={20} color="#fef08a" />
-          <span style={{ fontSize: '11.5px', fontWeight: 800, lineHeight: 1.2 }}>Best Prices</span>
-          <span style={{ fontSize: '10px', opacity: 0.85 }}>COD Available</span>
-        </div>
-      </div>
+      );
+    }
 
-      {/* 5. Trending In Your Area Section */}
-      {trendingProducts.length > 0 && (
-        <LazySection minHeight={260}>
+    // 4. Trending In Your Area
+    if (sec.id === 'sec_trending' || sec.type === 'trending_grid') {
+      if (trendingProducts.length === 0) return null;
+      return (
+        <LazySection key={sec.id} minHeight={260}>
           <section className="grid-products-section" style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                  Trending In Your Area
+                  {sec.title || 'Trending In Your Area'}
                 </h2>
                 <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                  Popular daily picks ordered right now
+                  {sec.subtitle || 'Popular daily picks ordered right now'}
                 </span>
               </div>
               <span style={{ fontSize: '11px', fontWeight: 800, background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', padding: '4px 10px', borderRadius: '20px' }}>
-                Top Sellers
+                {sec.badge || 'Top Sellers'}
               </span>
             </div>
 
@@ -338,7 +398,6 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
               {trendingProducts.map((item) => {
                 const cartItem = cart.find(c => c.id === item.id);
                 const qty = cartItem ? cartItem.qty : 0;
-                const buyCount = orderCounts[item.id] || 0;
                 return (
                   <div key={'trending_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
                     <div className="bestseller-img-wrapper">
@@ -372,80 +431,208 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
             </div>
           </section>
         </LazySection>
-      )}
+      );
+    }
 
-      {/* 6. Budget Store Section */}
-      <LazySection minHeight={300}>
-        <section className="grid-products-section budget-store-section" style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 0 }}>
-              <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px', padding: 0, margin: 0}}>Budget Store</h2>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px', display: 'block', padding: 0, margin: '2px 0 0 0' }}>Pocket-friendly daily essentials</span>
+    // 5. Budget Store
+    if (sec.id === 'sec_budget' || sec.type === 'budget_store') {
+      return (
+        <LazySection key={sec.id} minHeight={300}>
+          <section className="grid-products-section budget-store-section" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 0 }}>
+                <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px', padding: 0, margin: 0}}>
+                  {sec.title || 'Budget Store'}
+                </h2>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px', display: 'block', padding: 0, margin: '2px 0 0 0' }}>
+                  {sec.subtitle || 'Pocket-friendly daily essentials'}
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
+                {sec.badge || 'Up to 40% OFF'}
+              </span>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
-              Up to 40% OFF
-            </span>
+
+            <div style={{ display: 'flex', background: 'var(--color-surface-muted, #f1f5f9)', padding: '4px', borderRadius: '16px', marginBottom: '16px', border: '1px solid var(--color-border)' }}>
+              <button
+                onClick={() => setActiveBudgetTab('under49')}
+                style={{
+                  flex: 1, padding: '10px 14px', borderRadius: '12px', border: 'none',
+                  background: activeBudgetTab === 'under49' ? '#0c831f' : 'transparent',
+                  color: activeBudgetTab === 'under49' ? '#ffffff' : 'var(--color-text-light)',
+                  fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                }}
+              >
+                <Flame size={16} color={activeBudgetTab === 'under49' ? '#ffffff' : '#f97316'} /> Under ₹49 Store
+              </button>
+              <button
+                onClick={() => setActiveBudgetTab('under99')}
+                style={{
+                  flex: 1, padding: '10px 14px', borderRadius: '12px', border: 'none',
+                  background: activeBudgetTab === 'under99' ? '#0c831f' : 'transparent',
+                  color: activeBudgetTab === 'under99' ? '#ffffff' : 'var(--color-text-light)',
+                  fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                }}
+              >
+                <Zap size={16} color={activeBudgetTab === 'under99' ? '#ffffff' : '#eab308'} /> Under ₹99 Store
+              </button>
+            </div>
+
+            <div className="pinnacle-grid" style={{ paddingBottom: '8px' }}>
+              {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 6).map((item) => {
+                const cartItem = cart.find(c => c.id === item.id);
+                const qty = cartItem ? cartItem.qty : 0;
+                return (
+                  <div key={item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                    <div className="bestseller-img-wrapper">
+                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                      </div>
+                      <div className="bestseller-img">
+                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
+                      </div>
+                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                        <span className="item-amount-text">{item.amount}</span>
+                        {qty === 0 ? (
+                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                        ) : (
+                          <div className="qty-control">
+                            <button onClick={() => updateCartQty(item, -1)}>-</button>
+                            <span>{qty}</span>
+                            <button onClick={() => updateCartQty(item, 1)}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bestseller-info">
+                      <div className="item-price">₹{item.price}</div>
+                      <h3 className="item-name">{item.name}</h3>
+                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </LazySection>
+      );
+    }
+
+    // 6. Categories Showcase Grid
+    if (sec.id === 'sec_categories' || sec.type === 'categories_grid') {
+      return (
+        <LazySection key={sec.id} minHeight={320}>
+          <CategoriesPage navigate={navigate} isEmbedded={true} />
+        </LazySection>
+      );
+    }
+
+    // 7. Custom Handpicked Products / Festive Season Special Section
+    if (sec.type === 'custom_products' || (sec.product_ids && sec.product_ids.length > 0)) {
+      const customProducts = (sec.product_ids || [])
+        .map(id => allProducts.find(p => p.id === id))
+        .filter(Boolean);
+
+      if (customProducts.length === 0) return null;
+
+      return (
+        <LazySection key={sec.id} minHeight={280}>
+          <section className="grid-products-section" style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
+                  {sec.title}
+                </h2>
+                {sec.subtitle && (
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
+                    {sec.subtitle}
+                  </span>
+                )}
+              </div>
+              {sec.badge && (
+                <span style={{ fontSize: '11px', fontWeight: 800, background: 'linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%)', color: '#b45309', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px' }}>
+                  ✨ {sec.badge}
+                </span>
+              )}
+            </div>
+
+            <div className="pinnacle-grid">
+              {customProducts.slice(0, 12).map((item) => {
+                const cartItem = cart.find(c => c.id === item.id);
+                const qty = cartItem ? cartItem.qty : 0;
+                return (
+                  <div key={sec.id + '_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                    <div className="bestseller-img-wrapper">
+                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                      </div>
+                      <div className="bestseller-img">
+                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
+                      </div>
+                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                        <span className="item-amount-text">{item.amount}</span>
+                        {qty === 0 ? (
+                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                        ) : (
+                          <div className="qty-control">
+                            <button onClick={() => updateCartQty(item, -1)}>-</button>
+                            <span>{qty}</span>
+                            <button onClick={() => updateCartQty(item, 1)}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bestseller-info">
+                      <div className="item-price">₹{item.price}</div>
+                      <h3 className="item-name">{item.name}</h3>
+                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </LazySection>
+      );
+    }
+
+    // 8. Category Filter / Themed Store Sections (Dairy, Kitchen, Cleaning, or custom category)
+    const targetCats = sec.categories || [];
+    const matchedProducts = allProducts.filter(p => {
+      if (p.is_out_of_stock || p.stock_count === 0) return false;
+      const catName = p.categories?.name || '';
+      return targetCats.some(c => c.toLowerCase() === catName.trim().toLowerCase());
+    }).slice(0, 8);
+
+    if (matchedProducts.length === 0) return null;
+
+    return (
+      <LazySection key={sec.id} minHeight={280}>
+        <section className="grid-products-section" style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
+                {sec.title}
+              </h2>
+              {sec.subtitle && (
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
+                  {sec.subtitle}
+                </span>
+              )}
+            </div>
+            {sec.badge && (
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
+                {sec.badge}
+              </span>
+            )}
           </div>
 
-          {/* Premium Tab Switcher */}
-          <div style={{ display: 'flex', background: 'var(--color-surface-muted, #f1f5f9)', padding: '4px', borderRadius: '16px', marginBottom: '16px', border: '1px solid var(--color-border)' }}>
-            <button
-              onClick={() => setActiveBudgetTab('under49')}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                borderRadius: '12px',
-                border: 'none',
-                background: activeBudgetTab === 'under49' ? '#0c831f' : 'transparent',
-                color: activeBudgetTab === 'under49' ? '#ffffff' : 'var(--color-text-light)',
-                fontWeight: '800',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                boxShadow: activeBudgetTab === 'under49' ? '0 4px 14px rgba(12, 131, 31, 0.3)' : 'none',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            >
-              <Flame size={16} color={activeBudgetTab === 'under49' ? '#ffffff' : '#f97316'} /> Under ₹49 Store
-            </button>
-            <button
-              onClick={() => setActiveBudgetTab('under99')}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                borderRadius: '12px',
-                border: 'none',
-                background: activeBudgetTab === 'under99' ? '#0c831f' : 'transparent',
-                color: activeBudgetTab === 'under99' ? '#ffffff' : 'var(--color-text-light)',
-                fontWeight: '800',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                boxShadow: activeBudgetTab === 'under99' ? '0 4px 14px rgba(12, 131, 31, 0.3)' : 'none',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-            >
-              <Zap size={16} color={activeBudgetTab === 'under99' ? '#ffffff' : '#eab308'} /> Under ₹99 Store
-            </button>
-          </div>
-
-          {/* Grid Product List */}
-          <div className="pinnacle-grid" style={{ paddingBottom: '8px' }}>
-            {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 6).map((item) => {
+          <div className="pinnacle-grid">
+            {matchedProducts.map((item) => {
               const cartItem = cart.find(c => c.id === item.id);
               const qty = cartItem ? cartItem.qty : 0;
               return (
-                <div
-                  key={item.id}
-                  className="bestseller-card stagger-item"
-                  onClick={() => onProductClick && onProductClick(item)}
-                >
+                <div key={sec.id + '_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
                   <div className="bestseller-img-wrapper">
                     <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
                       <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
@@ -475,200 +662,28 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
               );
             })}
           </div>
-
-          <button 
-            className="explore-all-btn" 
-            style={{ marginTop: '16px' }} 
-            onClick={() => navigate(`/category/${activeBudgetTab === 'under49' ? 'budget-49' : 'budget-99'}`, { state: { categoryName: activeBudgetTab === 'under49' ? 'Under ₹49 Store' : 'Under ₹99 Store' } })}
-          >
-            <div className="explore-all-images">
-              {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 4).map(p => (
-                <img key={p.id} src={p.image_url} alt="" />
-              ))}
-            </div>
-            <div className="explore-all-text">
-              <span>View Budget Store</span>
-              <ArrowRight size={18} />
-            </div>
-          </button>
         </section>
       </LazySection>
+    );
+  };
 
-      {/* 4. Dairy, Bakery & Tea */}
-      {breakfastProducts.length > 0 && (
-        <LazySection minHeight={280}>
-          <section className="grid-products-section" style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                  Dairy, Bakery & Tea
-                </h2>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                  Milks, breads, tea, coffee & biscuits
-                </span>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 800, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px' }}>
-                Fresh Daily
-              </span>
-            </div>
+  // Fallback default list if no custom sections configuration yet
+  const activeSectionsList = sectionsConfig || [
+    { id: 'sec_bestsellers', enabled: true },
+    { id: 'sec_pinnacle', enabled: true },
+    { id: 'sec_trust', enabled: true },
+    { id: 'sec_trending', enabled: true },
+    { id: 'sec_budget', enabled: true },
+    { id: 'sec_dairy', title: 'Dairy, Bakery & Tea', subtitle: 'Milks, breads, tea, coffee & biscuits', badge: 'Fresh Daily', categories: ['Milks & Breads', 'Tea & Coffee', 'Biscuits'], enabled: true },
+    { id: 'sec_staples', title: 'Atta, Dal, Oil & Masala', subtitle: 'Atta, dal, rice, oils, ghee & spices', badge: 'Pantry Best', categories: ['Atta , Dal  & Rice', 'Oil , Ghee & Masala'], enabled: true },
+    { id: 'sec_cleaning', title: 'Bath, Body & Cleaning', subtitle: 'Soaps, detergents, hair oils & daily care', badge: 'Daily Clean', categories: ['Soaps', 'Detergents', 'Hair Oils', 'Medications'], enabled: true },
+    { id: 'sec_categories', enabled: true }
+  ];
 
-            <div className="pinnacle-grid">
-              {breakfastProducts.map((item) => {
-                const cartItem = cart.find(c => c.id === item.id);
-                const qty = cartItem ? cartItem.qty : 0;
-                return (
-                  <div key={'bf_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                    <div className="bestseller-img-wrapper">
-                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
-                      </div>
-                      <div className="bestseller-img">
-                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
-                      </div>
-                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                        <span className="item-amount-text">{item.amount}</span>
-                        {qty === 0 ? (
-                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                        ) : (
-                          <div className="qty-control">
-                            <button onClick={() => updateCartQty(item, -1)}>-</button>
-                            <span>{qty}</span>
-                            <button onClick={() => updateCartQty(item, 1)}>+</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="bestseller-info">
-                      <div className="item-price">₹{item.price}</div>
-                      <h3 className="item-name">{item.name}</h3>
-                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </LazySection>
-      )}
-
-      {/* 5. Atta, Dal, Oil & Masala */}
-      {kitchenStaples.length > 0 && (
-        <LazySection minHeight={280}>
-          <section className="grid-products-section" style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                  Atta, Dal, Oil & Masala
-                </h2>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                  Atta, dal, rice, oils, ghee & spices
-                </span>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
-                Pantry Best
-              </span>
-            </div>
-
-            <div className="pinnacle-grid">
-              {kitchenStaples.map((item) => {
-                const cartItem = cart.find(c => c.id === item.id);
-                const qty = cartItem ? cartItem.qty : 0;
-                return (
-                  <div key={'staple_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                    <div className="bestseller-img-wrapper">
-                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
-                      </div>
-                      <div className="bestseller-img">
-                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
-                      </div>
-                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                        <span className="item-amount-text">{item.amount}</span>
-                        {qty === 0 ? (
-                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                        ) : (
-                          <div className="qty-control">
-                            <button onClick={() => updateCartQty(item, -1)}>-</button>
-                            <span>{qty}</span>
-                            <button onClick={() => updateCartQty(item, 1)}>+</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="bestseller-info">
-                      <div className="item-price">₹{item.price}</div>
-                      <h3 className="item-name">{item.name}</h3>
-                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </LazySection>
-      )}
-
-      {/* 6. Bath, Body & Cleaning Essentials */}
-      {personalCare.length > 0 && (
-        <LazySection minHeight={280}>
-          <section className="grid-products-section" style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                  Bath, Body & Cleaning
-                </h2>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                  Soaps, detergents, hair oils & daily care
-                </span>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 800, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '20px' }}>
-                Daily Clean
-              </span>
-            </div>
-
-            <div className="pinnacle-grid">
-              {personalCare.map((item) => {
-                const cartItem = cart.find(c => c.id === item.id);
-                const qty = cartItem ? cartItem.qty : 0;
-                return (
-                  <div key={'pc_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                    <div className="bestseller-img-wrapper">
-                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
-                      </div>
-                      <div className="bestseller-img">
-                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
-                      </div>
-                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                        <span className="item-amount-text">{item.amount}</span>
-                        {qty === 0 ? (
-                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                        ) : (
-                          <div className="qty-control">
-                            <button onClick={() => updateCartQty(item, -1)}>-</button>
-                            <span>{qty}</span>
-                            <button onClick={() => updateCartQty(item, 1)}>+</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="bestseller-info">
-                      <div className="item-price">₹{item.price}</div>
-                      <h3 className="item-name">{item.name}</h3>
-                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </LazySection>
-      )}
-
-      {/* 7. Categories Grid */}
-      <LazySection minHeight={320}>
-        <CategoriesPage navigate={navigate} isEmbedded={true} />
-      </LazySection>
+  return (
+    <main className="product-grid-container">
+      {/* Dynamically Ordered Sections */}
+      {activeSectionsList.map(sec => renderSectionItem(sec))}
 
       {/* 8. App Motto Section & Footer Links */}
       <footer className="grid-products-section app-motto-section" style={{ marginTop: 40, marginBottom: 80, padding: '20px 16px', border: 'none', background: 'transparent' }}>
