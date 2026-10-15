@@ -486,17 +486,33 @@ function AppContent() {
     setAddresses(addrs);
   };
 
-  const [feeConfig, setFeeConfig] = useState({
-    delivery_fee: 20,
-    handling_fee: 9,
-    free_delivery_min_amount: 149,
-    free_delivery_enabled: true,
-    surge_fee: 0,
-    surge_enabled: false
-  });
+  // Read initial cached branding synchronously so fee and geofence calculations are immediate without delay
+  const initialCachedBranding = (() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  const [feeConfig, setFeeConfig] = useState(() => ({
+    delivery_fee: Number(initialCachedBranding?.delivery_fee) >= 0 ? Number(initialCachedBranding.delivery_fee) : 20,
+    handling_fee: Number(initialCachedBranding?.handling_fee) >= 0 ? Number(initialCachedBranding.handling_fee) : 9,
+    free_delivery_min_amount: Number(initialCachedBranding?.free_delivery_min_amount) >= 0 ? Number(initialCachedBranding.free_delivery_min_amount) : 149,
+    free_delivery_enabled: initialCachedBranding?.free_delivery_enabled !== false,
+    surge_fee: Number(initialCachedBranding?.surge_fee) || 0,
+    surge_enabled: initialCachedBranding?.surge_enabled === true
+  }));
+
+  const [geofenceConfig, setGeofenceConfig] = useState(() => ({
+    store_lat: Number(initialCachedBranding?.store_lat) || 25.5788,
+    store_lng: Number(initialCachedBranding?.store_lng) || 83.5780,
+    max_delivery_radius_km: Number(initialCachedBranding?.max_delivery_radius_km) || 8.5
+  }));
 
   useEffect(() => {
-    const loadFees = async () => {
+    const loadFeesAndGeofence = async () => {
       try {
         const b = await db.branding.get();
         if (b) {
@@ -508,11 +524,16 @@ function AppContent() {
             surge_fee: Number(b.surge_fee) || 0,
             surge_enabled: b.surge_enabled === true
           });
+          setGeofenceConfig({
+            store_lat: Number(b.store_lat) || 25.5788,
+            store_lng: Number(b.store_lng) || 83.5780,
+            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+          });
         }
       } catch (_) {}
     };
 
-    loadFees();
+    loadFeesAndGeofence();
 
     // Instant Realtime sync when Admin updates branding/fees
     const brandingChannel = supabase.channel('customer-branding-fees-sync')
@@ -522,7 +543,7 @@ function AppContent() {
         table: 'profiles',
         filter: 'id=eq.00000000-0000-0000-0000-000000000001'
       }, () => {
-        loadFees();
+        loadFeesAndGeofence();
       })
       .subscribe();
 
@@ -659,7 +680,7 @@ function AppContent() {
                 <Route path="/track" element={<TrackOrderPage navigate={navigate} />} />
                 <Route path="/substitute-selection" element={<SubstituteSelectionPage navigate={navigate} />} />
                 <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
-                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
+                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} initialGeofence={geofenceConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
                 <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

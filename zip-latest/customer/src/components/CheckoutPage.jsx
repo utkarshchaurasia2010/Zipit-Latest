@@ -22,7 +22,7 @@ const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   return Math.round(R * c * 10) / 10;
 };
 
-const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharge, deliveryCharge, surgeCharge = 0, feeConfig, grandTotal, address, onAddressClick, appliedCoupon, setAppliedCoupon, discountAmount, clearCart }) => {
+const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharge, deliveryCharge, surgeCharge = 0, feeConfig, initialGeofence, grandTotal, address, onAddressClick, appliedCoupon, setAppliedCoupon, discountAmount, clearCart }) => {
   const [suggestedProducts, setSuggestedProducts] = useState([]);
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -32,9 +32,45 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   const [selectedPayment, setSelectedPayment] = useState('UPI');
   const [processing, setProcessing] = useState(false);
   const [pickupPhone, setPickupPhone] = useState(address?.phone || '');
-  const [geofenceConfig, setGeofenceConfig] = useState({ store_lat: 25.5788, store_lng: 83.5780, max_delivery_radius_km: 8.5 });
+  
+  // Instantaneous geofence initialization using parent prop or synchronous cache
+  const [geofenceConfig, setGeofenceConfig] = useState(() => {
+    if (initialGeofence?.store_lat && initialGeofence?.store_lng) {
+      return {
+        store_lat: Number(initialGeofence.store_lat),
+        store_lng: Number(initialGeofence.store_lng),
+        max_delivery_radius_km: Number(initialGeofence.max_delivery_radius_km) || 8.5
+      };
+    }
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      if (stored) {
+        const b = JSON.parse(stored);
+        if (b) {
+          return {
+            store_lat: Number(b.store_lat) || 25.5788,
+            store_lng: Number(b.store_lng) || 83.5780,
+            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+          };
+        }
+      }
+    } catch (_) {}
+    return { store_lat: 25.5788, store_lng: 83.5780, max_delivery_radius_km: 8.5 };
+  });
+
   const { showToast } = useToast();
   const { toggleWishlist } = useWishlist();
+
+  useEffect(() => {
+    // Keep geofenceConfig in sync if initialGeofence updates
+    if (initialGeofence?.store_lat && initialGeofence?.store_lng) {
+      setGeofenceConfig({
+        store_lat: Number(initialGeofence.store_lat),
+        store_lng: Number(initialGeofence.store_lng),
+        max_delivery_radius_km: Number(initialGeofence.max_delivery_radius_km) || 8.5
+      });
+    }
+  }, [initialGeofence]);
 
   useEffect(() => {
     // Load store geofencing settings from branding config

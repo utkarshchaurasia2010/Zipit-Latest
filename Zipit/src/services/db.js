@@ -156,9 +156,9 @@ export const db = {
       const extractAddressInfo = (rawDetails, baseObj = {}) => {
         let text = (rawDetails || '').toString();
         let phone = baseObj.phone || '';
-        let lat = baseObj.lat || '28.4595';
-        let lng = baseObj.lng || '77.0266';
-        let gps_area = baseObj.gps_area || localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
+        let lat = baseObj.lat || '25.5788';
+        let lng = baseObj.lng || '83.5780';
+        let gps_area = baseObj.gps_area || localStorage.getItem('zipit_gps_area') || 'Zipit Store Hubs Zone';
         let google_maps_url = baseObj.google_maps_url || '';
         let landmark = '';
         let family_head = '';
@@ -225,8 +225,8 @@ export const db = {
       if (profile && profile.address) {
         const parsedPrimary = extractAddressInfo(profile.address, {
           phone: profile.phone || '',
-          lat: profile.lat?.toString() || '28.4595',
-          lng: profile.lng?.toString() || '77.0266',
+          lat: profile.lat?.toString() || '25.5788',
+          lng: profile.lng?.toString() || '83.5780',
           gps_area: profile.gps_area,
           google_maps_url: profile.google_maps_url
         });
@@ -242,8 +242,8 @@ export const db = {
 
       const secondaryAddrs = (addrsRes.data || []).map(addr => {
         const parsed = extractAddressInfo(addr.details, {
-          lat: '28.4595',
-          lng: '77.0266'
+          lat: '25.5788',
+          lng: '83.5780'
         });
 
         return {
@@ -918,19 +918,30 @@ export const db = {
   },
   branding: {
     get: async () => {
+      // 1. Try memory or localStorage cache first for instantaneous synchronous return
+      let cached = null;
+      try {
+        const stored = localStorage.getItem('zipit_cached_branding');
+        if (stored) cached = JSON.parse(stored);
+      } catch (_) {}
+
       try {
         const { data } = await supabase.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').limit(1);
         if (data && data.length > 0 && data[0].address) {
           try {
-            return JSON.parse(data[0].address);
+            const parsed = JSON.parse(data[0].address);
+            if (parsed) {
+              try { localStorage.setItem('zipit_cached_branding', JSON.stringify(parsed)); } catch (_) {}
+              return parsed;
+            }
           } catch (_) {
-            return null;
+            return cached;
           }
         }
       } catch (err) {
         console.warn('Failed to load branding:', err);
       }
-      return null;
+      return cached;
     }
   },
   whatsapp: {
