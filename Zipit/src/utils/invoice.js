@@ -25,7 +25,7 @@ export const downloadInvoice = (order) => {
   const villageArea = addr.village_area || details.match(/---TAG:VILLAGE:(.*?)---/)?.[1];
   const familyHead = addr.family_head || details.match(/---TAG:FAMILY_HEAD:(.*?)---/)?.[1];
   const altPhone = addr.alt_phone || details.match(/---TAG:ALT_PHONE:(.*?)---/)?.[1];
-  const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Zipit Dark Store & Hub, Main Market, Rauza' : 'Customer Location');
+  const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Zipit Store Hubs' : 'Customer Location');
 
   const subtotal = (order.items || []).reduce((acc, i) => acc + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
   const deliveryCharge = Number(order.delivery_charge) || 0;
@@ -91,7 +91,7 @@ export const downloadInvoice = (order) => {
         <div class="header">
           <h1 class="brand">Zipit</h1>
           <div class="sub-brand">Instant 10-Minute Grocery & Essentials</div>
-          <div class="store-contact">Dark Store Hub, Rauza, Ghazipur, UP | Support: support@zipit.com</div>
+          <div class="store-contact">Zipit Store Hubs | Support: support@zipit.com</div>
           <div class="status-badge ${isRefunded ? 'badge-red' : order.status === 'Delivered' ? 'badge-green' : 'badge-blue'}">
             ${isPickup ? '🛍️ STORE PICKUP' : '🛵 HOME DELIVERY'} • ${order.status}
           </div>

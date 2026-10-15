@@ -496,18 +496,39 @@ function AppContent() {
   });
 
   useEffect(() => {
-    db.branding.get().then(b => {
-      if (b) {
-        setFeeConfig({
-          delivery_fee: Number(b.delivery_fee) >= 0 ? Number(b.delivery_fee) : 20,
-          handling_fee: Number(b.handling_fee) >= 0 ? Number(b.handling_fee) : 9,
-          free_delivery_min_amount: Number(b.free_delivery_min_amount) >= 0 ? Number(b.free_delivery_min_amount) : 149,
-          free_delivery_enabled: b.free_delivery_enabled !== false,
-          surge_fee: Number(b.surge_fee) || 0,
-          surge_enabled: b.surge_enabled === true
-        });
-      }
-    }).catch(() => {});
+    const loadFees = async () => {
+      try {
+        const b = await db.branding.get();
+        if (b) {
+          setFeeConfig({
+            delivery_fee: Number(b.delivery_fee) >= 0 ? Number(b.delivery_fee) : 20,
+            handling_fee: Number(b.handling_fee) >= 0 ? Number(b.handling_fee) : 9,
+            free_delivery_min_amount: Number(b.free_delivery_min_amount) >= 0 ? Number(b.free_delivery_min_amount) : 149,
+            free_delivery_enabled: b.free_delivery_enabled !== false,
+            surge_fee: Number(b.surge_fee) || 0,
+            surge_enabled: b.surge_enabled === true
+          });
+        }
+      } catch (_) {}
+    };
+
+    loadFees();
+
+    // Instant Realtime sync when Admin updates branding/fees
+    const brandingChannel = supabase.channel('customer-branding-fees-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+      }, () => {
+        loadFees();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(brandingChannel);
+    };
   }, []);
 
   const safeCart = Array.isArray(cart) ? cart : [];

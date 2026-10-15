@@ -38,15 +38,34 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
   useEffect(() => {
     // Load store geofencing settings from branding config
-    db.branding.get().then(b => {
-      if (b) {
-        setGeofenceConfig({
-          store_lat: Number(b.store_lat) || 25.5788,
-          store_lng: Number(b.store_lng) || 83.5780,
-          max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
-        });
-      }
-    }).catch(() => {});
+    const loadGeofence = () => {
+      db.branding.get().then(b => {
+        if (b) {
+          setGeofenceConfig({
+            store_lat: Number(b.store_lat) || 25.5788,
+            store_lng: Number(b.store_lng) || 83.5780,
+            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+          });
+        }
+      }).catch(() => {});
+    };
+
+    loadGeofence();
+
+    const channel = supabase.channel('checkout-geofence-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+      }, () => {
+        loadGeofence();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {

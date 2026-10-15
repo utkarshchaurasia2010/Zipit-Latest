@@ -466,7 +466,7 @@ export default function ShopkeeperDashboard() {
                             <div className="info-line">
                               <MapPin size={15} /> 
                               {(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') 
-                                ? `Pickup at Store: Rauza (${order.delivery_address?.pickup_time_estimate || '~1 hr'})` 
+                                ? `Pickup at Store: Zipit Store Hubs (${order.delivery_address?.pickup_time_estimate || '~1 hr'})` 
                                 : cleanAddress(order.delivery_address)}
                             </div>
                             <div className="info-line-sub">
@@ -573,7 +573,7 @@ export default function ShopkeeperDashboard() {
                         Ready Time: <strong>{selectedOrder.delivery_address?.pickup_time_estimate || 'Ready in ~1 hour'}</strong>
                       </div>
                       <div style={{ fontSize: '11px', color: '#14532d', marginTop: '2px' }}>
-                        Location: {selectedOrder.delivery_address?.store_location || 'Zipit Store, Rauza'} (No rider will be assigned)
+                        Location: {selectedOrder.delivery_address?.store_location || 'Zipit Store Hubs'} (No rider will be assigned)
                       </div>
                     </div>
                   )}
@@ -727,7 +727,7 @@ export default function ShopkeeperDashboard() {
                       <div className="card-middle-info">
                         <div className="info-line">
                           <MapPin size={15} />
-                          {isPickup ? 'Store Pickup: Rauza' : cleanAddress(order.delivery_address)}
+                          {isPickup ? 'Store Pickup: Zipit Store Hubs' : cleanAddress(order.delivery_address)}
                         </div>
                         <div className="info-line-sub">
                           <span>{Array.isArray(order.items) ? order.items.length : 1} Items</span>

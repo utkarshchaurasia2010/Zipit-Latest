@@ -323,7 +323,7 @@ const AdminDashboard = ({ initialTab }) => {
             ${isPickup ? `
               <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
                 <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup Counter:</span>
-                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store, Rauza'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store Hubs'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
               </div>
             ` : order.delivery_address ? `
               <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details?.split('\n---TAG:')[0] || order.delivery_address.full_address || order.delivery_address.address || 'Customer Location'}</span></div>
