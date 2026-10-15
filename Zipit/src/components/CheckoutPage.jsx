@@ -210,8 +210,10 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         is_pickup: true,
         order_type: 'PICKUP',
         type: 'STORE PICKUP',
-        details: `Store Pickup at Zipit Hub, Rauza (Ready around ${formattedPickupTime})`,
-        store_location: 'Zipit Hub & Store, Main Market, Rauza',
+        details: `Store Pickup at Zipit Store Hubs (Ready around ${formattedPickupTime})`,
+        store_location: 'Zipit Store Hubs',
+        lat: geofenceConfig.store_lat,
+        lng: geofenceConfig.store_lng,
         pickup_time_estimate: `Ready around ${formattedPickupTime} (~1 hr)`,
         phone: customerPhone
       } : {
@@ -322,7 +324,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
             <div className="fulfillment-card-body">
               <h3 className="fulfillment-card-title">Store Pickup</h3>
-              <p className="fulfillment-card-desc">Pack & ready in ~1 hr at Rauza hub</p>
+              <p className="fulfillment-card-desc">Pack & ready in ~1 hr at Zipit Store Hubs</p>
             </div>
 
             <div className="fulfillment-card-footer">
@@ -340,7 +342,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             </div>
             <div className="pickup-notice-text" style={{ width: '100%' }}>
               <div className="pickup-notice-title-row">
-                <strong>Zipit Store & Hub, Rauza</strong>
+                <strong>Zipit Store Hubs</strong>
                 <span className="pickup-ready-pill">Ready in ~1 hr</span>
               </div>
               <span style={{ fontSize: '11.5px', color: '#166534', margin: '4px 0 0 0' }}>
@@ -602,14 +604,14 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                 <div className="checkout-address-text">
                   <h3 className="checkout-address-title">
                     {isPickup ? (
-                      <span>Pickup from: <strong>Zipit Store, Rauza (~1 hr)</strong></span>
+                      <span>Pickup from: <strong>Zipit Store Hubs (~1 hr)</strong></span>
                     ) : isOutOfRange ? (
                       <span style={{ color: '#ef4444', fontWeight: '700' }}>
                         Unserviceable: {deliveryDistance} km away (Max radius {geofenceConfig.max_delivery_radius_km} km)
                       </span>
                     ) : (
                       <>
-                        <span>Delivering to <strong>{address ? (address.type || 'Rauza') : 'Rauza'}</strong> {deliveryDistance !== null && <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({deliveryDistance} km)</span>}</span>
+                        <span>Delivering to <strong>{address ? (address.type || 'Selected Location') : 'Selected Location'}</strong> {deliveryDistance !== null && <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({deliveryDistance} km)</span>}</span>
                         <span className="address-change-btn">Change</span>
                       </>
                     )}

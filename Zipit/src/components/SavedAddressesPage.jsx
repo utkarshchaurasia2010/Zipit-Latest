@@ -26,7 +26,19 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(!!add);
+  const [storeGeofence, setStoreGeofence] = useState({ lat: 25.5788, lng: 83.5780 });
   const { showToast } = useToast();
+
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b && b.store_lat && b.store_lng) {
+        setStoreGeofence({
+          lat: Number(b.store_lat) || 25.5788,
+          lng: Number(b.store_lng) || 83.5780
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isEditing || isAddingNew) {
@@ -53,14 +65,16 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
 
     setLoading(true);
     try {
+      const defaultLat = storeGeofence?.lat || 25.5788;
+      const defaultLng = storeGeofence?.lng || 83.5780;
       const enrichedData = {
         ...formData,
         details: combinedDetails,
         gps_area: mapPinData?.areaTitle || localStorage.getItem('zipit_gps_area') || (formData.village_area || 'Village Delivery Zone'),
-        lat: mapPinData?.lat || '28.4595',
-        lng: mapPinData?.lng || '77.0266',
+        lat: mapPinData?.lat || defaultLat,
+        lng: mapPinData?.lng || defaultLng,
         map_full_address: mapPinData?.fullAddress || combinedDetails,
-        google_maps_url: mapPinData?.googleMapsUrl || `https://maps.google.com/?q=${mapPinData?.lat || '28.4595'},${mapPinData?.lng || '77.0266'}`
+        google_maps_url: mapPinData?.googleMapsUrl || `https://maps.google.com/?q=${mapPinData?.lat || defaultLat},${mapPinData?.lng || defaultLng}`
       };
       if (isEditing) {
         await db.addresses.update(isEditing, enrichedData);
@@ -318,8 +332,8 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                   </button>
                 </div>
                 <MapPinPicker 
-                  initialLat={mapPinData?.lat || 28.4595} 
-                  initialLng={mapPinData?.lng || 77.0266} 
+                  initialLat={mapPinData?.lat || storeGeofence?.lat || 25.5788} 
+                  initialLng={mapPinData?.lng || storeGeofence?.lng || 83.5780} 
                   onConfirmLocation={(data) => {
                     setMapPinData(data);
                     if (!formData.village_area) {

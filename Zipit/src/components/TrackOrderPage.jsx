@@ -82,10 +82,15 @@ const DeliveryMap = ({ status, order }) => {
   useEffect(() => {
     db.branding.get().then(b => {
       if (b && b.store_lat && b.store_lng) {
-        setStoreLocation([Number(b.store_lat), Number(b.store_lng)]);
+        const coords = [Number(b.store_lat), Number(b.store_lng)];
+        setStoreLocation(coords);
+        if (!order.delivery_lat || !order.delivery_lng) {
+          setRiderPos(coords);
+          targetPosRef.current = coords;
+        }
       }
     }).catch(() => {});
-  }, []);
+  }, [order.delivery_lat, order.delivery_lng]);
 
   const destLocation = [
     Number(order.delivery_address?.lat) || 25.5900, 
@@ -627,7 +632,7 @@ const TrackOrderPage = ({ navigate }) => {
                       </div>
 
                       <div style={{ fontSize: '13.5px', color: '#1e293b', marginTop: '6px', fontWeight: '600', lineHeight: '1.4' }}>
-                        Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Zipit Store, Rauza'}</strong>
+                        Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Zipit Store Hubs'}</strong>
                       </div>
 
                       <div style={{ fontSize: '12.5px', color: '#475467', marginTop: '4px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>

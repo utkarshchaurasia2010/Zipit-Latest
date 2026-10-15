@@ -18,7 +18,7 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
       const nLng = Number(initialLng);
       if (!isNaN(nLat) && !isNaN(nLng)) return { lat: nLat, lng: nLng };
     }
-    return { lat: 28.4595, lng: 77.0266 };
+    return { lat: 25.5788, lng: 83.5780 };
   });
 
   const [areaTitle, setAreaTitle] = useState('Locating delivery zone...');

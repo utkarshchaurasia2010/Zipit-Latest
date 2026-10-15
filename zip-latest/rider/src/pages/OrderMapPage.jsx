@@ -65,9 +65,25 @@ export default function OrderMapPage() {
     const riderCode = localStorage.getItem('zipit_sales_code') || 'RIDER';
 
     // Realtime in-memory broadcast channel for 0-database-write live GPS streaming
-    const broadcastChannel = id ? supabase.channel(`tracking_order_${id}`) : null;
+    const broadcastChannel = id ? supabase.channel(`tracking_order_${id}`, {
+      config: { broadcast: { self: false } }
+    }) : null;
+
+    let isChannelSubscribed = false;
     if (broadcastChannel) {
-      broadcastChannel.subscribe();
+      broadcastChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          isChannelSubscribed = true;
+          // Trigger immediate location send on successful subscription
+          if (lastCoordsRef.current) {
+            broadcastChannel.send({
+              type: 'broadcast',
+              event: 'rider_location',
+              payload: { ...lastCoordsRef.current, timestamp: Date.now() }
+            }).catch(() => {});
+          }
+        }
+      });
     }
 
     // Distance calculation helper (Haversine formula in meters)
