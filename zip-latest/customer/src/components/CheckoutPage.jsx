@@ -22,7 +22,7 @@ const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   return Math.round(R * c * 10) / 10;
 };
 
-const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharge, deliveryCharge, grandTotal, address, onAddressClick, appliedCoupon, setAppliedCoupon, discountAmount, clearCart }) => {
+const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharge, deliveryCharge, surgeCharge = 0, feeConfig, grandTotal, address, onAddressClick, appliedCoupon, setAppliedCoupon, discountAmount, clearCart }) => {
   const [suggestedProducts, setSuggestedProducts] = useState([]);
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -85,10 +85,11 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   const [fulfillmentMode, setFulfillmentMode] = useState('delivery'); // 'delivery' | 'pickup'
   const isPickup = fulfillmentMode === 'pickup';
 
-  // For pickup: delivery and handling charges are 0
+  // For pickup: delivery, handling, and surge charges are 0
   const effectiveDeliveryCharge = isPickup ? 0 : deliveryCharge;
   const effectiveSmallCartCharge = isPickup ? 0 : smallCartCharge;
-  const effectiveGrandTotal = Math.max(0, itemTotal + effectiveDeliveryCharge + effectiveSmallCartCharge - (discountAmount || 0));
+  const effectiveSurgeCharge = isPickup ? 0 : (surgeCharge || 0);
+  const effectiveGrandTotal = Math.max(0, itemTotal + effectiveDeliveryCharge + effectiveSmallCartCharge + effectiveSurgeCharge - (discountAmount || 0));
 
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
 
@@ -404,34 +405,42 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       </section>
 
       {/* COMBINED OFFERS & FREE DELIVERY CARD */}
-      <section className="checkout-section offers-card-modern">
-        <div className={`offers-delivery-block ${itemTotal >= 149 || appliedCoupon?.discount_type === 'FREE_DELIVERY' ? 'unlocked' : 'locked'}`}>
-          <div className="offers-delivery-content">
-            <div className="offers-scooter-icon">
-               <Package size={20} color="#1d4ed8" />
-            </div>
-            <div className="offers-delivery-text">
-              <h4>{appliedCoupon?.discount_type === 'FREE_DELIVERY' ? 'Free delivery applied' : (itemTotal >= 149 ? 'FREE delivery Unlocked' : 'Get FREE delivery')}</h4>
-              <p>{itemTotal >= 149 || appliedCoupon?.discount_type === 'FREE_DELIVERY' ? 'No delivery charges on this order' : `Add products worth ₹${149 - itemTotal} more`} <ChevronRight size={12} /></p>
-            </div>
+      {(!feeConfig || feeConfig.free_delivery_enabled !== false) && (
+        <section className="checkout-section offers-card-modern">
+          {(() => {
+            const freeMin = Number(feeConfig?.free_delivery_min_amount) || 149;
+            const isFree = itemTotal >= freeMin || appliedCoupon?.discount_type === 'FREE_DELIVERY';
+            return (
+              <div className={`offers-delivery-block ${isFree ? 'unlocked' : 'locked'}`}>
+                <div className="offers-delivery-content">
+                  <div className="offers-scooter-icon">
+                     <Package size={20} color="#1d4ed8" />
+                  </div>
+                  <div className="offers-delivery-text">
+                    <h4>{appliedCoupon?.discount_type === 'FREE_DELIVERY' ? 'Free delivery applied' : (isFree ? 'FREE delivery Unlocked' : 'Get FREE delivery')}</h4>
+                    <p>{isFree ? 'No delivery charges on this order' : `Add products worth ₹${freeMin - itemTotal} more`} <ChevronRight size={12} /></p>
+                  </div>
+                </div>
+                <div className="offers-delivery-track">
+                  <div className="offers-delivery-progress" style={{ width: `${appliedCoupon?.discount_type === 'FREE_DELIVERY' ? 100 : Math.min(100, (itemTotal / freeMin) * 100)}%` }} />
+                </div>
+              </div>
+            );
+          })()}
+          <div className="offers-coupon-block" onClick={() => setIsCouponModalOpen(true)}>
+            {appliedCoupon ? (
+              <div className="offers-coupon-applied">
+                <span className="offers-coupon-success"><CheckCircle size={14}/> 1 Coupon applied</span>
+                <span className="offers-coupon-saved">-₹{Math.round(discountAmount)} <ChevronRight size={16} /></span>
+              </div>
+            ) : (
+              <div className="offers-coupon-unapplied">
+                See all coupons <ChevronRight size={16} />
+              </div>
+            )}
           </div>
-          <div className="offers-delivery-track">
-            <div className="offers-delivery-progress" style={{ width: `${appliedCoupon?.discount_type === 'FREE_DELIVERY' ? 100 : Math.min(100, (itemTotal / 149) * 100)}%` }} />
-          </div>
-        </div>
-        <div className="offers-coupon-block" onClick={() => setIsCouponModalOpen(true)}>
-          {appliedCoupon ? (
-            <div className="offers-coupon-applied">
-              <span className="offers-coupon-success"><CheckCircle size={14}/> 1 Coupon applied</span>
-              <span className="offers-coupon-saved">-₹{Math.round(discountAmount)} <ChevronRight size={16} /></span>
-            </div>
-          ) : (
-            <div className="offers-coupon-unapplied">
-              See all coupons <ChevronRight size={16} />
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {suggestedProducts.length > 0 && (
         <section className="checkout-section suggested-section">
@@ -504,17 +513,30 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
               <span style={{ color: '#15803d', fontWeight: 800 }}>FREE (Store Pickup)</span>
             </div>
           </div>
-        ) : smallCartCharge > 0 ? (
+        ) : effectiveSmallCartCharge > 0 ? (
           <div className="bill-row-modern">
             <div className="bill-label-modern">
               <ShoppingBag size={16} color="var(--color-text-light)" />
               <span className="dotted-underline">Handling charge</span>
             </div>
             <div className="bill-value-modern">
-              ₹{smallCartCharge}
+              ₹{effectiveSmallCartCharge}
             </div>
           </div>
         ) : null}
+
+        {/* Surge / Rain fee if active and not pickup */}
+        {!isPickup && effectiveSurgeCharge > 0 && (
+          <div className="bill-row-modern">
+            <div className="bill-label-modern">
+              <Sparkles size={16} color="#d97706" />
+              <span className="dotted-underline" style={{ color: '#b45309' }}>Surge & Demand fee</span>
+            </div>
+            <div className="bill-value-modern" style={{ color: '#b45309', fontWeight: 700 }}>
+              ₹{effectiveSurgeCharge}
+            </div>
+          </div>
+        )}
 
         <div className="bill-row-modern delivery-charge-row">
           <div className="bill-label-modern">
@@ -529,16 +551,16 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                 <span style={{ textDecoration: 'line-through', color: 'var(--color-text-light)', marginRight: '6px', fontSize: '12px' }}>₹{deliveryCharge}</span>
                 <span style={{ color: '#15803d', fontWeight: 800 }}>FREE</span>
               </>
-            ) : deliveryCharge === 0 ? (
+            ) : effectiveDeliveryCharge === 0 ? (
               <span style={{ color: '#15803d', fontWeight: 800 }}>FREE</span>
             ) : (
-              `₹${deliveryCharge}`
+              `₹${effectiveDeliveryCharge}`
             )}
           </div>
         </div>
-        {!isPickup && (itemTotal < 149 && appliedCoupon?.discount_type !== 'FREE_DELIVERY') && (
+        {!isPickup && (feeConfig?.free_delivery_enabled !== false) && (itemTotal < (Number(feeConfig?.free_delivery_min_amount) || 149) && appliedCoupon?.discount_type !== 'FREE_DELIVERY') && (
           <div className="bill-subtext-orange">
-            Shop for ₹{149 - itemTotal} more to get FREE delivery
+            Shop for ₹{(Number(feeConfig?.free_delivery_min_amount) || 149) - itemTotal} more to get FREE delivery
           </div>
         )}
 

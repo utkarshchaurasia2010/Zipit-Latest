@@ -258,16 +258,21 @@ const AdminDashboard = ({ initialTab }) => {
       minute: '2-digit'
     });
 
-    const subtotal = (order.items || []).reduce((sum, i) => sum + (i.price * i.qty), 0);
+    const subtotal = (order.items || []).reduce((sum, i) => sum + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
     const isRefundedOrReq = order.status === 'Refunded' || order.status === 'Refund Requested';
+    const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
+    const deliveryCharge = Number(order.delivery_charge) || 0;
+    const handlingCharge = Number(order.small_cart_charge) || 0;
+    const discountAmount = Number(order.discount_amount) || 0;
+    const gstEstimated = Math.round((subtotal * 0.05 / 1.05) * 100) / 100;
 
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice - Order #${order.id.slice(0,8).toUpperCase()}</title>
+          <title>Store Invoice - Order #${order.id.slice(0,8).toUpperCase()}</title>
           <style>
-            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
+            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
             .bill-header { text-align: center; border-bottom: 2.5px solid #0c831f; padding-bottom: 16px; margin-bottom: 20px; }
             .bill-logo { font-size: 32px; font-weight: 900; color: #0c831f; letter-spacing: -1.5px; margin: 0; }
             .bill-sub { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
@@ -298,7 +303,7 @@ const AdminDashboard = ({ initialTab }) => {
         <body>
           <div class="bill-header">
             <h1 class="bill-logo">Zipit</h1>
-            <div class="bill-sub">Admin Retail & Audit Invoice</div>
+            <div class="bill-sub">Storekeeper Order Packing & Dispatch Invoice</div>
             <div class="status-chip ${isRefundedOrReq ? 'status-red' : order.status === 'Delivered' ? 'status-green' : 'status-blue'}">
               ${order.status}
             </div>
@@ -307,13 +312,22 @@ const AdminDashboard = ({ initialTab }) => {
           <div class="meta-card">
             <div class="meta-row"><span class="lbl">Order Ref:</span><span class="val">#${order.id.slice(0, 8).toUpperCase()}</span></div>
             <div class="meta-row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
+            <div class="meta-row"><span class="lbl">Fulfillment Mode:</span><span class="val" style="${isPickup ? 'color:#15803d; font-weight:900;' : ''}">${isPickup ? '🛍️ STORE PICKUP' : '🛵 HOME DELIVERY'}</span></div>
             <div class="meta-row"><span class="lbl">Customer:</span><span class="val">${order.profiles?.name || order.delivery_address?.name || 'Guest Customer'}</span></div>
             ${(order.profiles?.phone || order.delivery_address?.phone) ? `<div class="meta-row"><span class="lbl">Contact Phone:</span><span class="val">${order.profiles?.phone || order.delivery_address?.phone}</span></div>` : ''}
-            <div class="meta-row"><span class="lbl">Payment Gateway:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
+            <div class="meta-row"><span class="lbl">Payment Method:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
             ${order.delivery_address?.landmark ? `<div class="meta-row" style="background:#fee2e2; padding:4px 6px; border-radius:4px; margin: 4px 0;"><span class="lbl" style="color:#b91c1c; font-weight:bold;">🚩 Landmark:</span><span class="val" style="font-weight:bold; color:#b91c1c;">${order.delivery_address.landmark}</span></div>` : ''}
+            ${order.delivery_address?.village_area ? `<div class="meta-row"><span class="lbl">📍 Village / Area:</span><span class="val">${order.delivery_address.village_area}</span></div>` : ''}
             ${order.delivery_address?.family_head ? `<div class="meta-row"><span class="lbl">🏠 House/Family:</span><span class="val">${order.delivery_address.family_head}</span></div>` : ''}
             ${order.delivery_address?.alt_phone ? `<div class="meta-row"><span class="lbl">Alt Contact:</span><span class="val">${order.delivery_address.alt_phone}</span></div>` : ''}
-            ${order.delivery_address ? `<div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details || order.delivery_address.full_address || 'Customer Location'}</span></div>` : ''}
+            ${isPickup ? `
+              <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
+                <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup Counter:</span>
+                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store, Rauza'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+              </div>
+            ` : order.delivery_address ? `
+              <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details?.split('\n---TAG:')[0] || order.delivery_address.full_address || order.delivery_address.address || 'Customer Location'}</span></div>
+            ` : ''}
           </div>
 
           <div class="table-head">Order Items & Substitutions</div>
@@ -331,8 +345,15 @@ const AdminDashboard = ({ initialTab }) => {
           `).join('')}
 
           <div class="total-card">
-            <div class="total-row"><span class="lbl">Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
-            <div class="total-row"><span class="lbl">GST & Platform Fee</span><span class="val">Included</span></div>
+            <div class="total-row"><span class="lbl">Items Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
+            ${handlingCharge > 0 ? `<div class="total-row"><span class="lbl">Handling / Platform Fee</span><span class="val">₹${handlingCharge}</span></div>` : ''}
+            ${deliveryCharge > 0 ? `
+              <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val">₹${deliveryCharge}</span></div>
+            ` : `
+              <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val" style="color:#15803d; font-weight:700;">FREE</span></div>
+            `}
+            ${discountAmount > 0 ? `<div class="total-row"><span class="lbl">Discounts / Coupons</span><span class="val" style="color:#16a34a; font-weight:700;">-₹${discountAmount}</span></div>` : ''}
+            <div class="total-row"><span class="lbl">Taxes (GST Included ~5%)</span><span class="val">₹${gstEstimated.toFixed(2)}</span></div>
             <div class="grand-total">
               <span>Grand Total</span>
               <span>₹${order.total}</span>
@@ -340,7 +361,7 @@ const AdminDashboard = ({ initialTab }) => {
           </div>
 
           <div class="footer">
-            Zipit Quick Commerce Admin Portal • Internal Store Receipt<br/>
+            Zipit Quick Commerce Storekeeper Portal • Counter Receipt<br/>
             Printed on ${new Date().toLocaleTimeString('en-IN')}
           </div>
 

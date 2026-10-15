@@ -486,11 +486,41 @@ function AppContent() {
     setAddresses(addrs);
   };
 
+  const [feeConfig, setFeeConfig] = useState({
+    delivery_fee: 20,
+    handling_fee: 9,
+    free_delivery_min_amount: 149,
+    free_delivery_enabled: true,
+    surge_fee: 0,
+    surge_enabled: false
+  });
+
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b) {
+        setFeeConfig({
+          delivery_fee: Number(b.delivery_fee) >= 0 ? Number(b.delivery_fee) : 20,
+          handling_fee: Number(b.handling_fee) >= 0 ? Number(b.handling_fee) : 9,
+          free_delivery_min_amount: Number(b.free_delivery_min_amount) >= 0 ? Number(b.free_delivery_min_amount) : 149,
+          free_delivery_enabled: b.free_delivery_enabled !== false,
+          surge_fee: Number(b.surge_fee) || 0,
+          surge_enabled: b.surge_enabled === true
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
   const safeCart = Array.isArray(cart) ? cart : [];
   const totalItems = safeCart.reduce((sum, item) => sum + (item?.qty || 0), 0);
   const itemTotal = safeCart.reduce((sum, item) => sum + ((item?.price || 0) * (item?.qty || 0)), 0);
-  const smallCartCharge = itemTotal > 0 ? 9 : 0;
-  const deliveryCharge = (itemTotal > 0 && itemTotal < 149) ? 20 : 0;
+  
+  // Dynamic handling and delivery fees synced with Admin settings
+  const smallCartCharge = itemTotal > 0 ? (Number(feeConfig.handling_fee) || 0) : 0;
+  const surgeCharge = (itemTotal > 0 && feeConfig.surge_enabled) ? (Number(feeConfig.surge_fee) || 0) : 0;
+  
+  const isFreeDeliveryEligible = feeConfig.free_delivery_enabled && itemTotal >= feeConfig.free_delivery_min_amount;
+  const baseDeliveryCharge = Number(feeConfig.delivery_fee) || 0;
+  const deliveryCharge = (itemTotal > 0 && !isFreeDeliveryEligible) ? baseDeliveryCharge : 0;
   
   const discountAmount = appliedCoupon 
     ? (appliedCoupon.discount_type === 'PERCENTAGE' 
@@ -500,7 +530,7 @@ function AppContent() {
             : appliedCoupon.discount_value)
     : 0;
     
-  const grandTotal = itemTotal > 0 ? Math.max(0, itemTotal + smallCartCharge + deliveryCharge - discountAmount) : 0;
+  const grandTotal = itemTotal > 0 ? Math.max(0, itemTotal + smallCartCharge + deliveryCharge + surgeCharge - discountAmount) : 0;
 
   // Clear coupon if item total falls below minimum order amount
   useEffect(() => {
@@ -608,7 +638,7 @@ function AppContent() {
                 <Route path="/track" element={<TrackOrderPage navigate={navigate} />} />
                 <Route path="/substitute-selection" element={<SubstituteSelectionPage navigate={navigate} />} />
                 <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
-                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
+                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
                 <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>

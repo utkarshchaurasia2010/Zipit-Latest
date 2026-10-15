@@ -30,13 +30,14 @@ const destIcon = createSvgIcon(`
 `, 36, 36);
 
 const OLA_MAPS_API_KEY = 'cb1_4fid_1_1354e75ad3dae085ce92fc8f';
-const storeLocation = [25.5788, 83.5780]; // Store location
+const DEFAULT_STORE_LOCATION = [25.5788, 83.5780]; // Store location fallback
 
 export default function OrderMapPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
-  const [myLocation, setMyLocation] = useState(storeLocation);
+  const [storeLocation, setStoreLocation] = useState(DEFAULT_STORE_LOCATION);
+  const [myLocation, setMyLocation] = useState(DEFAULT_STORE_LOCATION);
   const [showUpiQr, setShowUpiQr] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [enteredOtp, setEnteredOtp] = useState('');
@@ -45,6 +46,15 @@ export default function OrderMapPage() {
   const [routePolyline, setRoutePolyline] = useState(null);
   const watchIdRef = useRef(null);
   const mapRef = useRef(null);
+
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b && b.store_lat && b.store_lng) {
+        const storeCoords = [Number(b.store_lat), Number(b.store_lng)];
+        setStoreLocation(storeCoords);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchOrder();
@@ -74,49 +84,54 @@ export default function OrderMapPage() {
       return R * c;
     };
 
+    const handleNewLocation = (lat, lng, heading = null, speed = null) => {
+      setMyLocation([lat, lng]);
+      const now = Date.now();
+      const lastCoords = lastCoordsRef.current;
+      const distanceMoved = lastCoords ? getDistanceMeters(lastCoords.lat, lastCoords.lng, lat, lng) : 999;
+
+      if (now - lastReportTimeRef.current >= 4000 || distanceMoved >= 8) {
+        lastReportTimeRef.current = now;
+        lastCoordsRef.current = { lat, lng };
+
+        if (broadcastChannel) {
+          broadcastChannel.send({
+            type: 'broadcast',
+            event: 'rider_location',
+            payload: { lat, lng, heading, speed, timestamp: now }
+          }).catch(() => {});
+        }
+
+        if (now - lastDbPersistTimeRef.current >= 12000) {
+          supabase.from('rider_status').upsert({
+            rider_code: riderCode,
+            lat: lat,
+            lng: lng,
+            is_online: true,
+            last_ping: new Date().toISOString()
+          }, { onConflict: 'rider_code' }).then();
+        }
+
+        if (now - lastDbPersistTimeRef.current >= 35000 && id) {
+          lastDbPersistTimeRef.current = now;
+          db.orders.updateLocation(id, lat, lng);
+        }
+      }
+    };
+
     if ('geolocation' in navigator) {
+      // Immediate position capture on load
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          handleNewLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.heading, pos.coords.speed);
+        },
+        (err) => console.warn('Initial geolocation error:', err),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const heading = pos.coords.heading || null;
-          const speed = pos.coords.speed || null;
-          setMyLocation([lat, lng]);
-
-          const now = Date.now();
-          const lastCoords = lastCoordsRef.current;
-          const distanceMoved = lastCoords ? getDistanceMeters(lastCoords.lat, lastCoords.lng, lat, lng) : 999;
-
-          // 1. In-memory WebSocket Broadcast: Sends if moved > 8m OR if 4 seconds passed (ZERO DATABASE WRITES & NO EGRESS SURGE)
-          if (now - lastReportTimeRef.current >= 4000 || distanceMoved >= 8) {
-            lastReportTimeRef.current = now;
-            lastCoordsRef.current = { lat, lng };
-
-            if (broadcastChannel) {
-              broadcastChannel.send({
-                type: 'broadcast',
-                event: 'rider_location',
-                payload: { lat, lng, heading, speed, timestamp: now }
-              }).catch(() => {});
-            }
-
-            // 2. Light fleet ping for Admin (throttled to max once every 12 seconds)
-            if (now - lastDbPersistTimeRef.current >= 12000) {
-              supabase.from('rider_status').upsert({
-                rider_code: riderCode,
-                lat: lat,
-                lng: lng,
-                is_online: true,
-                last_ping: new Date().toISOString()
-              }, { onConflict: 'rider_code' }).then();
-            }
-
-            // 3. Fallback database persist only once every 35 seconds (for customers opening app late)
-            if (now - lastDbPersistTimeRef.current >= 35000 && id) {
-              lastDbPersistTimeRef.current = now;
-              db.orders.updateLocation(id, lat, lng);
-            }
-          }
+          handleNewLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.heading, pos.coords.speed);
         },
         (err) => console.warn('Geolocation Error:', err),
         { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
@@ -353,32 +368,96 @@ export default function OrderMapPage() {
         <div style={{ width: '40px', height: '5px', background: 'var(--color-border)', borderRadius: '10px', margin: '0 auto 20px' }} />
 
         {/* Customer Info */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-              Deliver To
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '4px' }}>
+                Deliver To Customer
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', lineHeight: '1.4' }}>
+                {order.delivery_address?.name || 'Customer'}
+              </div>
+              <div style={{ fontSize: '13.5px', fontWeight: '500', color: '#334155', marginTop: '4px', lineHeight: '1.4' }}>
+                {order.delivery_address?.details?.split('\n---TAG:')[0] || order.delivery_address?.address || 'Customer Address'}
+              </div>
             </div>
-            <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text)', lineHeight: '1.4', paddingRight: '16px' }}>
-              {order.delivery_address?.details?.split('\n---TAG:')[0] || 'Customer Address'}
+
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              {order.delivery_address?.phone && (
+                <a href={`tel:${order.delivery_address.phone}`} style={{
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                  boxShadow: '0 2px 6px rgba(37,99,235,0.15)'
+                }} title="Call Customer">
+                  <Phone size={18} />
+                </a>
+              )}
+              {(() => {
+                const altPhone = order.delivery_address?.alt_phone || order.delivery_address?.details?.match(/---TAG:ALT_PHONE:(.*?)---/)?.[1];
+                return altPhone ? (
+                  <a href={`tel:${altPhone}`} style={{
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 6px rgba(5,150,105,0.15)'
+                  }} title="Call Alternate Number">
+                    <Phone size={18} />
+                  </a>
+                ) : null;
+              })()}
             </div>
           </div>
-          
-          {order.delivery_address?.phone && (
-            <a href={`tel:${order.delivery_address.phone}`} style={{
-              background: '#eff6ff',
-              color: '#2563eb',
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              textDecoration: 'none'
-            }}>
-              <Phone size={22} />
-            </a>
-          )}
+
+          {/* Detailed tags: Landmark, Village/Area, Family Head */}
+          {(() => {
+            const addr = order.delivery_address || {};
+            const details = addr.details || '';
+            const landmark = addr.landmark || details.match(/---TAG:LANDMARK:(.*?)---/)?.[1];
+            const village = addr.village_area || details.match(/---TAG:VILLAGE:(.*?)---/)?.[1];
+            const familyHead = addr.family_head || details.match(/---TAG:FAMILY_HEAD:(.*?)---/)?.[1];
+            const altPhone = addr.alt_phone || details.match(/---TAG:ALT_PHONE:(.*?)---/)?.[1];
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1', fontSize: '12.5px' }}>
+                {landmark && (
+                  <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🚩 Landmark:</span>
+                    <span>{landmark}</span>
+                  </div>
+                )}
+                {village && (
+                  <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📍 Area / Village:</span>
+                    <span>{village}</span>
+                  </div>
+                )}
+                {familyHead && (
+                  <div style={{ background: '#fef3c7', color: '#92400e', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🏠 House / Family Head:</span>
+                    <span>{familyHead}</span>
+                  </div>
+                )}
+                {altPhone && (
+                  <div style={{ color: '#475467', fontWeight: '600', padding: '2px 4px' }}>
+                    Alt Phone: <strong>{altPhone}</strong>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Action Button */}

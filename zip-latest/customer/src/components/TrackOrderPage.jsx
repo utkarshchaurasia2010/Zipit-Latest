@@ -77,7 +77,16 @@ const DeliveryMap = ({ status, order }) => {
   const isOnTheWay = status === 'Out for Delivery';
   const isDelivered = status === 'Delivered';
 
-  const storeLocation = [25.5788, 83.5780];
+  const [storeLocation, setStoreLocation] = useState([25.5788, 83.5780]);
+
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b && b.store_lat && b.store_lng) {
+        setStoreLocation([Number(b.store_lat), Number(b.store_lng)]);
+      }
+    }).catch(() => {});
+  }, []);
+
   const destLocation = [
     Number(order.delivery_address?.lat) || 25.5900, 
     Number(order.delivery_address?.lng) || 83.5850
@@ -159,6 +168,8 @@ const DeliveryMap = ({ status, order }) => {
     }
   }, [order.delivery_lat, order.delivery_lng]);
 
+  const showRiderMarker = !isDelivered && (isOnTheWay || status === 'Ready for Pickup' || status === 'Preparing' || status === 'Preparing (Accepted)' || isLiveGpsActive);
+
   return (
     <div className="delivery-map-wrapper" style={{ height: '230px', position: 'relative', overflow: 'hidden', borderRadius: '16px', marginTop: '14px', zIndex: 0, border: '1px solid var(--color-border, #e2e8f0)' }}>
       <MapContainer center={storeLocation} zoom={14} style={{ height: '100%', width: '100%' }} zoomControl={false} attributionControl={false}>
@@ -174,7 +185,7 @@ const DeliveryMap = ({ status, order }) => {
         <Marker position={storeLocation} icon={storeIcon} />
         <Marker position={destLocation} icon={destIcon} />
         
-        {(isOnTheWay || status === 'Preparing') && (
+        {showRiderMarker && (
           <Marker position={riderPos} icon={driverIcon} />
         )}
         

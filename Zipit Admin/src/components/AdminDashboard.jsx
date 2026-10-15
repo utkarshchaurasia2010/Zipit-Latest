@@ -298,8 +298,13 @@ const AdminDashboard = ({ initialTab }) => {
       minute: '2-digit'
     });
 
-    const subtotal = (order.items || []).reduce((sum, i) => sum + (i.price * i.qty), 0);
+    const subtotal = (order.items || []).reduce((sum, i) => sum + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
     const isRefundedOrReq = order.status === 'Refunded' || order.status === 'Refund Requested';
+    const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
+    const deliveryCharge = Number(order.delivery_charge) || 0;
+    const handlingCharge = Number(order.small_cart_charge) || 0;
+    const discountAmount = Number(order.discount_amount) || 0;
+    const gstEstimated = Math.round((subtotal * 0.05 / 1.05) * 100) / 100;
 
     const html = `
       <!DOCTYPE html>
@@ -307,7 +312,7 @@ const AdminDashboard = ({ initialTab }) => {
         <head>
           <title>Invoice - Order #${order.id.slice(0,8).toUpperCase()}</title>
           <style>
-            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
+            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
             .bill-header { text-align: center; border-bottom: 2.5px solid #0c831f; padding-bottom: 16px; margin-bottom: 20px; }
             .bill-logo { font-size: 32px; font-weight: 900; color: #0c831f; letter-spacing: -1.5px; margin: 0; }
             .bill-sub { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
@@ -347,26 +352,27 @@ const AdminDashboard = ({ initialTab }) => {
           <div class="meta-card">
             <div class="meta-row"><span class="lbl">Order Ref:</span><span class="val">#${order.id.slice(0, 8).toUpperCase()}</span></div>
             <div class="meta-row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
-            <div class="meta-row"><span class="lbl">Fulfillment:</span><span class="val" style="${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? 'color:#15803d; font-weight:900;' : ''}">${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? '🛍️ STORE PICKUP (Ready ~1 hr)' : '🛵 HOME DELIVERY'}</span></div>
+            <div class="meta-row"><span class="lbl">Fulfillment:</span><span class="val" style="${isPickup ? 'color:#15803d; font-weight:900;' : ''}">${isPickup ? '🛍️ STORE PICKUP (Ready ~1 hr)' : '🛵 HOME DELIVERY'}</span></div>
             <div class="meta-row"><span class="lbl">Customer:</span><span class="val">${order.profiles?.name || order.delivery_address?.name || 'Guest Customer'}</span></div>
             ${(order.profiles?.phone || order.delivery_address?.phone) ? `<div class="meta-row"><span class="lbl">Contact Phone:</span><span class="val">${order.profiles?.phone || order.delivery_address?.phone}</span></div>` : ''}
             <div class="meta-row"><span class="lbl">Payment Gateway:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
             ${order.delivery_address?.landmark ? `<div class="meta-row" style="background:#fee2e2; padding:4px 6px; border-radius:4px; margin: 4px 0;"><span class="lbl" style="color:#b91c1c; font-weight:bold;">🚩 Landmark:</span><span class="val" style="font-weight:bold; color:#b91c1c;">${order.delivery_address.landmark}</span></div>` : ''}
+            ${order.delivery_address?.village_area ? `<div class="meta-row"><span class="lbl">📍 Village / Area:</span><span class="val">${order.delivery_address.village_area}</span></div>` : ''}
             ${order.delivery_address?.family_head ? `<div class="meta-row"><span class="lbl">🏠 House/Family:</span><span class="val">${order.delivery_address.family_head}</span></div>` : ''}
             ${order.delivery_address?.alt_phone ? `<div class="meta-row"><span class="lbl">Alt Contact:</span><span class="val">${order.delivery_address.alt_phone}</span></div>` : ''}
             <div class="meta-row"><span class="lbl">Shopkeeper:</span><span class="val">${order.accepted_by_shopkeeper ? `✓ ${order.accepted_by_shopkeeper}` : 'Pending Acceptance'}</span></div>
-            ${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? `
+            ${isPickup ? `
               <div class="meta-row"><span class="lbl">Rider / Delivery:</span><span class="val" style="color: #64748b;">N/A (Store Pickup)</span></div>
             ` : `
               <div class="meta-row"><span class="lbl">Assigned Rider:</span><span class="val">${order.accepted_by_rider ? `🛵 ${order.accepted_by_rider}` : 'Unclaimed / Pending Rider'}</span></div>
             `}
-            ${(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') ? `
+            ${isPickup ? `
               <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
                 <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup:</span>
-                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address.store_location || 'Zipit Store, Rauza'} (${order.delivery_address.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store, Rauza'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
               </div>
             ` : order.delivery_address ? `
-              <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details || order.delivery_address.full_address || 'Customer Location'}</span></div>
+              <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details?.split('\n---TAG:')[0] || order.delivery_address.full_address || order.delivery_address.address || 'Customer Location'}</span></div>
             ` : ''}
           </div>
 
@@ -385,8 +391,15 @@ const AdminDashboard = ({ initialTab }) => {
           `).join('')}
 
           <div class="total-card">
-            <div class="total-row"><span class="lbl">Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
-            <div class="total-row"><span class="lbl">GST & Platform Fee</span><span class="val">Included</span></div>
+            <div class="total-row"><span class="lbl">Items Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
+            ${handlingCharge > 0 ? `<div class="total-row"><span class="lbl">Handling / Platform Fee</span><span class="val">₹${handlingCharge}</span></div>` : ''}
+            ${deliveryCharge > 0 ? `
+              <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val">₹${deliveryCharge}</span></div>
+            ` : `
+              <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val" style="color:#15803d; font-weight:700;">FREE</span></div>
+            `}
+            ${discountAmount > 0 ? `<div class="total-row"><span class="lbl">Discounts / Coupons</span><span class="val" style="color:#16a34a; font-weight:700;">-₹${discountAmount}</span></div>` : ''}
+            <div class="total-row"><span class="lbl">Taxes (GST Included ~5%)</span><span class="val">₹${gstEstimated.toFixed(2)}</span></div>
             <div class="grand-total">
               <span>Grand Total</span>
               <span>₹${order.total}</span>

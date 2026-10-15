@@ -131,7 +131,7 @@ export const db = {
       return { data: { ...updatedRecord, admin_code: admin_code || '737920', address: cleanAddress } };
     },
     getAllUsers: async () => {
-      const { data, error } = await supabase.from('profiles').select('*');
+      const { data, error } = await supabase.from('profiles').select('*').neq('id', '00000000-0000-0000-0000-000000000001');
       if (error) console.error("DB Error (profiles getAllUsers):", error);
       
       const [addrsRes, ordersRes] = await Promise.all([
@@ -149,7 +149,7 @@ export const db = {
         return details.trim() || null;
       };
 
-      return (data || []).map(u => {
+      return (data || []).filter(u => u.id !== '00000000-0000-0000-0000-000000000001').map(u => {
         const userAddressesList = [];
         
         if (u.address) {

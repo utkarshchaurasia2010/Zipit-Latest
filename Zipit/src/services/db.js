@@ -388,6 +388,10 @@ export const db = {
       if (currentPrimary && currentPrimary.details) {
          const oldTags = [
            currentPrimary.phone ? `---TAG:PHONE:${currentPrimary.phone}---` : '',
+           currentPrimary.landmark ? `---TAG:LANDMARK:${currentPrimary.landmark}---` : '',
+           currentPrimary.family_head ? `---TAG:FAMILY_HEAD:${currentPrimary.family_head}---` : '',
+           currentPrimary.alt_phone ? `---TAG:ALT_PHONE:${currentPrimary.alt_phone}---` : '',
+           currentPrimary.village_area ? `---TAG:VILLAGE:${currentPrimary.village_area}---` : '',
            currentPrimary.lat ? `---TAG:LAT:${currentPrimary.lat}---` : '',
            currentPrimary.lng ? `---TAG:LNG:${currentPrimary.lng}---` : '',
            currentPrimary.gps_area ? `---TAG:GPS_AREA:${currentPrimary.gps_area}---` : '',
@@ -397,15 +401,30 @@ export const db = {
          
          await supabase.from('addresses').insert([{ 
            profile_id: pid, 
-           type: 'HOME', 
+           type: currentPrimary.type || 'HOME', 
            is_default: false, 
            details: `${currentPrimary.details}\n${oldTags}`
          }]);
       }
       
-      // 2. Set target address to profiles table
+      // 2. Build full metadata tags for target address before setting to profiles table
+      const targetTags = [
+        targetAddr.phone ? `---TAG:PHONE:${targetAddr.phone}---` : '',
+        targetAddr.landmark ? `---TAG:LANDMARK:${targetAddr.landmark}---` : '',
+        targetAddr.family_head ? `---TAG:FAMILY_HEAD:${targetAddr.family_head}---` : '',
+        targetAddr.alt_phone ? `---TAG:ALT_PHONE:${targetAddr.alt_phone}---` : '',
+        targetAddr.village_area ? `---TAG:VILLAGE:${targetAddr.village_area}---` : '',
+        targetAddr.lat ? `---TAG:LAT:${targetAddr.lat}---` : '',
+        targetAddr.lng ? `---TAG:LNG:${targetAddr.lng}---` : '',
+        targetAddr.gps_area ? `---TAG:GPS_AREA:${targetAddr.gps_area}---` : '',
+        targetAddr.google_maps_url ? `---TAG:GMAPS:${targetAddr.google_maps_url}---` : '',
+        `---TAG:NAME:${profile?.name || 'Unknown'}---`
+      ].filter(Boolean).join('\n');
+
+      const cleanTargetDetails = (targetAddr.details || '').replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
+
       await supabase.from('profiles').update({
-          address: targetAddr.details,
+          address: targetTags ? `${cleanTargetDetails}\n${targetTags}` : cleanTargetDetails,
           lat: targetAddr.lat ? parseFloat(targetAddr.lat) : null,
           lng: targetAddr.lng ? parseFloat(targetAddr.lng) : null,
           gps_area: targetAddr.gps_area || null,
