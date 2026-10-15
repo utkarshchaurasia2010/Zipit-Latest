@@ -452,7 +452,7 @@ const SectionsManager = () => {
               </button>
             </div>
 
-            <form onSubmit={handleModalSave}>
+            <form onSubmit={handleModalSave} className="section-modal-form">
               <div className="section-modal-body">
                 <div>
                   <label className="form-label">Section Heading Title</label>
