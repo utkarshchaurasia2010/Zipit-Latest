@@ -9,9 +9,10 @@ build/
 
 # Local Environment & Secrets
 .env
-.env.local
-.env.*.local
-credentials.json
+.env*
+!.env.example
+credentials*.json
+*service-account*.json
 *.pem
 
 # Editor & Logs
