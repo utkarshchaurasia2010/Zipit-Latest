@@ -295,7 +295,7 @@ const Settings = ({ profile, setProfile }) => {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface-muted, #f8fafc)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
           <div style={{ fontSize: '12.5px', color: 'var(--color-text-light)' }}>
-            <strong>Active Policy:</strong> Customers $> {branding.max_delivery_radius_km ?? 8.5} \text{km}$ away will see <em>"Delivery currently unserviceable at your location"</em>.
+            <strong>Active Policy:</strong> Customers &gt; {branding.max_delivery_radius_km ?? 8.5} km away will see <em>"Delivery currently unserviceable at your location"</em>.
           </div>
           <button 
             type="button" 
