@@ -8,6 +8,7 @@ import BottomNav from './components/BottomNav';
 import SkeletonLoader from './components/SkeletonLoader';
 import SplashScreen from './components/SplashScreen';
 import PullToRefresh from './components/PullToRefresh';
+import HeroSection from './components/HeroSection';
 
 // Code-split secondary route components to drastically reduce initial JS payload
 const LoginPage = React.lazy(() => import('./components/LoginPage'));
