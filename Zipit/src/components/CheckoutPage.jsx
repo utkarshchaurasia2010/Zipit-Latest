@@ -9,6 +9,19 @@ import { useWishlist } from '../context/WishlistContext';
 import './CheckoutPage.css';
 import './ProductListPage.css'; // For the bestseller-card style
 
+// Haversine formula to compute exact distance between customer GPS and Dark Store
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+};
+
 const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharge, deliveryCharge, grandTotal, address, onAddressClick, appliedCoupon, setAppliedCoupon, discountAmount, clearCart }) => {
   const [suggestedProducts, setSuggestedProducts] = useState([]);
   const [couponCode, setCouponCode] = useState('');
@@ -19,8 +32,22 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   const [selectedPayment, setSelectedPayment] = useState('UPI');
   const [processing, setProcessing] = useState(false);
   const [pickupPhone, setPickupPhone] = useState(address?.phone || '');
+  const [geofenceConfig, setGeofenceConfig] = useState({ store_lat: 25.5788, store_lng: 83.5780, max_delivery_radius_km: 8.5 });
   const { showToast } = useToast();
   const { toggleWishlist } = useWishlist();
+
+  useEffect(() => {
+    // Load store geofencing settings from branding config
+    db.branding.get().then(b => {
+      if (b) {
+        setGeofenceConfig({
+          store_lat: Number(b.store_lat) || 25.5788,
+          store_lng: Number(b.store_lng) || 83.5780,
+          max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // If address has phone, prefill pickup phone
@@ -120,6 +147,24 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
     if (!isPickup && !address) {
       showToast('Please select a delivery address', 'Address Required');
       return;
+    }
+
+    // Geofencing Validation: Block delivery orders outside maximum service radius
+    if (!isPickup && address?.lat && address?.lng) {
+      const distance = calculateDistanceKm(
+        geofenceConfig.store_lat,
+        geofenceConfig.store_lng,
+        Number(address.lat),
+        Number(address.lng)
+      );
+
+      if (distance > geofenceConfig.max_delivery_radius_km) {
+        showToast(
+          `Delivery location is ${distance} km away. We currently deliver up to ${geofenceConfig.max_delivery_radius_km} km. You can switch to Store Pickup!`,
+          'Out of Delivery Range'
+        );
+        return;
+      }
     }
 
     setProcessing(true);
@@ -513,23 +558,44 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       {createPortal(
         <div className="checkout-bottom-bar" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, backgroundColor: 'var(--color-surface)' }}>
           {/* Address Banner Above the Buttons */}
-          <div className="checkout-address-area" onClick={!isPickup ? onAddressClick : undefined} style={{ cursor: isPickup ? 'default' : 'pointer' }}>
-            <div className="address-icon-bg">
-              <MapPin size={14} />
-            </div>
-            <div className="checkout-address-text">
-              <h3 className="checkout-address-title">
-                {isPickup ? (
-                  <span>Pickup from: <strong>Zipit Store, Rauza (~1 hr)</strong></span>
-                ) : (
-                  <>
-                    <span>Delivering to <strong>{address ? (address.type || 'Rauza') : 'Rauza'}</strong></span>
-                    <span className="address-change-btn">Change</span>
-                  </>
-                )}
-              </h3>
-            </div>
-          </div>
+          {(() => {
+            const deliveryDistance = (!isPickup && address?.lat && address?.lng) 
+              ? calculateDistanceKm(geofenceConfig.store_lat, geofenceConfig.store_lng, Number(address.lat), Number(address.lng))
+              : null;
+            const isOutOfRange = deliveryDistance !== null && deliveryDistance > geofenceConfig.max_delivery_radius_km;
+
+            return (
+              <div 
+                className="checkout-address-area" 
+                onClick={!isPickup ? onAddressClick : undefined} 
+                style={{ 
+                  cursor: isPickup ? 'default' : 'pointer',
+                  backgroundColor: isOutOfRange ? 'rgba(239, 68, 68, 0.08)' : undefined,
+                  borderBottom: isOutOfRange ? '1px solid rgba(239, 68, 68, 0.3)' : undefined
+                }}
+              >
+                <div className="address-icon-bg" style={{ backgroundColor: isOutOfRange ? '#ef4444' : undefined, color: isOutOfRange ? '#fff' : undefined }}>
+                  <MapPin size={14} />
+                </div>
+                <div className="checkout-address-text">
+                  <h3 className="checkout-address-title">
+                    {isPickup ? (
+                      <span>Pickup from: <strong>Zipit Store, Rauza (~1 hr)</strong></span>
+                    ) : isOutOfRange ? (
+                      <span style={{ color: '#ef4444', fontWeight: '700' }}>
+                        Unserviceable: {deliveryDistance} km away (Max radius {geofenceConfig.max_delivery_radius_km} km)
+                      </span>
+                    ) : (
+                      <>
+                        <span>Delivering to <strong>{address ? (address.type || 'Rauza') : 'Rauza'}</strong> {deliveryDistance !== null && <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({deliveryDistance} km)</span>}</span>
+                        <span className="address-change-btn">Change</span>
+                      </>
+                    )}
+                  </h3>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Action Row */}
           <div className="checkout-action-row">

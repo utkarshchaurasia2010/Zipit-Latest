@@ -90,52 +90,74 @@ const DeliveryMap = ({ status, order }) => {
   ];
   
   const routePositions = [storeLocation, midPoint, destLocation];
-  const [animatedPos, setAnimatedPos] = useState(storeLocation);
+  
+  // Real rider position: initialized from DB order coords if present, else store
+  const initialPos = (order.delivery_lat && order.delivery_lng) 
+    ? [Number(order.delivery_lat), Number(order.delivery_lng)] 
+    : storeLocation;
 
+  const [riderPos, setRiderPos] = useState(initialPos);
+  const [isLiveGpsActive, setIsLiveGpsActive] = useState(!!(order.delivery_lat && order.delivery_lng));
+  const targetPosRef = useRef(initialPos);
+  const animFrameRef = useRef(null);
+
+  // Smooth lerp interpolation from current position to newly arrived GPS broadcast
+  const lerp = (start, end, factor) => start + (end - start) * factor;
+
+  // 1. In-memory Realtime Broadcast Listener (0 Egress / 0 DB writes)
   useEffect(() => {
-    if (!isOnTheWay && status !== 'Preparing') {
-      setAnimatedPos(storeLocation);
-      return;
-    }
-    
-    // 1. If Rider has reported real GPS coordinates via phone geolocation
-    if (order.delivery_lat && order.delivery_lng) {
-      setAnimatedPos([Number(order.delivery_lat), Number(order.delivery_lng)]);
-      return;
-    }
-    
-    // 2. Smooth bezier simulated animation only while waiting for initial rider GPS fix
-    let startTime = Date.now();
-    const duration = 16000; // 16 seconds loop
-    let animationFrame;
-    
-    const getBezierPoint = (t, p0, p1, p2) => {
-      const u = 1 - t;
-      return [
-        u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0],
-        u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]
-      ];
+    if (!order?.id) return;
+
+    const channel = supabase.channel(`tracking_order_${order.id}`)
+      .on('broadcast', { event: 'rider_location' }, ({ payload }) => {
+        if (payload?.lat && payload?.lng) {
+          const newTarget = [Number(payload.lat), Number(payload.lng)];
+          targetPosRef.current = newTarget;
+          setIsLiveGpsActive(true);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [order?.id]);
+
+  // 2. Smooth marker interpolation towards targetPosRef
+  useEffect(() => {
+    let active = true;
+
+    const step = () => {
+      if (!active) return;
+      setRiderPos(current => {
+        const target = targetPosRef.current;
+        if (!target) return current;
+        const dLat = Math.abs(target[0] - current[0]);
+        const dLng = Math.abs(target[1] - current[1]);
+        if (dLat < 0.00002 && dLng < 0.00002) return target;
+        return [
+          lerp(current[0], target[0], 0.15),
+          lerp(current[1], target[1], 0.15)
+        ];
+      });
+      animFrameRef.current = requestAnimationFrame(step);
     };
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      let progress = elapsed / duration;
-      
-      if (progress > 1) {
-        startTime = Date.now();
-        progress = 0;
-      }
-      
-      const easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-      const newPos = getBezierPoint(easeProgress, storeLocation, midPoint, destLocation);
-      setAnimatedPos(newPos);
-      
-      animationFrame = requestAnimationFrame(animate);
+    animFrameRef.current = requestAnimationFrame(step);
+    return () => {
+      active = false;
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-    
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [isOnTheWay, status, order.delivery_lat, order.delivery_lng, storeLocation[0], storeLocation[1], destLocation[0], destLocation[1]]);
+  }, []);
+
+  // 3. Fallback when order.delivery_lat/lng updates via DB (e.g., initial fetch)
+  useEffect(() => {
+    if (order.delivery_lat && order.delivery_lng) {
+      const dbTarget = [Number(order.delivery_lat), Number(order.delivery_lng)];
+      targetPosRef.current = dbTarget;
+      setIsLiveGpsActive(true);
+    }
+  }, [order.delivery_lat, order.delivery_lng]);
 
   return (
     <div className="delivery-map-wrapper" style={{ height: '230px', position: 'relative', overflow: 'hidden', borderRadius: '16px', marginTop: '14px', zIndex: 0, border: '1px solid var(--color-border, #e2e8f0)' }}>
@@ -153,11 +175,11 @@ const DeliveryMap = ({ status, order }) => {
         <Marker position={destLocation} icon={destIcon} />
         
         {(isOnTheWay || status === 'Preparing') && (
-          <Marker position={animatedPos} icon={driverIcon} />
+          <Marker position={riderPos} icon={driverIcon} />
         )}
         
         <MapBoundsFitter positions={routePositions} />
-        <MapUpdater center={isOnTheWay ? animatedPos : null} />
+        <MapUpdater center={isOnTheWay ? riderPos : null} />
       </MapContainer>
 
       {/* Floating Status Badge */}
@@ -166,8 +188,8 @@ const DeliveryMap = ({ status, order }) => {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={14} color="#15803d" /> Order Delivered</span>
         ) : isOnTheWay ? (
           <>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#2563eb', animation: 'pulse 1.5s infinite' }}></span>
-            <span>{order.delivery_lat ? 'Live Rider Location' : 'Rider is on the way · ~8 mins'}</span>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: isLiveGpsActive ? '#10b981' : '#2563eb', animation: 'pulse 1.5s infinite' }}></span>
+            <span>{isLiveGpsActive ? 'Live Rider GPS Tracking' : 'Rider is on the way · ~8 mins'}</span>
           </>
         ) : status === 'Ready for Pickup' ? (
           <>

@@ -241,6 +241,84 @@ const Settings = ({ profile, setProfile }) => {
           })}
         </div>
       </div>
+
+      {/* Geofencing & Service Radius Card */}
+      <div className="settings-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+          <div>
+            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>📍 Store Geofencing & Delivery Radius</h3>
+            <p style={{ color: 'var(--color-text-light)', fontSize: '13px', margin: '4px 0 0 0' }}>
+              Set your Dark Store dispatch location and maximum delivery boundary. Customer checkout will block orders outside this radius.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <div className="form-group">
+            <label>Dark Store Latitude</label>
+            <input 
+              type="number" 
+              step="0.0001"
+              value={branding.store_lat ?? 25.5788} 
+              onChange={(e) => setBranding(prev => ({ ...prev, store_lat: parseFloat(e.target.value) || 0 }))}
+              placeholder="e.g. 25.5788"
+              className="form-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Dark Store Longitude</label>
+            <input 
+              type="number" 
+              step="0.0001"
+              value={branding.store_lng ?? 83.5780} 
+              onChange={(e) => setBranding(prev => ({ ...prev, store_lng: parseFloat(e.target.value) || 0 }))}
+              placeholder="e.g. 83.5780"
+              className="form-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Max Delivery Radius (Kilometers)</label>
+            <input 
+              type="number" 
+              step="0.5"
+              min="1"
+              max="50"
+              value={branding.max_delivery_radius_km ?? 8.5} 
+              onChange={(e) => setBranding(prev => ({ ...prev, max_delivery_radius_km: parseFloat(e.target.value) || 1 }))}
+              placeholder="e.g. 8.5"
+              className="form-input"
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface-muted, #f8fafc)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '12.5px', color: 'var(--color-text-light)' }}>
+            <strong>Active Policy:</strong> Customers $> {branding.max_delivery_radius_km ?? 8.5} \text{km}$ away will see <em>"Delivery currently unserviceable at your location"</em>.
+          </div>
+          <button 
+            type="button" 
+            onClick={async () => {
+              try {
+                setSaving(true);
+                await db.branding.update(branding);
+                showToast('Geofence boundaries saved successfully!', 'success');
+              } catch (err) {
+                showToast('Failed to save geofence: ' + err.message, 'error');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="save-btn"
+            style={{ width: 'auto', padding: '10px 20px' }}
+          >
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Update Geofence'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

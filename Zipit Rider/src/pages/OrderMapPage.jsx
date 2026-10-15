@@ -50,43 +50,85 @@ export default function OrderMapPage() {
     fetchOrder();
 
     const lastReportTimeRef = { current: 0 };
+    const lastDbPersistTimeRef = { current: 0 };
+    const lastCoordsRef = { current: null };
     const riderCode = localStorage.getItem('zipit_sales_code') || 'RIDER';
+
+    // Realtime in-memory broadcast channel for 0-database-write live GPS streaming
+    const broadcastChannel = id ? supabase.channel(`tracking_order_${id}`) : null;
+    if (broadcastChannel) {
+      broadcastChannel.subscribe();
+    }
+
+    // Distance calculation helper (Haversine formula in meters)
+    const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
+      const R = 6371e3;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
 
     if ('geolocation' in navigator) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          const heading = pos.coords.heading || null;
+          const speed = pos.coords.speed || null;
           setMyLocation([lat, lng]);
 
           const now = Date.now();
-          // Throttle network writes to once every 3 seconds to preserve battery & avoid flooding DB
-          if (now - lastReportTimeRef.current >= 3000) {
-            lastReportTimeRef.current = now;
+          const lastCoords = lastCoordsRef.current;
+          const distanceMoved = lastCoords ? getDistanceMeters(lastCoords.lat, lastCoords.lng, lat, lng) : 999;
 
-            // 1. Update order location for customer live tracking map
-            if (id) {
-              db.orders.updateLocation(id, lat, lng);
+          // 1. In-memory WebSocket Broadcast: Sends if moved > 8m OR if 4 seconds passed (ZERO DATABASE WRITES & NO EGRESS SURGE)
+          if (now - lastReportTimeRef.current >= 4000 || distanceMoved >= 8) {
+            lastReportTimeRef.current = now;
+            lastCoordsRef.current = { lat, lng };
+
+            if (broadcastChannel) {
+              broadcastChannel.send({
+                type: 'broadcast',
+                event: 'rider_location',
+                payload: { lat, lng, heading, speed, timestamp: now }
+              }).catch(() => {});
             }
 
-            // 2. Update rider_status table for admin fleet tracking
-            supabase.from('rider_status').upsert({
-              rider_code: riderCode,
-              lat: lat,
-              lng: lng,
-              is_online: true,
-              last_ping: new Date().toISOString()
-            }, { onConflict: 'rider_code' }).then();
+            // 2. Light fleet ping for Admin (throttled to max once every 12 seconds)
+            if (now - lastDbPersistTimeRef.current >= 12000) {
+              supabase.from('rider_status').upsert({
+                rider_code: riderCode,
+                lat: lat,
+                lng: lng,
+                is_online: true,
+                last_ping: new Date().toISOString()
+              }, { onConflict: 'rider_code' }).then();
+            }
+
+            // 3. Fallback database persist only once every 35 seconds (for customers opening app late)
+            if (now - lastDbPersistTimeRef.current >= 35000 && id) {
+              lastDbPersistTimeRef.current = now;
+              db.orders.updateLocation(id, lat, lng);
+            }
           }
         },
         (err) => console.warn('Geolocation Error:', err),
-        { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
       );
     }
 
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (broadcastChannel) {
+        supabase.removeChannel(broadcastChannel);
       }
     };
   }, [id]);

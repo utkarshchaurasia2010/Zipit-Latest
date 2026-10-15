@@ -466,14 +466,48 @@ export const db = {
       // Generate a 4-digit delivery handover OTP for non-pickup orders
       const isPickup = orderData.address?.is_pickup === true || orderData.address?.order_type === 'PICKUP';
       const deliveryOtp = isPickup ? null : String(Math.floor(1000 + Math.random() * 9000));
+      const orderStatus = orderData.paymentMethod === 'UPI' ? 'Payment Pending' : 'Placed';
 
+      // 1. Attempt Atomic RPC Transaction (locks product rows, checks stock, decrements & inserts order)
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('place_order_with_atomic_stock', {
+          p_profile_id: pid,
+          p_items: orderData.items,
+          p_total: orderData.total,
+          p_delivery_address: orderData.address,
+          p_payment_method: orderData.paymentMethod,
+          p_status: orderStatus,
+          p_delivery_charge: orderData.deliveryCharge || 0,
+          p_small_cart_charge: orderData.smallCartCharge || 0,
+          p_applied_coupon: orderData.appliedCoupon ? (orderData.appliedCoupon.code || String(orderData.appliedCoupon)) : null,
+          p_discount_amount: orderData.discountAmount || 0,
+          p_delivery_otp: deliveryOtp
+        });
+
+        if (!rpcErr && rpcRes) {
+          if (rpcRes.success === false) {
+            throw new Error(rpcRes.error || 'One or more items went out of stock during checkout.');
+          }
+          if (rpcRes.order) {
+            return rpcRes.order;
+          }
+        }
+      } catch (atomicErr) {
+        // If it's a genuine out-of-stock validation error from the RPC, throw immediately to UI
+        if (atomicErr.message && atomicErr.message.includes('out of stock')) {
+          throw atomicErr;
+        }
+        console.warn("Atomic RPC unavailable, falling back to direct table write:", atomicErr);
+      }
+
+      // 2. Direct Table Fallback (with per-item atomic decrement)
       const { data, error } = await supabase.from('orders').insert([{
         profile_id: pid,
         items: orderData.items,
         total: orderData.total,
         delivery_address: orderData.address,
         payment_method: orderData.paymentMethod,
-        status: orderData.paymentMethod === 'UPI' ? 'Payment Pending' : 'Placed',
+        status: orderStatus,
         delivery_charge: orderData.deliveryCharge,
         small_cart_charge: orderData.smallCartCharge,
         applied_coupon: orderData.appliedCoupon || null,
@@ -493,14 +527,12 @@ export const db = {
           const itemId = item.id;
           if (itemId && qty > 0) {
             try {
-              // Try atomic RPC function first
               const { error: rpcErr } = await supabase.rpc('decrement_product_stock', {
                 p_product_id: itemId,
                 p_quantity: qty
               });
 
               if (rpcErr) {
-                // Client fallback if RPC not installed yet in Supabase
                 const { data: prod } = await supabase.from('products').select('stock_count').eq('id', itemId).single();
                 if (prod && typeof prod.stock_count === 'number' && prod.stock_count > 0) {
                   const nextStock = Math.max(0, prod.stock_count - qty);
