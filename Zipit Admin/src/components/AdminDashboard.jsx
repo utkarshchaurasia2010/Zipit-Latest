@@ -287,138 +287,196 @@ const AdminDashboard = ({ initialTab }) => {
   };
 
   const printOrderReceipt = (order) => {
-    const printWindow = window.open('', '_blank', 'width=520,height=750');
-    if (!printWindow) return;
-    
-    const orderDate = new Date(order.created_at || Date.now()).toLocaleString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const orderDate = new Date(order.created_at || Date.now()).toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 
-    const subtotal = (order.items || []).reduce((sum, i) => sum + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
-    const isRefundedOrReq = order.status === 'Refunded' || order.status === 'Refund Requested';
-    const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
-    const deliveryCharge = Number(order.delivery_charge) || 0;
-    const handlingCharge = Number(order.small_cart_charge) || 0;
-    const discountAmount = Number(order.discount_amount) || 0;
-    const gstEstimated = Math.round((subtotal * 0.05 / 1.05) * 100) / 100;
+      const subtotal = (order.items || []).reduce((sum, i) => sum + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
+      const isRefundedOrReq = order.status === 'Refunded' || order.status === 'Refund Requested';
+      const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
+      const deliveryCharge = Number(order.delivery_charge) || 0;
+      const handlingCharge = Number(order.small_cart_charge) || 0;
+      const discountAmount = Number(order.discount_amount) || 0;
+      const gstEstimated = Math.round((subtotal * 0.05 / 1.05) * 100) / 100;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Invoice - Order #${order.id.slice(0,8).toUpperCase()}</title>
-          <style>
-            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
-            .bill-header { text-align: center; border-bottom: 2.5px solid #0c831f; padding-bottom: 16px; margin-bottom: 20px; }
-            .bill-logo { font-size: 32px; font-weight: 900; color: #0c831f; letter-spacing: -1.5px; margin: 0; }
-            .bill-sub { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
-            .status-chip { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-top: 8px; }
-            .status-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-            .status-red { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-            .status-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
-            .meta-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
-            .meta-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-            .meta-row:last-child { margin-bottom: 0; }
-            .lbl { color: #64748b; font-weight: 600; }
-            .val { font-weight: 700; color: #0f172a; }
-            .table-head { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-            .item-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-            .item-left { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-            .item-title { font-weight: 700; color: #0f172a; font-size: 13.5px; }
-            .item-meta { font-size: 11px; color: #64748b; }
-            .item-tag-refund { color: #dc2626; font-weight: 700; font-size: 11px; }
-            .item-tag-sub { color: #15803d; font-weight: 700; font-size: 11px; }
-            .item-price { font-weight: 800; color: #0f172a; white-space: nowrap; margin-left: 12px; }
-            .total-card { margin-top: 18px; border-top: 2px solid #0f172a; padding-top: 14px; }
-            .total-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
-            .grand-total { display: flex; justify-content: space-between; font-size: 17px; font-weight: 900; margin-top: 10px; border-top: 1.5px dashed #cbd5e1; padding-top: 10px; color: #0c831f; }
-            .footer { text-align: center; margin-top: 28px; font-size: 11.5px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 14px; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="bill-header">
-            <h1 class="bill-logo">Zipit</h1>
-            <div class="bill-sub">Admin Retail & Audit Invoice</div>
-            <div class="status-chip ${isRefundedOrReq ? 'status-red' : order.status === 'Delivered' ? 'status-green' : 'status-blue'}">
-              ${order.status}
-            </div>
-          </div>
-
-          <div class="meta-card">
-            <div class="meta-row"><span class="lbl">Order Ref:</span><span class="val">#${order.id.slice(0, 8).toUpperCase()}</span></div>
-            <div class="meta-row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
-            <div class="meta-row"><span class="lbl">Fulfillment:</span><span class="val" style="${isPickup ? 'color:#15803d; font-weight:900;' : ''}">${isPickup ? '🛍️ STORE PICKUP (Ready ~1 hr)' : '🛵 HOME DELIVERY'}</span></div>
-            <div class="meta-row"><span class="lbl">Customer:</span><span class="val">${order.profiles?.name || order.delivery_address?.name || 'Guest Customer'}</span></div>
-            ${(order.profiles?.phone || order.delivery_address?.phone) ? `<div class="meta-row"><span class="lbl">Contact Phone:</span><span class="val">${order.profiles?.phone || order.delivery_address?.phone}</span></div>` : ''}
-            <div class="meta-row"><span class="lbl">Payment Gateway:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
-            ${order.delivery_address?.landmark ? `<div class="meta-row" style="background:#fee2e2; padding:4px 6px; border-radius:4px; margin: 4px 0;"><span class="lbl" style="color:#b91c1c; font-weight:bold;">🚩 Landmark:</span><span class="val" style="font-weight:bold; color:#b91c1c;">${order.delivery_address.landmark}</span></div>` : ''}
-            ${order.delivery_address?.village_area ? `<div class="meta-row"><span class="lbl">📍 Village / Area:</span><span class="val">${order.delivery_address.village_area}</span></div>` : ''}
-            ${order.delivery_address?.family_head ? `<div class="meta-row"><span class="lbl">🏠 House/Family:</span><span class="val">${order.delivery_address.family_head}</span></div>` : ''}
-            ${order.delivery_address?.alt_phone ? `<div class="meta-row"><span class="lbl">Alt Contact:</span><span class="val">${order.delivery_address.alt_phone}</span></div>` : ''}
-            <div class="meta-row"><span class="lbl">Shopkeeper:</span><span class="val">${order.accepted_by_shopkeeper ? `✓ ${order.accepted_by_shopkeeper}` : 'Pending Acceptance'}</span></div>
-            ${isPickup ? `
-              <div class="meta-row"><span class="lbl">Rider / Delivery:</span><span class="val" style="color: #64748b;">N/A (Store Pickup)</span></div>
-            ` : `
-              <div class="meta-row"><span class="lbl">Assigned Rider:</span><span class="val">${order.accepted_by_rider ? `🛵 ${order.accepted_by_rider}` : 'Unclaimed / Pending Rider'}</span></div>
-            `}
-            ${isPickup ? `
-              <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
-                <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup:</span>
-                <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store Hubs'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Invoice - Order #${order.id.slice(0,8).toUpperCase()}</title>
+            <style>
+              body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
+              .bill-header { text-align: center; border-bottom: 2.5px solid #0c831f; padding-bottom: 16px; margin-bottom: 20px; }
+              .bill-logo { font-size: 32px; font-weight: 900; color: #0c831f; letter-spacing: -1.5px; margin: 0; }
+              .bill-sub { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
+              .status-chip { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-top: 8px; }
+              .status-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+              .status-red { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+              .status-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+              .meta-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+              .meta-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+              .meta-row:last-child { margin-bottom: 0; }
+              .lbl { color: #64748b; font-weight: 600; }
+              .val { font-weight: 700; color: #0f172a; }
+              .table-head { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+              .item-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+              .item-left { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+              .item-title { font-weight: 700; color: #0f172a; font-size: 13.5px; }
+              .item-meta { font-size: 11px; color: #64748b; }
+              .item-tag-refund { color: #dc2626; font-weight: 700; font-size: 11px; }
+              .item-tag-sub { color: #15803d; font-weight: 700; font-size: 11px; }
+              .item-price { font-weight: 800; color: #0f172a; white-space: nowrap; margin-left: 12px; }
+              .total-card { margin-top: 18px; border-top: 2px solid #0f172a; padding-top: 14px; }
+              .total-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+              .grand-total { display: flex; justify-content: space-between; font-size: 17px; font-weight: 900; margin-top: 10px; border-top: 1.5px dashed #cbd5e1; padding-top: 10px; color: #0c831f; }
+              .footer { text-align: center; margin-top: 28px; font-size: 11.5px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 14px; }
+              @media print { 
+                body { padding: 0; } 
+                .no-print { display: none !important; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="bill-header">
+              <h1 class="bill-logo">Zipit</h1>
+              <div class="bill-sub">Admin Retail & Audit Invoice</div>
+              <div class="status-chip ${isRefundedOrReq ? 'status-red' : order.status === 'Delivered' ? 'status-green' : 'status-blue'}">
+                ${order.status}
               </div>
-            ` : order.delivery_address ? `
-              <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details?.split('\n---TAG:')[0] || order.delivery_address.full_address || order.delivery_address.address || 'Customer Location'}</span></div>
-            ` : ''}
-          </div>
+            </div>
 
-          <div class="table-head">Order Items & Substitutions</div>
-          ${(order.items || []).map(item => `
-            <div class="item-row">
-              <div class="item-left">
-                <span class="item-title">${item.qty}× ${item.name}</span>
-                <span class="item-meta">Unit Price: ₹${item.price}</span>
-                ${item.is_refund_chosen || item.status === 'REFUND_REQUESTED' || item.status === 'REFUNDED_SUBSTITUTE' ? `<span class="item-tag-refund">🚫 Customer Chose Refund</span>` : ''}
-                ${item.is_substituted ? `<span class="item-tag-sub">🔄 Substituted Product</span>` : ''}
-                ${item.is_unavailable && !item.is_substituted && !item.is_refund_chosen ? `<span class="item-tag-refund">Out of Stock</span>` : ''}
+            <div class="meta-card">
+              <div class="meta-row"><span class="lbl">Order Ref:</span><span class="val">#${order.id.slice(0, 8).toUpperCase()}</span></div>
+              <div class="meta-row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
+              <div class="meta-row"><span class="lbl">Fulfillment:</span><span class="val" style="${isPickup ? 'color:#15803d; font-weight:900;' : ''}">${isPickup ? '🛍️ STORE PICKUP (Ready ~1 hr)' : '🛵 HOME DELIVERY'}</span></div>
+              <div class="meta-row"><span class="lbl">Customer:</span><span class="val">${order.profiles?.name || order.delivery_address?.name || 'Guest Customer'}</span></div>
+              ${(order.profiles?.phone || order.delivery_address?.phone) ? `<div class="meta-row"><span class="lbl">Contact Phone:</span><span class="val">${order.profiles?.phone || order.delivery_address?.phone}</span></div>` : ''}
+              <div class="meta-row"><span class="lbl">Payment Gateway:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
+              ${order.delivery_address?.landmark ? `<div class="meta-row" style="background:#fee2e2; padding:4px 6px; border-radius:4px; margin: 4px 0;"><span class="lbl" style="color:#b91c1c; font-weight:bold;">🚩 Landmark:</span><span class="val" style="font-weight:bold; color:#b91c1c;">${order.delivery_address.landmark}</span></div>` : ''}
+              ${order.delivery_address?.village_area ? `<div class="meta-row"><span class="lbl">📍 Village / Area:</span><span class="val">${order.delivery_address.village_area}</span></div>` : ''}
+              ${order.delivery_address?.family_head ? `<div class="meta-row"><span class="lbl">🏠 House/Family:</span><span class="val">${order.delivery_address.family_head}</span></div>` : ''}
+              ${order.delivery_address?.alt_phone ? `<div class="meta-row"><span class="lbl">Alt Contact:</span><span class="val">${order.delivery_address.alt_phone}</span></div>` : ''}
+              <div class="meta-row"><span class="lbl">Shopkeeper:</span><span class="val">${order.accepted_by_shopkeeper ? `✓ ${order.accepted_by_shopkeeper}` : 'Pending Acceptance'}</span></div>
+              ${isPickup ? `
+                <div class="meta-row"><span class="lbl">Rider / Delivery:</span><span class="val" style="color: #64748b;">N/A (Store Pickup)</span></div>
+              ` : `
+                <div class="meta-row"><span class="lbl">Assigned Rider:</span><span class="val">${order.accepted_by_rider ? `🛵 ${order.accepted_by_rider}` : 'Unclaimed / Pending Rider'}</span></div>
+              `}
+              ${isPickup ? `
+                <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
+                  <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup:</span>
+                  <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store Hubs'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+                </div>
+              ` : order.delivery_address ? `
+                <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details?.split('\n---TAG:')[0] || order.delivery_address.full_address || order.delivery_address.address || 'Customer Location'}</span></div>
+              ` : ''}
+            </div>
+
+            <div class="table-head">Order Items & Substitutions</div>
+            ${(order.items || []).map(item => `
+              <div class="item-row">
+                <div class="item-left">
+                  <span class="item-title">${item.qty}× ${item.name}</span>
+                  <span class="item-meta">Unit Price: ₹${item.price}</span>
+                  ${item.is_refund_chosen || item.status === 'REFUND_REQUESTED' || item.status === 'REFUNDED_SUBSTITUTE' ? `<span class="item-tag-refund">🚫 Customer Chose Refund</span>` : ''}
+                  ${item.is_substituted ? `<span class="item-tag-sub">🔄 Substituted Product</span>` : ''}
+                  ${item.is_unavailable && !item.is_substituted && !item.is_refund_chosen ? `<span class="item-tag-refund">Out of Stock</span>` : ''}
+                </div>
+                <span class="item-price">₹${(item.price * item.qty).toFixed(2)}</span>
               </div>
-              <span class="item-price">₹${(item.price * item.qty).toFixed(2)}</span>
+            `).join('')}
+
+            <div class="total-card">
+              <div class="total-row"><span class="lbl">Items Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
+              ${handlingCharge > 0 ? `<div class="total-row"><span class="lbl">Handling / Platform Fee</span><span class="val">₹${handlingCharge}</span></div>` : ''}
+              ${deliveryCharge > 0 ? `
+                <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val">₹${deliveryCharge}</span></div>
+              ` : `
+                <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val" style="color:#15803d; font-weight:700;">FREE</span></div>
+              `}
+              ${discountAmount > 0 ? `<div class="total-row"><span class="lbl">Discounts / Coupons</span><span class="val" style="color:#16a34a; font-weight:700;">-₹${discountAmount}</span></div>` : ''}
+              <div class="total-row"><span class="lbl">Taxes (GST Included ~5%)</span><span class="val">₹${gstEstimated.toFixed(2)}</span></div>
+              <div class="grand-total">
+                <span>Grand Total</span>
+                <span>₹${order.total}</span>
+              </div>
             </div>
-          `).join('')}
 
-          <div class="total-card">
-            <div class="total-row"><span class="lbl">Items Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
-            ${handlingCharge > 0 ? `<div class="total-row"><span class="lbl">Handling / Platform Fee</span><span class="val">₹${handlingCharge}</span></div>` : ''}
-            ${deliveryCharge > 0 ? `
-              <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val">₹${deliveryCharge}</span></div>
-            ` : `
-              <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val" style="color:#15803d; font-weight:700;">FREE</span></div>
-            `}
-            ${discountAmount > 0 ? `<div class="total-row"><span class="lbl">Discounts / Coupons</span><span class="val" style="color:#16a34a; font-weight:700;">-₹${discountAmount}</span></div>` : ''}
-            <div class="total-row"><span class="lbl">Taxes (GST Included ~5%)</span><span class="val">₹${gstEstimated.toFixed(2)}</span></div>
-            <div class="grand-total">
-              <span>Grand Total</span>
-              <span>₹${order.total}</span>
+            <div class="footer">
+              Zipit Quick Commerce Admin Portal • Internal Store Receipt<br/>
+              Printed on ${new Date().toLocaleTimeString('en-IN')}
             </div>
-          </div>
 
-          <div class="footer">
-            Zipit Quick Commerce Admin Portal • Internal Store Receipt<br/>
-            Printed on ${new Date().toLocaleTimeString('en-IN')}
-          </div>
+            <div class="no-print" style="margin-top: 20px; text-align: center;">
+              <button onclick="window.print()" style="background:#0c831f; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-weight:700; cursor:pointer;">
+                🖨️ Click to Print Receipt
+              </button>
+            </div>
 
-          <script>
-            window.onload = () => { window.print(); }
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
+            <script>
+              window.addEventListener('load', function() {
+                setTimeout(function() {
+                  window.focus();
+                  window.print();
+                }, 250);
+              });
+            </script>
+          </body>
+        </html>
+      `;
+
+      // Method 1: Try standard popup window
+      const printWindow = window.open('', '_blank', 'width=580,height=750,menubar=no,toolbar=no,location=no,status=no');
+      
+      if (printWindow && !printWindow.closed) {
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+        // Fallback trigger in case load event was already consumed
+        setTimeout(() => {
+          try {
+            printWindow.focus();
+            printWindow.print();
+          } catch (_) {}
+        }, 500);
+      } else {
+        // Method 2: Popup blocked by desktop browser; fallback to invisible iframe printing
+        let printIframe = document.getElementById('zipit-admin-print-frame');
+        if (!printIframe) {
+          printIframe = document.createElement('iframe');
+          printIframe.id = 'zipit-admin-print-frame';
+          printIframe.style.position = 'fixed';
+          printIframe.style.right = '0';
+          printIframe.style.bottom = '0';
+          printIframe.style.width = '0px';
+          printIframe.style.height = '0px';
+          printIframe.style.border = 'none';
+          document.body.appendChild(printIframe);
+        }
+        
+        const doc = printIframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+        
+        setTimeout(() => {
+          try {
+            printIframe.contentWindow.focus();
+            printIframe.contentWindow.print();
+          } catch (e) {
+            console.error('Iframe print error', e);
+          }
+        }, 400);
+      }
+    } catch (err) {
+      console.error('Failed to trigger order receipt print:', err);
+      showToast('Could not open print window. Please allow popups for this site.', 'error');
+    }
   };
 
   const location = useLocation();
