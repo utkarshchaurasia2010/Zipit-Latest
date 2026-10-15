@@ -53,7 +53,7 @@ const AllProductsPage = ({ navigate, cart, updateCartQty, onSearchClick, onProdu
     <div className="product-list-page" style={{ overflowY: 'hidden', paddingBottom: 0 }}>
       <header className="page-header" style={{ flexShrink: 0 }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <button className="back-btn" onClick={() => navigate('/')}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
+          <button className="back-btn" onClick={() => navigate(-1)}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
           <h3 style={{margin: 0, fontSize: 16}}>All Products</h3>
         </div>
         <button className="back-btn" onClick={onSearchClick}>

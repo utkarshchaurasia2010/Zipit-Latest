@@ -46,7 +46,7 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
   return (
     <div className="history-page">
       <header className="page-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', justifyContent: 'flex-start' }}>
-        <button className="back-btn" onClick={() => navigate('/profile')} style={{ padding: '8px', margin: 0 }}>
+        <button className="back-btn" onClick={() => navigate(-1)} style={{ padding: '8px', margin: 0 }}>
           <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
         </button>
         <h2 style={{ fontSize: '17px', margin: 0, fontWeight: 800, letterSpacing: '-0.5px' }}>Order History</h2>

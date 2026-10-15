@@ -78,7 +78,7 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
     <div className="product-list-page">
       <header className="page-header">
         <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <button className="back-btn" onClick={() => navigate(from || '/')}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
+          <button className="back-btn" onClick={() => navigate(-1)}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
           <h3 style={{margin: 0, fontSize: 16}}>{categoryName}</h3>
         </div>
         <div style={{display: 'flex', gap: '8px'}}>

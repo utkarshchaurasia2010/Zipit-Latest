@@ -153,7 +153,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       <div className="checkout-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-background)' }}>
         <header className="checkout-header">
           <div className="checkout-header-left">
-            <button className="back-btn" onClick={() => navigate('/')}>
+            <button className="back-btn" onClick={() => navigate(-1)}>
               <ChevronLeft size={24} strokeWidth={2.5} />
             </button>
             <h1>Your Cart</h1>
@@ -311,7 +311,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
     <div className="checkout-page">
       <header className="checkout-header">
         <div className="checkout-header-left">
-          <button className="back-btn" onClick={() => navigate('/')}>
+          <button className="back-btn" onClick={() => navigate(-1)}>
             <ChevronLeft size={24} strokeWidth={2.5} />
           </button>
           <h1>Checkout</h1>

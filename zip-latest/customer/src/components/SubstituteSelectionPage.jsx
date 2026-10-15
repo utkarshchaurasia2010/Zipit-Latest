@@ -110,7 +110,7 @@ const SubstituteSelectionPage = ({ navigate }) => {
     return (
       <div className="substitute-page">
         <header className="substitute-page-header">
-          <button className="back-btn" onClick={() => navigate('/track')}>
+          <button className="back-btn" onClick={() => navigate(-1)}>
             <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
           </button>
           <h2>Substitute Selection</h2>
@@ -126,14 +126,14 @@ const SubstituteSelectionPage = ({ navigate }) => {
     return (
       <div className="substitute-page">
         <header className="substitute-page-header">
-          <button className="back-btn" onClick={() => navigate('/track')}>
+          <button className="back-btn" onClick={() => navigate(-1)}>
             <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
           </button>
           <h2>Substitute Selection</h2>
         </header>
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-light)' }}>
           <p>No active items require substitution right now.</p>
-          <button className="substitute-confirm-bar-btn" style={{ maxWidth: '240px', margin: '20px auto 0' }} onClick={() => navigate('/track')}>
+          <button className="substitute-confirm-bar-btn" style={{ maxWidth: '240px', margin: '20px auto 0' }} onClick={() => navigate(-1)}>
             Back to Orders
           </button>
         </div>
@@ -148,7 +148,7 @@ const SubstituteSelectionPage = ({ navigate }) => {
     <div className="substitute-page">
       {/* Top Header */}
       <header className="substitute-page-header">
-        <button className="back-btn" onClick={() => navigate('/track')}>
+        <button className="back-btn" onClick={() => navigate(-1)}>
           <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
         </button>
         <div>

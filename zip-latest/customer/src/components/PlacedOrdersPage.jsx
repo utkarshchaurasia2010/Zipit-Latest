@@ -50,7 +50,7 @@ const PlacedOrdersPage = ({ navigate }) => {
   return (
     <div className="history-page">
       <header className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', padding: '8px 16px' }}>
-        <button className="back-btn" onClick={() => navigate('/profile')} style={{ padding: '8px', margin: 0 }}>
+        <button className="back-btn" onClick={() => navigate(-1)} style={{ padding: '8px', margin: 0 }}>
           <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
         </button>
         <h2 style={{ fontSize: '18px', margin: 0 }}>Your Orders</h2>

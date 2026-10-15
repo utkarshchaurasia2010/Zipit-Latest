@@ -58,7 +58,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   return (
     <div className={`profile-page ${theme === 'dark' ? 'dark-gradient' : 'light-gradient'}`}>
       <header className="page-header transparent">
-        <button className="back-btn" onClick={() => navigate('/')}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
+        <button className="back-btn" onClick={() => navigate(-1)}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
       </header>
       
       <div className="profile-header-card transparent">

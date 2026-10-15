@@ -422,7 +422,7 @@ const TrackOrderPage = ({ navigate }) => {
     return (
       <div className="track-page">
         <div className="track-header">
-          <button className="back-btn" onClick={() => navigate('/')} style={{ padding: '8px', margin: 0 }}>
+          <button className="back-btn" onClick={() => navigate(-1)} style={{ padding: '8px', margin: 0 }}>
             <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
           </button>
           <h2>Track Orders</h2>
@@ -435,7 +435,7 @@ const TrackOrderPage = ({ navigate }) => {
   return (
     <div className="track-page">
       <div className="track-header">
-        <button className="back-btn" onClick={() => navigate('/')} style={{ padding: '8px', margin: 0 }}>
+        <button className="back-btn" onClick={() => navigate(-1)} style={{ padding: '8px', margin: 0 }}>
           <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
         </button>
         <Navigation size={20} color="var(--color-primary)" />

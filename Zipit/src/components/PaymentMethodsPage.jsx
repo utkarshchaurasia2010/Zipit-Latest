@@ -8,7 +8,7 @@ const PaymentMethodsPage = ({ navigate }) => {
   return (
     <div className="payment-methods-page">
       <header className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', padding: '4px 16px' }}>
-        <button className="back-btn" onClick={() => navigate('/profile')} style={{ margin: 0, padding: '8px' }}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
+        <button className="back-btn" onClick={() => navigate(-1)} style={{ margin: 0, padding: '8px' }}><ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} /></button>
         <h2 style={{ fontSize: '18px', margin: 0 }}>Payment Methods</h2>
       </header>
       <div className="addresses-container">

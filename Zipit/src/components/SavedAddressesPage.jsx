@@ -145,7 +145,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
               setIsAddingNew(false);
               setStep(1);
             } else {
-              navigate(from || 'profile');
+              navigate(-1);
             }
           }} 
           style={{ margin: 0, padding: '8px' }}

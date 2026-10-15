@@ -5,6 +5,7 @@ import { db, supabase } from '../services/db';
 import { getProductDeliveryTime } from '../utils/time';
 import { useWishlist } from '../context/WishlistContext';
 import CategoriesPage from './CategoriesPage';
+import LazySection from './LazySection';
 import './ProductGrid.css';
 import './ProductListPage.css';
 
@@ -317,201 +318,134 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
 
       {/* 5. Trending In Your Area Section */}
       {trendingProducts.length > 0 && (
-        <section className="grid-products-section" style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                Trending In Your Area
-              </h2>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                Popular daily picks ordered right now
+        <LazySection minHeight={260}>
+          <section className="grid-products-section" style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
+                  Trending In Your Area
+                </h2>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
+                  Popular daily picks ordered right now
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', padding: '4px 10px', borderRadius: '20px' }}>
+                Top Sellers
               </span>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', padding: '4px 10px', borderRadius: '20px' }}>
-              Top Sellers
-            </span>
-          </div>
 
-          <div className="pinnacle-grid">
-            {trendingProducts.map((item) => {
-              const cartItem = cart.find(c => c.id === item.id);
-              const qty = cartItem ? cartItem.qty : 0;
-              const buyCount = orderCounts[item.id] || 0;
-              return (
-                <div key={'trending_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                  <div className="bestseller-img-wrapper">
-                    <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                      <Heart size={15} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+            <div className="pinnacle-grid">
+              {trendingProducts.map((item) => {
+                const cartItem = cart.find(c => c.id === item.id);
+                const qty = cartItem ? cartItem.qty : 0;
+                const buyCount = orderCounts[item.id] || 0;
+                return (
+                  <div key={'trending_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                    <div className="bestseller-img-wrapper">
+                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                        <Heart size={15} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                      </div>
+                      <div className="bestseller-img">
+                        <img src={item.image_url} alt={item.name} loading="lazy" />
+                      </div>
+                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                        <span className="item-amount-text">{item.amount}</span>
+                        {qty === 0 ? (
+                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                        ) : (
+                          <div className="qty-control">
+                            <button onClick={() => updateCartQty(item, -1)}>-</button>
+                            <span>{qty}</span>
+                            <button onClick={() => updateCartQty(item, 1)}>+</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="bestseller-img">
-                      <img src={item.image_url} alt={item.name} loading="lazy" />
-                    </div>
-                    <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                      <span className="item-amount-text">{item.amount}</span>
-                      {qty === 0 ? (
-                        <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                      ) : (
-                        <div className="qty-control">
-                          <button onClick={() => updateCartQty(item, -1)}>-</button>
-                          <span>{qty}</span>
-                          <button onClick={() => updateCartQty(item, 1)}>+</button>
-                        </div>
-                      )}
+                    <div className="bestseller-info">
+                      <div className="item-price">₹{item.price}</div>
+                      <h3 className="item-name">{item.name}</h3>
+                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
                     </div>
                   </div>
-                  <div className="bestseller-info">
-                    <div className="item-price">₹{item.price}</div>
-                    <h3 className="item-name">{item.name}</h3>
-                    <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        </LazySection>
       )}
 
       {/* 6. Budget Store Section */}
-      <section className="grid-products-section budget-store-section" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 0 }}>
-            <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px', padding: 0, margin: 0}}>Budget Store</h2>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px', display: 'block', padding: 0, margin: '2px 0 0 0' }}>Pocket-friendly daily essentials</span>
-          </div>
-          <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
-            Up to 40% OFF
-          </span>
-        </div>
-
-        {/* Premium Tab Switcher */}
-        <div style={{ display: 'flex', background: 'var(--color-surface-muted, #f1f5f9)', padding: '4px', borderRadius: '16px', marginBottom: '16px', border: '1px solid var(--color-border)' }}>
-          <button
-            onClick={() => setActiveBudgetTab('under49')}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '12px',
-              border: 'none',
-              background: activeBudgetTab === 'under49' ? '#0c831f' : 'transparent',
-              color: activeBudgetTab === 'under49' ? '#ffffff' : 'var(--color-text-light)',
-              fontWeight: '800',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: activeBudgetTab === 'under49' ? '0 4px 14px rgba(12, 131, 31, 0.3)' : 'none',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            <Flame size={16} color={activeBudgetTab === 'under49' ? '#ffffff' : '#f97316'} /> Under ₹49 Store
-          </button>
-          <button
-            onClick={() => setActiveBudgetTab('under99')}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '12px',
-              border: 'none',
-              background: activeBudgetTab === 'under99' ? '#0c831f' : 'transparent',
-              color: activeBudgetTab === 'under99' ? '#ffffff' : 'var(--color-text-light)',
-              fontWeight: '800',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: activeBudgetTab === 'under99' ? '0 4px 14px rgba(12, 131, 31, 0.3)' : 'none',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            <Zap size={16} color={activeBudgetTab === 'under99' ? '#ffffff' : '#eab308'} /> Under ₹99 Store
-          </button>
-        </div>
-
-        {/* Grid Product List */}
-        <div className="pinnacle-grid" style={{ paddingBottom: '8px' }}>
-          {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 6).map((item) => {
-            const cartItem = cart.find(c => c.id === item.id);
-            const qty = cartItem ? cartItem.qty : 0;
-            return (
-              <div
-                key={item.id}
-                className="bestseller-card stagger-item"
-                onClick={() => onProductClick && onProductClick(item)}
-              >
-                <div className="bestseller-img-wrapper">
-                  <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                    <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
-                  </div>
-                  <div className="bestseller-img">
-                    <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
-                  </div>
-                  <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                    <span className="item-amount-text">{item.amount}</span>
-                    {qty === 0 ? (
-                      <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                    ) : (
-                      <div className="qty-control">
-                        <button onClick={() => updateCartQty(item, -1)}>-</button>
-                        <span>{qty}</span>
-                        <button onClick={() => updateCartQty(item, 1)}>+</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="bestseller-info">
-                  <div className="item-price">₹{item.price}</div>
-                  <h3 className="item-name">{item.name}</h3>
-                  <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <button 
-          className="explore-all-btn" 
-          style={{ marginTop: '16px' }} 
-          onClick={() => navigate(`/category/${activeBudgetTab === 'under49' ? 'budget-49' : 'budget-99'}`, { state: { categoryName: activeBudgetTab === 'under49' ? 'Under ₹49 Store' : 'Under ₹99 Store' } })}
-        >
-          <div className="explore-all-images">
-            {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 4).map(p => (
-              <img key={p.id} src={p.image_url} alt="" />
-            ))}
-          </div>
-          <div className="explore-all-text">
-            <span>View Budget Store</span>
-            <ArrowRight size={18} />
-          </div>
-        </button>
-      </section>
-
-      {/* 4. Dairy, Bakery & Tea */}
-      {breakfastProducts.length > 0 && (
-        <section className="grid-products-section" style={{ marginBottom: 32 }}>
+      <LazySection minHeight={300}>
+        <section className="grid-products-section budget-store-section" style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                Dairy, Bakery & Tea
-              </h2>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                Milks, breads, tea, coffee & biscuits
-              </span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: 0, padding: 0 }}>
+              <h2 className="section-title" style={{fontSize: '17px', fontWeight: 800, marginBottom: 0, color: '#000', letterSpacing: '-0.5px', padding: 0, margin: 0}}>Budget Store</h2>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px', display: 'block', padding: 0, margin: '2px 0 0 0' }}>Pocket-friendly daily essentials</span>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px' }}>
-              Fresh Daily
+            <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
+              Up to 40% OFF
             </span>
           </div>
 
-          <div className="pinnacle-grid">
-            {breakfastProducts.map((item) => {
+          {/* Premium Tab Switcher */}
+          <div style={{ display: 'flex', background: 'var(--color-surface-muted, #f1f5f9)', padding: '4px', borderRadius: '16px', marginBottom: '16px', border: '1px solid var(--color-border)' }}>
+            <button
+              onClick={() => setActiveBudgetTab('under49')}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '12px',
+                border: 'none',
+                background: activeBudgetTab === 'under49' ? '#0c831f' : 'transparent',
+                color: activeBudgetTab === 'under49' ? '#ffffff' : 'var(--color-text-light)',
+                fontWeight: '800',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: activeBudgetTab === 'under49' ? '0 4px 14px rgba(12, 131, 31, 0.3)' : 'none',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+            >
+              <Flame size={16} color={activeBudgetTab === 'under49' ? '#ffffff' : '#f97316'} /> Under ₹49 Store
+            </button>
+            <button
+              onClick={() => setActiveBudgetTab('under99')}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '12px',
+                border: 'none',
+                background: activeBudgetTab === 'under99' ? '#0c831f' : 'transparent',
+                color: activeBudgetTab === 'under99' ? '#ffffff' : 'var(--color-text-light)',
+                fontWeight: '800',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: activeBudgetTab === 'under99' ? '0 4px 14px rgba(12, 131, 31, 0.3)' : 'none',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+            >
+              <Zap size={16} color={activeBudgetTab === 'under99' ? '#ffffff' : '#eab308'} /> Under ₹99 Store
+            </button>
+          </div>
+
+          {/* Grid Product List */}
+          <div className="pinnacle-grid" style={{ paddingBottom: '8px' }}>
+            {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 6).map((item) => {
               const cartItem = cart.find(c => c.id === item.id);
               const qty = cartItem ? cartItem.qty : 0;
               return (
-                <div key={'bf_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                <div
+                  key={item.id}
+                  className="bestseller-card stagger-item"
+                  onClick={() => onProductClick && onProductClick(item)}
+                >
                   <div className="bestseller-img-wrapper">
                     <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
                       <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
@@ -541,121 +475,200 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
               );
             })}
           </div>
+
+          <button 
+            className="explore-all-btn" 
+            style={{ marginTop: '16px' }} 
+            onClick={() => navigate(`/category/${activeBudgetTab === 'under49' ? 'budget-49' : 'budget-99'}`, { state: { categoryName: activeBudgetTab === 'under49' ? 'Under ₹49 Store' : 'Under ₹99 Store' } })}
+          >
+            <div className="explore-all-images">
+              {(activeBudgetTab === 'under49' ? budgetUnder49 : budgetUnder99).slice(0, 4).map(p => (
+                <img key={p.id} src={p.image_url} alt="" />
+              ))}
+            </div>
+            <div className="explore-all-text">
+              <span>View Budget Store</span>
+              <ArrowRight size={18} />
+            </div>
+          </button>
         </section>
+      </LazySection>
+
+      {/* 4. Dairy, Bakery & Tea */}
+      {breakfastProducts.length > 0 && (
+        <LazySection minHeight={280}>
+          <section className="grid-products-section" style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
+                  Dairy, Bakery & Tea
+                </h2>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
+                  Milks, breads, tea, coffee & biscuits
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px' }}>
+                Fresh Daily
+              </span>
+            </div>
+
+            <div className="pinnacle-grid">
+              {breakfastProducts.map((item) => {
+                const cartItem = cart.find(c => c.id === item.id);
+                const qty = cartItem ? cartItem.qty : 0;
+                return (
+                  <div key={'bf_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                    <div className="bestseller-img-wrapper">
+                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                      </div>
+                      <div className="bestseller-img">
+                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
+                      </div>
+                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                        <span className="item-amount-text">{item.amount}</span>
+                        {qty === 0 ? (
+                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                        ) : (
+                          <div className="qty-control">
+                            <button onClick={() => updateCartQty(item, -1)}>-</button>
+                            <span>{qty}</span>
+                            <button onClick={() => updateCartQty(item, 1)}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bestseller-info">
+                      <div className="item-price">₹{item.price}</div>
+                      <h3 className="item-name">{item.name}</h3>
+                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </LazySection>
       )}
 
       {/* 5. Atta, Dal, Oil & Masala */}
       {kitchenStaples.length > 0 && (
-        <section className="grid-products-section" style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                Atta, Dal, Oil & Masala
-              </h2>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                Atta, dal, rice, oils, ghee & spices
+        <LazySection minHeight={280}>
+          <section className="grid-products-section" style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
+                  Atta, Dal, Oil & Masala
+                </h2>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
+                  Atta, dal, rice, oils, ghee & spices
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
+                Pantry Best
               </span>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '20px' }}>
-              Pantry Best
-            </span>
-          </div>
 
-          <div className="pinnacle-grid">
-            {kitchenStaples.map((item) => {
-              const cartItem = cart.find(c => c.id === item.id);
-              const qty = cartItem ? cartItem.qty : 0;
-              return (
-                <div key={'staple_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                  <div className="bestseller-img-wrapper">
-                    <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                      <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+            <div className="pinnacle-grid">
+              {kitchenStaples.map((item) => {
+                const cartItem = cart.find(c => c.id === item.id);
+                const qty = cartItem ? cartItem.qty : 0;
+                return (
+                  <div key={'staple_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                    <div className="bestseller-img-wrapper">
+                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                      </div>
+                      <div className="bestseller-img">
+                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
+                      </div>
+                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                        <span className="item-amount-text">{item.amount}</span>
+                        {qty === 0 ? (
+                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                        ) : (
+                          <div className="qty-control">
+                            <button onClick={() => updateCartQty(item, -1)}>-</button>
+                            <span>{qty}</span>
+                            <button onClick={() => updateCartQty(item, 1)}>+</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="bestseller-img">
-                      <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
-                    </div>
-                    <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                      <span className="item-amount-text">{item.amount}</span>
-                      {qty === 0 ? (
-                        <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                      ) : (
-                        <div className="qty-control">
-                          <button onClick={() => updateCartQty(item, -1)}>-</button>
-                          <span>{qty}</span>
-                          <button onClick={() => updateCartQty(item, 1)}>+</button>
-                        </div>
-                      )}
+                    <div className="bestseller-info">
+                      <div className="item-price">₹{item.price}</div>
+                      <h3 className="item-name">{item.name}</h3>
+                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
                     </div>
                   </div>
-                  <div className="bestseller-info">
-                    <div className="item-price">₹{item.price}</div>
-                    <h3 className="item-name">{item.name}</h3>
-                    <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        </LazySection>
       )}
 
       {/* 6. Bath, Body & Cleaning Essentials */}
       {personalCare.length > 0 && (
-        <section className="grid-products-section" style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
-                Bath, Body & Cleaning
-              </h2>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
-                Soaps, detergents, hair oils & daily care
+        <LazySection minHeight={280}>
+          <section className="grid-products-section" style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 className="section-title" style={{ fontSize: '17px', fontWeight: 800, marginBottom: 0, color: 'var(--color-text)', letterSpacing: '-0.5px' }}>
+                  Bath, Body & Cleaning
+                </h2>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '600', marginTop: '2px' }}>
+                  Soaps, detergents, hair oils & daily care
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 800, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '20px' }}>
+                Daily Clean
               </span>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '20px' }}>
-              Daily Clean
-            </span>
-          </div>
 
-          <div className="pinnacle-grid">
-            {personalCare.map((item) => {
-              const cartItem = cart.find(c => c.id === item.id);
-              const qty = cartItem ? cartItem.qty : 0;
-              return (
-                <div key={'pc_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
-                  <div className="bestseller-img-wrapper">
-                    <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
-                      <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+            <div className="pinnacle-grid">
+              {personalCare.map((item) => {
+                const cartItem = cart.find(c => c.id === item.id);
+                const qty = cartItem ? cartItem.qty : 0;
+                return (
+                  <div key={'pc_' + item.id} className="bestseller-card stagger-item" onClick={() => onProductClick && onProductClick(item)}>
+                    <div className="bestseller-img-wrapper">
+                      <div className="wishlist-btn-corner" onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}>
+                        <Heart size={16} fill={isInWishlist(item.id) ? '#e91e63' : 'transparent'} color={isInWishlist(item.id) ? '#e91e63' : 'var(--color-text-light)'} />
+                      </div>
+                      <div className="bestseller-img">
+                        <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
+                      </div>
+                      <div className="img-footer-row" onClick={e => e.stopPropagation()}>
+                        <span className="item-amount-text">{item.amount}</span>
+                        {qty === 0 ? (
+                          <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
+                        ) : (
+                          <div className="qty-control">
+                            <button onClick={() => updateCartQty(item, -1)}>-</button>
+                            <span>{qty}</span>
+                            <button onClick={() => updateCartQty(item, 1)}>+</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="bestseller-img">
-                      <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" />
-                    </div>
-                    <div className="img-footer-row" onClick={e => e.stopPropagation()}>
-                      <span className="item-amount-text">{item.amount}</span>
-                      {qty === 0 ? (
-                        <button className="add-btn-small" onClick={() => updateCartQty(item, 1)}>ADD</button>
-                      ) : (
-                        <div className="qty-control">
-                          <button onClick={() => updateCartQty(item, -1)}>-</button>
-                          <span>{qty}</span>
-                          <button onClick={() => updateCartQty(item, 1)}>+</button>
-                        </div>
-                      )}
+                    <div className="bestseller-info">
+                      <div className="item-price">₹{item.price}</div>
+                      <h3 className="item-name">{item.name}</h3>
+                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
                     </div>
                   </div>
-                  <div className="bestseller-info">
-                    <div className="item-price">₹{item.price}</div>
-                    <h3 className="item-name">{item.name}</h3>
-                    <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        </LazySection>
       )}
 
       {/* 7. Categories Grid */}
-      <CategoriesPage navigate={navigate} isEmbedded={true} />
+      <LazySection minHeight={320}>
+        <CategoriesPage navigate={navigate} isEmbedded={true} />
+      </LazySection>
 
       {/* 8. App Motto Section & Footer Links */}
       <footer className="grid-products-section app-motto-section" style={{ marginTop: 40, marginBottom: 80, padding: '20px 16px', border: 'none', background: 'transparent' }}>
