@@ -351,19 +351,33 @@ function AppContent() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
-      setIsLoggedIn(!!session || hasFirebasePhone);
+      const isNowLoggedIn = !!session || hasFirebasePhone;
+      
+      // Prevent stale user profile flash if signed in with a different account
+      if (session?.user?.id) {
+        setUserProfile(prev => (prev?.id === session.user.id ? prev : null));
+      } else if (!hasFirebasePhone) {
+        setUserProfile(null);
+      }
+      
+      setIsLoggedIn(isNowLoggedIn);
       setIsInitializingAuth(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
       const isNowLoggedIn = !!session || hasFirebasePhone;
-      setIsLoggedIn(isNowLoggedIn);
-      if (!isNowLoggedIn) {
+      
+      // If user session changed or logged out, clear stale profile data
+      if (session?.user?.id) {
+        setUserProfile(prev => (prev?.id === session.user.id ? prev : null));
+      } else if (!isNowLoggedIn) {
         setUserProfile(null);
         setAddresses([]);
         setCart([]);
       }
+      
+      setIsLoggedIn(isNowLoggedIn);
     });
 
     return () => subscription.unsubscribe();
