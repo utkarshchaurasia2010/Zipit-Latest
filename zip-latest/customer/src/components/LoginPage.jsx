@@ -86,11 +86,20 @@ const LoginPage = ({ onLogin }) => {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    // Clear any stale local user caches before starting new authentication
+    localStorage.removeItem('zipit_cached_user_profile');
+    localStorage.removeItem('zipit_cached_addresses');
+    localStorage.removeItem('zipit_verified_phone');
+    localStorage.removeItem('zipit_active_user_id');
+
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin,
+          queryParams: {
+            prompt: 'select_account'
+          }
         }
       });
       if (error) {

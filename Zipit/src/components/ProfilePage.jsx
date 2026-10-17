@@ -40,6 +40,11 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem('zipit_cached_user_profile');
+    localStorage.removeItem('zipit_cached_addresses');
+    localStorage.removeItem('zipit_verified_phone');
+    localStorage.removeItem('zipit_active_user_id');
+    localStorage.removeItem('cart');
     await supabase.auth.signOut();
     onLogout();
   };

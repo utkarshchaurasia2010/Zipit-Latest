@@ -357,7 +357,13 @@ function AppContent() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
-      setIsLoggedIn(!!session || hasFirebasePhone);
+      const isNowLoggedIn = !!session || hasFirebasePhone;
+      setIsLoggedIn(isNowLoggedIn);
+      if (!isNowLoggedIn) {
+        setUserProfile(null);
+        setAddresses([]);
+        setCart([]);
+      }
     });
 
     return () => subscription.unsubscribe();

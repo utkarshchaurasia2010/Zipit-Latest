@@ -22,7 +22,14 @@ export const db = {
       const cached = localStorage.getItem('zipit_cached_user_profile');
       let cachedProfile = null;
       if (cached) {
-        try { cachedProfile = JSON.parse(cached); } catch (_) {}
+        try { 
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.id === pid) {
+            cachedProfile = parsed;
+          } else {
+            localStorage.removeItem('zipit_cached_user_profile');
+          }
+        } catch (_) {}
       }
 
       const { data, error } = await supabase.from('profiles').select('*').eq('id', pid).single();
