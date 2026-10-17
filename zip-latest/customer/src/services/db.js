@@ -679,11 +679,20 @@ export const db = {
           const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
           const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
           const sticker = stickerMatch ? stickerMatch[1] : null;
+          const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
+          const tags = tagsMatch ? tagsMatch[1] : '';
 
           const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
           const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
           
-          let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '').replace(/---STICKER:.*?---/g, '');
+          let name = p.name
+            .replace('---TAG:WAFER---', '')
+            .replace('---TAG:GRID---', '')
+            .replace('---TAG:BESTSELLER---', '')
+            .replace('---TAG:OOS---', '')
+            .replace('---TAG:OUT_OF_STOCK---', '')
+            .replace(/---STICKER:.*?---/g, '')
+            .replace(/---TAGS:.*?---/g, '');
           return { 
             ...p, 
             name, 
@@ -691,6 +700,7 @@ export const db = {
             is_grid, 
             is_bestseller, 
             sticker,
+            tags,
             is_out_of_stock: !!is_out_of_stock,
             stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
           };
@@ -720,11 +730,20 @@ export const db = {
         const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
+        const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
+        const tags = tagsMatch ? tagsMatch[1] : '';
 
         const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
         const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '').replace(/---STICKER:.*?---/g, '');
+        let name = p.name
+          .replace('---TAG:WAFER---', '')
+          .replace('---TAG:GRID---', '')
+          .replace('---TAG:BESTSELLER---', '')
+          .replace('---TAG:OOS---', '')
+          .replace('---TAG:OUT_OF_STOCK---', '')
+          .replace(/---STICKER:.*?---/g, '')
+          .replace(/---TAGS:.*?---/g, '');
         return { 
           ...p, 
           name, 
@@ -732,6 +751,7 @@ export const db = {
           is_grid, 
           is_bestseller, 
           sticker,
+          tags,
           is_out_of_stock: !!is_out_of_stock,
           stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
         };
@@ -744,7 +764,7 @@ export const db = {
       const nameOrString = tokens.map(t => `name.ilike.%${t}%`).join(',');
       const catOrString = tokens.map(t => `categories.name.ilike.%${t}%`).join(',');
 
-      // Search by product name matching any token
+      // Search by product name matching any token (automatically matches inside name and inside ---TAGS:...---!)
       const { data: nameData, error: nameErr } = await supabase.from('products')
         .select('*, categories(name)')
         .or(nameOrString)
@@ -769,11 +789,20 @@ export const db = {
         const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
+        const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
+        const tags = tagsMatch ? tagsMatch[1] : '';
 
         const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
         const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '').replace(/---STICKER:.*?---/g, '');
+        let name = p.name
+          .replace('---TAG:WAFER---', '')
+          .replace('---TAG:GRID---', '')
+          .replace('---TAG:BESTSELLER---', '')
+          .replace('---TAG:OOS---', '')
+          .replace('---TAG:OUT_OF_STOCK---', '')
+          .replace(/---STICKER:.*?---/g, '')
+          .replace(/---TAGS:.*?---/g, '');
         return { 
           ...p, 
           name, 
@@ -781,6 +810,7 @@ export const db = {
           is_grid, 
           is_bestseller, 
           sticker,
+          tags,
           is_out_of_stock: !!is_out_of_stock,
           stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
         };

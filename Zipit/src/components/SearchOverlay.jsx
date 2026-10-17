@@ -353,25 +353,25 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
     const timer = setTimeout(async () => {
       if (query.trim().length > 0) {
         setLoading(true);
-        // First try normal DB search (handles exact/partial matches)
+        // First try normal DB search (handles exact/partial matches on name and tags)
         let data = await db.products.search(query.trim());
 
-        // If the DB search returns results, use them directly
-        // If not (or very few), apply fuzzy matching against ALL products
-        if (data.length === 0) {
-          const allProducts = await db.products.getAll();
-          data = allProducts.filter(item => fuzzyMatch(item.name, query.trim()));
-        } else {
-          // Additionally, filter through fuzzy match to widen results on partial matches
-          const allProducts = await db.products.getAll();
-          const fuzzyExtra = allProducts.filter(item => {
-            const alreadyIn = data.some(d => d.id === item.id);
-            return !alreadyIn && fuzzyMatch(item.name, query.trim());
-          });
-          data = [...data, ...fuzzyExtra];
-        }
+        // If the DB search returns results or needs widening, apply matching against name, tags, and category
+        const allProducts = await db.products.getAll();
+        const searchLower = query.trim().toLowerCase();
 
-        setResults(data);
+        const tagOrFuzzyMatches = allProducts.filter(item => {
+          const nameMatch = fuzzyMatch(item.name, query.trim());
+          const tagsLower = (item.tags || '').toLowerCase();
+          const tagDirectMatch = tagsLower.includes(searchLower) || searchLower.split(/\s+/).some(t => t.length >= 2 && tagsLower.includes(t));
+          return nameMatch || tagDirectMatch;
+        });
+
+        const combinedMap = new Map();
+        (data || []).forEach(item => combinedMap.set(item.id, item));
+        tagOrFuzzyMatches.forEach(item => combinedMap.set(item.id, item));
+
+        setResults(Array.from(combinedMap.values()));
         setLoading(false);
       } else {
         setResults([]);

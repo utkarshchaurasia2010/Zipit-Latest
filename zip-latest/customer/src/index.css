@@ -85,6 +85,8 @@ html, body {
   /* Prevent browser pull-to-refresh spinner and rubber-band bounce void */
   overscroll-behavior-y: none;
   scroll-behavior: smooth;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
 }
 
 *:focus {

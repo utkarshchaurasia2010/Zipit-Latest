@@ -23,6 +23,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 html, body {
@@ -32,6 +33,17 @@ html, body {
   height: 100%;
   background-color: #f8fafc;
   color: #0f172a;
+  overscroll-behavior-y: none;
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea {
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
 }
 
 #root {

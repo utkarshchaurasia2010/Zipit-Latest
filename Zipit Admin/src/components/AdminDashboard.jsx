@@ -36,6 +36,11 @@ const AdminDashboard = ({ initialTab }) => {
   const [activeRidersList, setActiveRidersList] = useState([]);
   const [isAssigningRider, setIsAssigningRider] = useState(false);
 
+  // Manual Shopkeeper Re-assignment State
+  const [reassignShopkeeperModalOrder, setReassignShopkeeperModalOrder] = useState(null);
+  const [activeShopkeepersList, setActiveShopkeepersList] = useState([]);
+  const [isAssigningShopkeeper, setIsAssigningShopkeeper] = useState(false);
+
   const openReassignModal = async (order) => {
     setReassignModalOrder(order);
     try {
@@ -46,6 +51,19 @@ const AdminDashboard = ({ initialTab }) => {
       setActiveRidersList(riders || []);
     } catch (e) {
       console.error('Error fetching riders:', e);
+    }
+  };
+
+  const openReassignShopkeeperModal = async (order) => {
+    setReassignShopkeeperModalOrder(order);
+    try {
+      const { data: shopkeepers } = await supabase
+        .from('access_codes')
+        .select('*')
+        .eq('role', 'shopkeeper');
+      setActiveShopkeepersList(shopkeepers || []);
+    } catch (e) {
+      console.error('Error fetching shopkeepers:', e);
     }
   };
 
@@ -68,6 +86,32 @@ const AdminDashboard = ({ initialTab }) => {
       showToast(e.message, 'error');
     } finally {
       setIsAssigningRider(false);
+    }
+  };
+
+  const handleAssignShopkeeper = async (orderId, shopkeeperCode) => {
+    setIsAssigningShopkeeper(true);
+    try {
+      const updateData = { accepted_by_shopkeeper: shopkeeperCode };
+      if (shopkeeperCode && !reassignShopkeeperModalOrder?.status?.startsWith('Preparing')) {
+        updateData.status = 'Preparing';
+      }
+      const { error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', orderId);
+
+      if (error) {
+        showToast('Failed to assign shopkeeper: ' + error.message, 'error');
+      } else {
+        showToast(shopkeeperCode ? `Assigned to shopkeeper ${shopkeeperCode}` : 'Shopkeeper unassigned (re-opened for claims)', 'success');
+        setData(prev => prev.map(o => o.id === orderId ? { ...o, ...updateData } : o));
+        setReassignShopkeeperModalOrder(null);
+      }
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setIsAssigningShopkeeper(false);
     }
   };
 
@@ -982,7 +1026,7 @@ const AdminDashboard = ({ initialTab }) => {
                     alignItems: 'center'
                   }}>
                     {/* Shopkeeper Status */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', flexWrap: 'wrap' }}>
                       <UserCheck size={15} color={o.accepted_by_shopkeeper ? '#15803d' : '#94a3b8'} />
                       <span style={{ color: 'var(--color-text-light)' }}>Shopkeeper:</span>
                       {o.accepted_by_shopkeeper ? (
@@ -994,6 +1038,24 @@ const AdminDashboard = ({ initialTab }) => {
                           Pending Acceptance
                         </span>
                       )}
+
+                      {/* Manual Shopkeeper Re-assignment trigger button */}
+                      <button
+                        type="button"
+                        onClick={() => openReassignShopkeeperModal(o)}
+                        style={{
+                          background: '#f1f5f9',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          color: '#15803d'
+                        }}
+                      >
+                        {o.accepted_by_shopkeeper ? 'Change Shopkeeper' : 'Assign Shopkeeper'}
+                      </button>
                     </div>
 
                     <span style={{ color: 'var(--color-border)' }}>•</span>
@@ -1268,6 +1330,19 @@ const AdminDashboard = ({ initialTab }) => {
                   <div className="form-group">
                     <label>Sticker (Optional)</label>
                     <input type="text" className="admin-input" placeholder="e.g. 20% OFF" value={formData.sticker||''} onChange={e=>setFormData({...formData, sticker:e.target.value})}/>
+                  </div>
+                  <div className="form-group">
+                    <label>Tags & Shopkeeper Codes (Comma-separated)</label>
+                    <input 
+                      type="text" 
+                      className="admin-input" 
+                      placeholder="e.g. doodh, dairy, morning, SK_SHOP1, SK_SHOP2" 
+                      value={formData.tags||''} 
+                      onChange={e=>setFormData({...formData, tags:e.target.value})}
+                    />
+                    <small style={{ fontSize: '11.5px', color: 'var(--color-text-light)', marginTop: '4px', display: 'block' }}>
+                      Add search keywords, synonyms, or shopkeeper codes (e.g. <code>SK101</code>) to link availability.
+                    </small>
                   </div>
                   <div className="form-group">
                     <label>Inventory Stock (-1 for unlimited)</label>
@@ -1602,6 +1677,134 @@ const AdminDashboard = ({ initialTab }) => {
               <button
                 type="button"
                 onClick={() => setReassignModalOrder(null)}
+                style={{
+                  background: 'var(--color-surface-muted, #f1f5f9)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* MANUAL SHOPKEEPER REASSIGN MODAL */}
+      {reassignShopkeeperModalOrder && createPortal(
+        <div 
+          className="admin-modal-overlay" 
+          style={{ zIndex: 1100 }} 
+          onClick={() => !isAssigningShopkeeper && setReassignShopkeeperModalOrder(null)}
+        >
+          <div 
+            className="admin-modal" 
+            style={{ maxWidth: '440px', width: '92%', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--color-text)' }}>
+                  Assign / Change Shopkeeper
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--color-text-light)' }}>
+                  Order #{reassignShopkeeperModalOrder.id.slice(0, 8).toUpperCase()}
+                </p>
+              </div>
+              <button 
+                onClick={() => setReassignShopkeeperModalOrder(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-light)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ fontSize: '13px', color: 'var(--color-text)' }}>
+              Current Shopkeeper: <strong>{reassignShopkeeperModalOrder.accepted_by_shopkeeper || 'None (Pending Acceptance)'}</strong>
+            </div>
+
+            {/* List of active shopkeepers from access_codes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
+              {activeShopkeepersList.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-light)', fontSize: '13px' }}>
+                  No registered shopkeepers found in access_codes table.
+                </div>
+              ) : (
+                activeShopkeepersList.map(shopkeeper => {
+                  const isCurrent = reassignShopkeeperModalOrder.accepted_by_shopkeeper === shopkeeper.code;
+                  return (
+                    <div 
+                      key={shopkeeper.code}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        border: isCurrent ? '1.5px solid #15803d' : '1px solid var(--color-border)',
+                        background: isCurrent ? 'rgba(21, 128, 61, 0.08)' : 'var(--color-surface-muted, #f8fafc)'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {shopkeeper.name || 'Shopkeeper'} ({shopkeeper.code})
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>
+                          {shopkeeper.mobile || 'No Mobile'}
+                        </div>
+                      </div>
+
+                      <button
+                        disabled={isAssigningShopkeeper || isCurrent}
+                        onClick={() => handleAssignShopkeeper(reassignShopkeeperModalOrder.id, shopkeeper.code)}
+                        style={{
+                          background: isCurrent ? '#94a3b8' : '#15803d',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: isCurrent ? 'default' : 'pointer'
+                        }}
+                      >
+                        {isCurrent ? 'Assigned' : 'Assign'}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '14px', marginTop: '4px' }}>
+              <button
+                type="button"
+                disabled={isAssigningShopkeeper || !reassignShopkeeperModalOrder.accepted_by_shopkeeper}
+                onClick={() => handleAssignShopkeeper(reassignShopkeeperModalOrder.id, null)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#dc2626',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: !reassignShopkeeperModalOrder.accepted_by_shopkeeper ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Unassign (Re-open Claim)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReassignShopkeeperModalOrder(null)}
                 style={{
                   background: 'var(--color-surface-muted, #f1f5f9)',
                   color: 'var(--color-text)',

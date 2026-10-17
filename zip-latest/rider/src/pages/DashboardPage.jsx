@@ -425,7 +425,48 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {activeOrders.map(order => {
+              {/* Dual Order Pickup Batch Banner */}
+              {(() => {
+                const myAssignedOrders = activeOrders.filter(o => o.accepted_by_rider === riderCode);
+                if (myAssignedOrders.length >= 2) {
+                  return (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                      border: '1.5px solid #F8CB46',
+                      borderRadius: '16px',
+                      padding: '14px 18px',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ background: '#F8CB46', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: '900', fontSize: '16px' }}>
+                          2×
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 800, color: '#F8CB46', letterSpacing: '-0.2px' }}>
+                            Dual Order Batch Active!
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '2px' }}>
+                            Collect both bags from store before leaving for delivery
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ background: 'rgba(248, 203, 70, 0.15)', color: '#F8CB46', border: '1px solid #F8CB46', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 800 }}>
+                        BATCH RUN
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {activeOrders.map((order, orderIdx) => {
+                const myAssignedOrders = activeOrders.filter(o => o.accepted_by_rider === riderCode);
+                const isMyDual = myAssignedOrders.length >= 2 && order.accepted_by_rider === riderCode;
+                const dualIndex = isMyDual ? myAssignedOrders.findIndex(o => o.id === order.id) + 1 : null;
                 const isClaimable = ['Preparing', 'Preparing (Accepted)', 'Ready for Pickup'].includes(order.status);
                 const isUnclaimed = !order.accepted_by_rider && isClaimable;
 
@@ -434,9 +475,25 @@ export default function DashboardPage() {
                     background: 'var(--color-surface)', 
                     borderRadius: '20px', 
                     padding: '20px', 
-                    border: '1px solid var(--color-border)', 
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.04)' 
+                    border: isMyDual ? '2px solid #F8CB46' : '1px solid var(--color-border)', 
+                    boxShadow: isMyDual ? '0 8px 24px rgba(248, 203, 70, 0.12)' : '0 8px 24px rgba(0,0,0,0.04)' 
                   }}>
+                    {isMyDual && (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: '#0f172a',
+                        color: '#F8CB46',
+                        padding: '3px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        marginBottom: '10px'
+                      }}>
+                        <span>📦 DUAL ORDER STOP #{dualIndex}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                       <div>
                         <div style={{ fontWeight: '800', color: 'var(--color-text)', fontSize: '16px' }}>Order #{order.id.slice(0,6).toUpperCase()}</div>

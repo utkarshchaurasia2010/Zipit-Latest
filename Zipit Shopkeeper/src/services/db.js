@@ -374,9 +374,16 @@ export const db = {
         const is_bestseller = p.name.includes('---TAG:BESTSELLER---');
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
+        const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
+        const tags = tagsMatch ? tagsMatch[1] : '';
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
+        let name = p.name
+          .replace('---TAG:WAFER---', '')
+          .replace('---TAG:GRID---', '')
+          .replace('---TAG:BESTSELLER---', '')
+          .replace(/---STICKER:.*?---/g, '')
+          .replace(/---TAGS:.*?---/g, '');
+        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags };
       });
     },
     getByCategory: async (categoryId) => {
