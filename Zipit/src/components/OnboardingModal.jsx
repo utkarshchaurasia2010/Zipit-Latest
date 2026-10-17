@@ -13,11 +13,25 @@ const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
     name: (userProfile?.name && !userProfile?.name.startsWith('User ') && userProfile?.name !== 'New User') ? userProfile.name : '', 
     phone: getCleanPhone(userProfile?.phone || localStorage.getItem('zipit_verified_phone') || ''), 
     email: userProfile?.email || '', 
+    photo: (userProfile?.photo && userProfile.photo !== 'NU') ? userProfile.photo : ''
   });
+  const [userEditedInitials, setUserEditedInitials] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [closing, setClosing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const computeInitials = (nameStr) => {
+    if (!nameStr) return '';
+    return nameStr
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(n => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+  };
 
   useEffect(() => {
     const prefillData = async () => {
@@ -32,6 +46,17 @@ const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
     };
     prefillData();
   }, [userProfile]);
+
+  const handleNameChange = (e) => {
+    setErrorMsg('');
+    const newName = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      name: newName,
+      // If user hasn't manually customized initials, keep auto-generating live
+      photo: userEditedInitials ? prev.photo : computeInitials(newName)
+    }));
+  };
 
   const handleGoBack = async () => {
     if (loading || cancelling) return;
@@ -67,14 +92,8 @@ const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
       return;
     }
     
-    // Auto-generate initials from the entered full name
-    const photoInitials = cleanName
-      .split(' ')
-      .filter(Boolean)
-      .map(n => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'NU';
+    // Auto-generate initials if still empty or use customized value
+    const photoInitials = formData.photo.trim().toUpperCase() || computeInitials(cleanName) || 'NU';
 
     const payload = {
       name: cleanName,
@@ -139,13 +158,34 @@ const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
                 type="text" 
                 placeholder="e.g. Rahul Sharma" 
                 value={formData.name}
-                onChange={e => {
-                  setErrorMsg('');
-                  setFormData({...formData, name: e.target.value});
-                }}
+                onChange={handleNameChange}
                 required
                 disabled={loading || cancelling}
                 autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="onboarding-field">
+            <div className="onboarding-label-row">
+              <label className="onboarding-label">Avatar Initials</label>
+              <span className="onboarding-label-hint">Auto-generated • Editable</span>
+            </div>
+            <div className="onboarding-input-group initials-group">
+              <div className="initials-avatar-preview">
+                {formData.photo || computeInitials(formData.name) || 'NU'}
+              </div>
+              <input 
+                type="text" 
+                placeholder="e.g. RS" 
+                value={formData.photo}
+                maxLength={2}
+                onChange={e => {
+                  setUserEditedInitials(true);
+                  setFormData({ ...formData, photo: e.target.value.toUpperCase() });
+                }}
+                disabled={loading || cancelling}
+                style={{ textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 700 }}
               />
             </div>
           </div>
