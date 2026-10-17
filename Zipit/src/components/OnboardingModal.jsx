@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db, supabase } from '../services/db';
-import { Mail, User, Phone, CheckCircle2 } from 'lucide-react';
+import { Mail, User, Phone, CheckCircle2, ArrowLeft } from 'lucide-react';
 import './OnboardingModal.css';
 
-const OnboardingModal = ({ userProfile, onComplete }) => {
+const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
   const getCleanPhone = (p) => {
     if (!p || p.startsWith('temp_')) return '';
     return p;
@@ -15,6 +15,7 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
     email: userProfile?.email || '', 
   });
   const [loading, setLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [closing, setClosing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -31,6 +32,24 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
     };
     prefillData();
   }, [userProfile]);
+
+  const handleGoBack = async () => {
+    if (loading || cancelling) return;
+    setCancelling(true);
+    try {
+      // Remove placeholder record from db
+      await db.user.deleteCurrentProfile();
+      // Sign out from auth session
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Error during cancel cleanup:", err);
+    } finally {
+      setClosing(true);
+      setTimeout(() => {
+        if (onCancel) onCancel();
+      }, 350);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,6 +102,19 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
     <>
       <div className={`onboarding-overlay ${closing ? 'fade-out' : ''}`} />
       <div className={`onboarding-modal ${closing ? 'slide-down' : ''}`}>
+        <div className="onboarding-top-nav">
+          <button 
+            type="button" 
+            className="onboarding-back-btn" 
+            onClick={handleGoBack}
+            disabled={loading || cancelling}
+            aria-label="Go back"
+          >
+            <ArrowLeft size={18} />
+            <span>Go Back</span>
+          </button>
+        </div>
+
         <div className="onboarding-header">
           <div className="onboarding-badge">
             <CheckCircle2 size={16} color="#10B981" />
@@ -112,7 +144,7 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
                   setFormData({...formData, name: e.target.value});
                 }}
                 required
-                disabled={loading}
+                disabled={loading || cancelling}
                 autoFocus
               />
             </div>
@@ -134,7 +166,7 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
                   setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)});
                 }}
                 required
-                disabled={loading}
+                disabled={loading || cancelling}
                 maxLength={10}
               />
             </div>
@@ -158,9 +190,9 @@ const OnboardingModal = ({ userProfile, onComplete }) => {
           <button 
             type="submit" 
             className="onboarding-submit-btn" 
-            disabled={!formData.name.trim() || formData.phone.length < 10 || loading}
+            disabled={!formData.name.trim() || formData.phone.length < 10 || loading || cancelling}
           >
-            {loading ? 'Setting up your profile...' : 'Continue to Zipit'}
+            {loading ? 'Setting up your profile...' : cancelling ? 'Cancelling...' : 'Continue to Zipit'}
           </button>
         </form>
       </div>

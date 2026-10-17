@@ -762,6 +762,10 @@ function AppContent() {
             onComplete={(newData) => {
               setUserProfile(prev => ({ ...prev, ...newData }));
             }} 
+            onCancel={() => {
+              setUserProfile(null);
+              setIsLoggedIn(false);
+            }}
           />
         )}
         <OfflineBanner />

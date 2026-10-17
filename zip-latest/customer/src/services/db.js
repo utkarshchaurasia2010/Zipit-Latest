@@ -155,6 +155,20 @@ export const db = {
       }
       
       return { data };
+    },
+    deleteCurrentProfile: async () => {
+      const pid = await getUserId();
+      if (!pid) return false;
+      try {
+        await supabase.from('profiles').delete().eq('id', pid);
+        localStorage.removeItem('zipit_cached_user_profile');
+        localStorage.removeItem('zipit_verified_phone');
+        localStorage.removeItem('zipit_active_user_id');
+        return true;
+      } catch (err) {
+        console.error("Failed to delete user profile:", err);
+        return false;
+      }
     }
   },
   addresses: {
