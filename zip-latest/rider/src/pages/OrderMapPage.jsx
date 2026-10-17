@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, db } from '../services/db';
 import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound, AlertTriangle, RefreshCw } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import SlideToAccept from '../components/SlideToAccept';
 import 'leaflet/dist/leaflet.css';
@@ -71,6 +71,43 @@ class MapErrorBoundary extends Component {
     }
     return this.props.children;
   }
+}
+
+// Helper component to fix Leaflet 0-height / gray tile sizing bug
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch (e) {
+        console.warn('Map resize error:', e);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+// Auto-fit bounds between Rider and Destination so both are always visible
+function MapBoundsFitter({ positions }) {
+  const map = useMap();
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    if (!fittedRef.current && positions && positions.length > 1) {
+      const valid = positions.filter(p => Array.isArray(p) && !isNaN(p[0]) && !isNaN(p[1]));
+      if (valid.length > 1) {
+        try {
+          const bounds = L.latLngBounds(valid);
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+          fittedRef.current = true;
+        } catch (e) {
+          console.warn('Bounds fitter error:', e);
+        }
+      }
+    }
+  }, [map, positions]);
+  return null;
 }
 
 // Crisp SVG Icons
@@ -232,13 +269,27 @@ export default function OrderMapPage() {
     };
   }, [id]);
 
+  const lastDirectionFetchCoordsRef = useRef(null);
   useEffect(() => {
     const fetchDirections = async () => {
       if (!order || !order.delivery_address) return;
       const destLat = Number(order.delivery_address?.lat) || 25.5900;
       const destLng = Number(order.delivery_address?.lng) || 83.5850;
+      const curLat = Number(myLocation[0]);
+      const curLng = Number(myLocation[1]);
+
+      if (isNaN(curLat) || isNaN(curLng)) return;
+
+      // Avoid re-fetching every 4 seconds if rider hasn't moved more than ~25 meters
+      if (lastDirectionFetchCoordsRef.current) {
+        const dLat = Math.abs(lastDirectionFetchCoordsRef.current[0] - curLat);
+        const dLng = Math.abs(lastDirectionFetchCoordsRef.current[1] - curLng);
+        if (dLat < 0.00025 && dLng < 0.00025) return;
+      }
+      lastDirectionFetchCoordsRef.current = [curLat, curLng];
+
       try {
-        const url = `https://api.olamaps.io/routing/v1/directions?origin=${myLocation[0]},${myLocation[1]}&destination=${destLat},${destLng}&api_key=${OLA_MAPS_API_KEY}`;
+        const url = `https://api.olamaps.io/routing/v1/directions?origin=${curLat},${curLng}&destination=${destLat},${destLng}&api_key=${OLA_MAPS_API_KEY}`;
         const res = await fetch(url, { method: 'POST' });
         const data = await res.json();
         if (data && data.routes && data.routes[0]) {
@@ -246,11 +297,15 @@ export default function OrderMapPage() {
           const points = [];
           legs.forEach(leg => {
             (leg.steps || []).forEach(step => {
-              if (step.start_location) points.push([step.start_location.lat, step.start_location.lng]);
-              if (step.end_location) points.push([step.end_location.lat, step.end_location.lng]);
+              if (step.start_location && !isNaN(Number(step.start_location.lat)) && !isNaN(Number(step.start_location.lng))) {
+                points.push([Number(step.start_location.lat), Number(step.start_location.lng)]);
+              }
+              if (step.end_location && !isNaN(Number(step.end_location.lat)) && !isNaN(Number(step.end_location.lng))) {
+                points.push([Number(step.end_location.lat), Number(step.end_location.lng)]);
+              }
             });
           });
-          if (points.length > 0) {
+          if (points.length > 1) {
             setRoutePolyline(points);
           }
         }
@@ -259,7 +314,7 @@ export default function OrderMapPage() {
       }
     };
     fetchDirections();
-  }, [order, myLocation[0], myLocation[1]]);
+  }, [order?.id, myLocation[0], myLocation[1]]);
 
   const fetchOrder = async () => {
     try {
@@ -453,16 +508,20 @@ export default function OrderMapPage() {
       </div>
 
       {/* Map View wrapped in MapErrorBoundary */}
-      <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
+      <div style={{ flex: '1 1 45vh', minHeight: '260px', position: 'relative', width: '100%', overflow: 'hidden' }}>
         <MapErrorBoundary>
           <MapContainer 
             center={myLocation} 
             zoom={15} 
-            style={{ height: '100%', width: '100%' }}
+            style={{ height: '100%', width: '100%', minHeight: '260px' }}
             zoomControl={false}
             attributionControl={false}
             ref={mapRef}
           >
+            <MapResizer />
+            <MapBoundsFitter positions={[myLocation, destLocation, ...(routePolyline || [])]} />
+
+            {/* Primary Google Maps Roadmap Tiles */}
             <TileLayer 
               url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
               subdomains={['0', '1', '2', '3']}
@@ -482,7 +541,21 @@ export default function OrderMapPage() {
               })} 
             />
 
-            <Polyline positions={routePolyline || [myLocation, destLocation]} color="#2563eb" weight={5} opacity={0.8} dashArray={routePolyline ? undefined : "8, 10"} />
+            {/* Verified numerical positions only to prevent leaflet canvas crash */}
+            {(() => {
+              const pts = (routePolyline && routePolyline.length > 1) 
+                ? routePolyline.filter(p => Array.isArray(p) && !isNaN(p[0]) && !isNaN(p[1]))
+                : [myLocation, destLocation];
+              return (
+                <Polyline 
+                  positions={pts} 
+                  color="#2563eb" 
+                  weight={5} 
+                  opacity={0.8} 
+                  dashArray={routePolyline ? undefined : "8, 10"} 
+                />
+              );
+            })()}
           </MapContainer>
         </MapErrorBoundary>
         
@@ -499,8 +572,8 @@ export default function OrderMapPage() {
             right: '16px', 
             zIndex: 1000, 
             background: 'var(--color-surface)', 
-            width: '56px',
-            height: '56px', 
+            width: '52px',
+            height: '52px', 
             borderRadius: '50%', 
             border: 'none', 
             boxShadow: '0 8px 24px rgba(0,0,0,0.15)', 
@@ -510,22 +583,24 @@ export default function OrderMapPage() {
             justifyContent: 'center'
           }}
         >
-          <Navigation size={26} color="#2563eb" />
+          <Navigation size={24} color="#2563eb" />
         </button>
       </div>
 
       {/* Bottom Action Sheet */}
       <div style={{ 
         background: 'var(--color-surface)', 
-        borderTopLeftRadius: '32px', 
-        borderTopRightRadius: '32px', 
-        marginTop: '-32px', 
+        borderTopLeftRadius: '28px', 
+        borderTopRightRadius: '28px', 
+        marginTop: '-20px', 
         zIndex: 1000, 
         position: 'relative', 
         boxShadow: '0 -8px 24px rgba(0,0,0,0.08)',
-        padding: '24px 24px 32px 24px',
+        padding: '20px 20px 32px 20px',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        maxHeight: '55vh',
+        overflowY: 'auto'
       }}>
         {/* Drag Handle */}
         <div style={{ width: '40px', height: '5px', background: 'var(--color-border)', borderRadius: '10px', margin: '0 auto 20px' }} />
