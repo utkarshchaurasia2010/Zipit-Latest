@@ -195,39 +195,45 @@
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
 }
 
-.whatsapp-login-btn {
+.google-signin-btn {
   width: 100%;
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  color: #ffffff;
-  border: none;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
   border-radius: 14px;
-  padding: 15px 18px;
+  padding: 14px 18px;
   font-size: 15.5px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  box-shadow: 0 4px 18px rgba(37, 211, 102, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.whatsapp-login-btn:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 8px 26px rgba(37, 211, 102, 0.55), 0 0 20px rgba(37, 211, 102, 0.45);
+.google-signin-btn:hover {
+  transform: translateY(-2px);
+  background: #f9fafb;
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.whatsapp-login-btn:active {
-  transform: scale(0.97);
-  box-shadow: 0 2px 10px rgba(37, 211, 102, 0.4);
+.google-signin-btn:active {
+  transform: scale(0.98);
+}
+
+.google-signin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .login-method-divider {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 12px 0 6px;
+  margin: 14px 0 6px;
   width: 100%;
 }
 
@@ -236,7 +242,7 @@
   content: "";
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .login-method-divider span {
@@ -245,59 +251,6 @@
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.method-switch-link {
-  background: transparent;
-  border: none;
-  color: #cbd5e1;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.15s ease;
-}
-
-.method-switch-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-}
-
-.whatsapp-waiting-card {
-  background: #18191f;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 24px 20px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-}
-
-.whatsapp-pulse-bubble {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: rgba(37, 211, 102, 0.15);
-  border: 2px solid #25D366;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: pulseGreen 1.8s infinite ease-in-out;
-}
-
-@keyframes pulseGreen {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
-  70% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(37, 211, 102, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
 }
 
 .login-footer {

@@ -3,7 +3,7 @@ import InstallPrompt from './InstallPrompt';
 import TermsPage from './TermsPage';
 import './LoginPage.css';
 import { db, supabase } from '../services/db';
-import { Mail, ShieldCheck, ArrowLeft, MessageSquare, Sparkles } from 'lucide-react';
+import { Mail, ShieldCheck } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const DEFAULT_bgProducts = [
@@ -84,120 +84,22 @@ const LoginPage = ({ onLogin }) => {
     fetchImages();
   }, []);
 
-  const [loginMethod, setLoginMethod] = useState('whatsapp'); // 'whatsapp' | 'email'
-  const [waRequest, setWaRequest] = useState(null);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [waOtp, setWaOtp] = useState('');
-  const [waStep, setWaStep] = useState(1); // 1: Enter Phone, 2: Enter 6-Digit OTP
-
-  // Realtime listener for WhatsApp verification
-  useEffect(() => {
-    if (!waRequest?.token) return;
-
-    const channel = supabase.channel(`wa-auth-${waRequest.token}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'whatsapp_auth_requests',
-        filter: `token=eq.${waRequest.token}`
-      }, async (payload) => {
-        if (payload.new?.status === 'verified') {
-          const verifiedPhone = payload.new.phone;
-          localStorage.setItem('zipit_verified_phone', verifiedPhone);
-          if (payload.new.user_id) {
-            localStorage.setItem('zipit_active_user_id', payload.new.user_id);
-          }
-          showToast(`WhatsApp verified! Welcome +91 ${verifiedPhone}`, 'Success');
-          onLogin();
-        } else if (payload.new?.status && payload.new.status.startsWith('OTP:')) {
-          const receivedOtp = payload.new.status.split('OTP:')[1];
-          if (receivedOtp) {
-            setWaOtp(receivedOtp);
-            showToast(`OTP ${receivedOtp} received from WhatsApp! Tapped Auto-fill.`, 'Success');
-          }
-        }
-      })
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, [waRequest]);
-
-  const handleStartWhatsAppLogin = async (e) => {
-    e?.preventDefault();
-    const cleanPhone = phoneInput.replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length < 10) {
-      showToast('Please enter a valid 10-digit mobile number.', 'Error');
-      return;
-    }
-
+  const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const req = await db.whatsapp.createRequest(cleanPhone);
-      setWaRequest(req);
-      setWaStep(2);
-
-      const storedBotNum = localStorage.getItem('zipit_whatsapp_bot_number') || '919651568829';
-      const cleanBotNum = storedBotNum.replace(/\D/g, '');
-      const botNumber = cleanBotNum.startsWith('91') ? cleanBotNum : '91' + cleanBotNum.slice(-10);
-
-      const message = encodeURIComponent(`Verify my Zipit account +91 ${cleanPhone} [${req.token}]`);
-      const waUrl = `https://wa.me/${botNumber}?text=${message}`;
-
-      window.open(waUrl, '_blank');
-      showToast(`Opening WhatsApp chat (+${botNumber})... Send the code to get your OTP!`, 'Info');
-    } catch (err) {
-      console.error('WhatsApp Login Request Failed:', err);
-      showToast(err.message || 'Failed to start WhatsApp login', 'Error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyWhatsAppOtp = async (e) => {
-    e?.preventDefault();
-    const cleanPhone = phoneInput.replace(/\D/g, '').slice(-10);
-    const cleanOtp = waOtp.trim();
-
-    if (cleanOtp.length !== 6) {
-      showToast('Please enter the 6-digit OTP received in WhatsApp.', 'Error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await db.whatsapp.verifyOtp(cleanPhone, cleanOtp);
-      if (res?.success) {
-        localStorage.setItem('zipit_verified_phone', cleanPhone);
-        if (res.profile?.id) {
-          localStorage.setItem('zipit_active_user_id', res.profile.id);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
         }
-        if (res.isNewUser) {
-          showToast('OTP verified! Please complete your profile details.', 'Success');
-        } else {
-          showToast(`Welcome back, +91 ${cleanPhone}!`, 'Success');
-        }
-        onLogin();
+      });
+      if (error) {
+        showToast(error.message || 'Google sign-in failed', 'Error');
+        setLoading(false);
       }
     } catch (err) {
-      console.error('WhatsApp OTP Verification Error:', err);
-      showToast(err.message || 'Invalid OTP. Please check your WhatsApp chat.', 'Error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Instant simulator for local testing or when user taps "I Sent the Message"
-  const handleSimulateWhatsAppVerify = async () => {
-    if (!waRequest?.token) return;
-    setLoading(true);
-    try {
-      const mockPhone = phoneInput.replace(/\D/g, '').slice(-10) || '9651568829';
-      await db.whatsapp.verifyRequest(waRequest.token, mockPhone);
-      showToast('Verification confirmed!', 'Success');
-      // The realtime subscription above will handle completion
-    } catch (err) {
-      showToast(err.message || 'Verification pending. Please send the message on WhatsApp.', 'Warning');
-    } finally {
+      console.error('Google Auth Error:', err);
+      showToast(err.message || 'Could not initiate Google sign-in', 'Error');
       setLoading(false);
     }
   };
@@ -293,263 +195,103 @@ const LoginPage = ({ onLogin }) => {
 
         <h1 className="main-title">India's Rural Delivery App</h1>
 
-        {loginMethod === 'whatsapp' ? (
-          <>
-            {!waRequest ? (
-              <>
-                <p className="sub-title">Instant 1-Tap Login with WhatsApp</p>
+        <p className="sub-title">Sign in or create account in seconds</p>
 
-                <form onSubmit={handleStartWhatsAppLogin} className="login-form">
-                  <div className="modern-input-group" style={{ position: 'relative' }}>
-                    <div className="email-prefix" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '15px' }}>🇮🇳</span>
-                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>+91</span>
-                    </div>
-                    <input 
-                      type="tel" 
-                      inputMode="numeric"
-                      pattern="[0-9]{10}"
-                      maxLength={10}
-                      minLength={10}
-                      placeholder="Enter 10-digit mobile number" 
-                      value={phoneInput}
-                      onChange={e => {
-                        const digits = e.target.value.replace(/\D/g, '');
-                        // If user pastes with +91 or leading 0, extract exact last 10 digits if >= 10, else slice to 10
-                        if (digits.length > 10 && (digits.startsWith('91') || digits.startsWith('0'))) {
-                          setPhoneInput(digits.slice(-10));
-                        } else {
-                          setPhoneInput(digits.slice(0, 10));
-                        }
-                      }}
-                      onPaste={e => {
-                        e.preventDefault();
-                        const pasted = (e.clipboardData || window.clipboardData).getData('text');
-                        const digits = pasted.replace(/\D/g, '');
-                        setPhoneInput(digits.length > 10 ? digits.slice(-10) : digits.slice(0, 10));
-                      }}
-                      autoFocus
-                      disabled={loading}
-                      style={{ fontSize: '15px', fontWeight: '600', letterSpacing: '0.5px' }}
-                      required
-                    />
-                    {phoneInput.length > 0 && (
-                      <span style={{ 
-                        fontSize: '11px', 
-                        fontWeight: '700', 
-                        color: phoneInput.length === 10 ? '#22c55e' : '#94a3b8', 
-                        paddingRight: '12px',
-                        userSelect: 'none'
-                      }}>
-                        {phoneInput.length}/10
-                      </span>
-                    )}
-                  </div>
+        {/* 1-TAP GOOGLE SIGN-IN BUTTON */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '4px' }}>
+          <button 
+            type="button" 
+            className="google-signin-btn"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>{loading ? 'Connecting to Google...' : 'Continue with Google'}</span>
+          </button>
 
-                  <button 
-                    type="submit" 
-                    className="whatsapp-login-btn"
-                    disabled={phoneInput.length !== 10 || loading}
-                    title={phoneInput.length !== 10 ? "Please enter exact 10-digit mobile number" : ""}
-                  >
-                    <MessageSquare size={19} />
-                    <span>{loading ? 'Generating Code...' : 'Continue with WhatsApp'}</span>
-                  </button>
+          <div className="login-method-divider">
+            <span>or sign in with email</span>
+          </div>
 
-                  <div className="login-method-divider">
-                    <span>or</span>
-                  </div>
-
-                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    <button 
-                      type="button" 
-                      className="method-switch-link"
-                      onClick={() => { setLoginMethod('email'); setStep(1); }}
-                    >
-                      <Mail size={16} /> Continue with Email OTP
-                    </button>
-
-                    <button 
-                      type="button" 
-                      onClick={() => { 
-                        const current = localStorage.getItem('zipit_whatsapp_bot_number') || '919651568829';
-                        const num = prompt('Enter your dedicated WhatsApp Bot phone number with country code (e.g. 919876543210):', current); 
-                        if (num) { 
-                          const clean = num.replace(/\D/g, '');
-                          localStorage.setItem('zipit_whatsapp_bot_number', clean); 
-                          showToast(`Bot WhatsApp Number set to +${clean}`, 'Success'); 
-                        } 
-                      }} 
-                      style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '11.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >
-                      ⚙️ Target Bot Number (+{localStorage.getItem('zipit_whatsapp_bot_number') || '919651568829'})
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <div className="whatsapp-waiting-card">
-                <div className="whatsapp-pulse-bubble">
-                  <MessageSquare size={28} color="#25D366" />
+          {step === 1 ? (
+            <form onSubmit={handleSendEmailOtp} className="login-form">
+              <div className="modern-input-group">
+                <div className="email-prefix">
+                  <Mail size={18} color="#FFF" />
                 </div>
-                <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff', margin: '0 0 6px 0' }}>
-                    Enter 6-Digit WhatsApp OTP
-                  </h3>
-                  <p style={{ fontSize: '12.5px', color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
-                    Send the prefilled code <strong style={{ color: '#25D366', letterSpacing: '1px' }}>{waRequest?.token}</strong> on WhatsApp. Your 6-digit OTP will arrive in the chat!
-                  </p>
-                </div>
-
-                <form onSubmit={handleVerifyWhatsAppOtp} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
-                  <div className="modern-input-group">
-                    <input 
-                      type="text" 
-                      placeholder="••••••" 
-                      maxLength={6}
-                      value={waOtp}
-                      onChange={e => setWaOtp(e.target.value.replace(/\D/g, ''))}
-                      autoFocus
-                      disabled={loading}
-                      style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '22px', fontWeight: '800', width: '100%', paddingLeft: '8px' }}
-                    />
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    className="whatsapp-login-btn"
-                    disabled={waOtp.length !== 6 || loading}
-                    style={{ padding: '12px', fontSize: '14px', width: '100%', justifyContent: 'center' }}
-                  >
-                    {loading ? 'Verifying OTP...' : 'Verify OTP & Continue'}
-                  </button>
-                </form>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '6px' }}>
-                  <button 
-                    type="button" 
-                    onClick={handleStartWhatsAppLogin}
-                    style={{ background: 'transparent', border: '1px solid rgba(37, 211, 102, 0.4)', color: '#25D366', padding: '8px', borderRadius: '8px', fontSize: '12.5px', cursor: 'pointer', fontWeight: '600' }}
-                  >
-                    Re-open WhatsApp Chat
-                  </button>
-
-                  <button 
-                    type="button" 
-                    onClick={() => { setWaRequest(null); setWaStep(1); setWaOtp(''); setLoginMethod('email'); }}
-                    className="method-switch-link"
-                    style={{ justifyContent: 'center', fontSize: '12.5px', color: '#cbd5e1' }}
-                  >
-                    Use Email OTP instead
-                  </button>
-
-                  <button 
-                    type="button" 
-                    onClick={() => { setWaRequest(null); setWaStep(1); setWaOtp(''); }}
-                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
-                  >
-                    Use a different number
-                  </button>
-                </div>
+                <input 
+                  type="email" 
+                  placeholder="Enter your email address" 
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                />
               </div>
-            )}
-          </>
-        ) : (
-          /* EMAIL OTP METHOD */
-          step === 1 ? (
-            <>
-              <p className="sub-title">Log in or sign up with email OTP</p>
-
-              <form onSubmit={handleSendEmailOtp} className="login-form">
-                <div className="modern-input-group">
-                  <div className="email-prefix">
-                    <Mail size={18} color="#FFF" />
-                  </div>
-                  <input 
-                    type="email" 
-                    placeholder="Enter email address" 
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    autoFocus
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  className="modern-continue-btn" 
-                  disabled={!email.includes('@') || loading}
-                >
-                  {loading ? 'Sending OTP...' : 'Send Verification OTP'}
-                </button>
-
-                <div className="login-method-divider">
-                  <span>or</span>
-                </div>
-
-                <div style={{ textAlign: 'center' }}>
-                  <button 
-                    type="button" 
-                    className="method-switch-link"
-                    onClick={() => { setLoginMethod('whatsapp'); setWaRequest(null); }}
-                  >
-                    <MessageSquare size={16} color="#25D366" /> Back to WhatsApp Login
-                  </button>
-                </div>
-              </form>
-            </>
+              
+              <button 
+                type="submit" 
+                className="modern-continue-btn" 
+                disabled={!email.includes('@') || loading}
+              >
+                {loading ? 'Sending OTP...' : 'Send Verification OTP'}
+              </button>
+            </form>
           ) : (
-            <>
-              <p className="sub-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                OTP sent to {email}
+            <form onSubmit={handleVerifyEmailOtp} className="login-form">
+              <p style={{ fontSize: '13px', color: '#cbd5e1', textAlign: 'center', margin: '0 0 6px 0' }}>
+                Code sent to <strong style={{ color: '#F8CB46' }}>{email}</strong>{' '}
                 <button 
                   type="button" 
                   onClick={() => { setStep(1); setOtp(''); }}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', textDecoration: 'underline', cursor: 'pointer', fontSize: '13px' }}
+                  style={{ background: 'transparent', border: 'none', color: '#F8CB46', textDecoration: 'underline', cursor: 'pointer', fontSize: '12px' }}
                 >
                   Change
                 </button>
               </p>
-              <form onSubmit={handleVerifyEmailOtp} className="login-form">
-                <div className="modern-input-group">
-                  <input 
-                    type="text" 
-                    placeholder="Enter 6-digit OTP" 
-                    maxLength={6}
-                    value={otp}
-                    onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                    autoFocus
-                    disabled={loading}
-                    style={{ textAlign: 'center', letterSpacing: '6px', fontSize: '20px', fontWeight: '800' }}
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  className="modern-continue-btn" 
-                  disabled={otp.length !== 6 || loading}
-                >
-                  {loading ? 'Verifying...' : 'Verify OTP & Continue'}
-                </button>
 
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                  {resendTimer > 0 ? (
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Resend OTP in {resendTimer}s</span>
-                  ) : (
-                    <button 
-                      type="button"
-                      onClick={handleSendEmailOtp}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                    >
-                      Resend OTP
-                    </button>
-                  )}
-                </div>
-              </form>
-            </>
-          )
-        )}
+              <div className="modern-input-group">
+                <input 
+                  type="text" 
+                  placeholder="••••••" 
+                  maxLength={6}
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                  autoFocus
+                  disabled={loading}
+                  style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '20px', fontWeight: '800' }}
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                className="modern-continue-btn" 
+                disabled={otp.length !== 6 || loading}
+              >
+                {loading ? 'Verifying OTP...' : 'Verify OTP & Continue'}
+              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                {resendTimer > 0 ? (
+                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>Resend OTP in {resendTimer}s</span>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={handleSendEmailOtp}
+                    style={{ background: 'transparent', border: 'none', color: '#F8CB46', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                  >
+                    Resend OTP
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
       </div>
 
       <div className="login-footer">

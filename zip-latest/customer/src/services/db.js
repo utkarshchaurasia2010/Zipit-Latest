@@ -30,15 +30,21 @@ export const db = {
       if (!data) {
         if (cachedProfile) return cachedProfile;
         const { data: authData } = await supabase.auth.getUser();
-        const userEmail = authData?.user?.email || '';
-        // High entropy unique string prevents profiles_phone_key duplicate error
+        const user = authData?.user;
+        const userEmail = user?.email || '';
+        
+        // Extract Google name and picture if available
+        const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'Zipit Customer';
+        const metaPhoto = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || 'NU';
+
+        // High entropy unique string prevents profiles_phone_key duplicate error until user inputs phone
         const randomPhone = 'temp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
         const { data: newData, error: insertError } = await supabase.from('profiles').insert([{ 
           id: pid,
-          name: 'New User', 
+          name: metaName, 
           phone: randomPhone, 
           email: userEmail,
-          photo: 'NU' 
+          photo: metaPhoto 
         }]).select().single();
         if (insertError) console.error("DB Error (profiles insert):", insertError);
         if (newData) {
@@ -47,6 +53,23 @@ export const db = {
         return newData;
       }
       if (data) {
+        // Auto-enrich existing profile with Google metadata if it still has placeholder details
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+        if (user && user.user_metadata) {
+          const metaName = user.user_metadata.full_name || user.user_metadata.name;
+          const metaPhoto = user.user_metadata.avatar_url || user.user_metadata.picture;
+          const needsNameUpdate = metaName && (!data.name || data.name === 'New User' || data.name === 'Zipit Customer');
+          const needsPhotoUpdate = metaPhoto && (!data.photo || data.photo === 'NU');
+          
+          if (needsNameUpdate || needsPhotoUpdate) {
+            const updates = {};
+            if (needsNameUpdate) { updates.name = metaName; data.name = metaName; }
+            if (needsPhotoUpdate) { updates.photo = metaPhoto; data.photo = metaPhoto; }
+            supabase.from('profiles').update(updates).eq('id', pid).then(() => {});
+          }
+        }
+
         if (data.photo && data.photo.includes('|||')) {
           const parts = data.photo.split('|||');
           data.photo = parts[0];
