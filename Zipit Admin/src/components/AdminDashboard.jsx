@@ -40,6 +40,7 @@ const AdminDashboard = ({ initialTab }) => {
   const [reassignShopkeeperModalOrder, setReassignShopkeeperModalOrder] = useState(null);
   const [activeShopkeepersList, setActiveShopkeepersList] = useState([]);
   const [isAssigningShopkeeper, setIsAssigningShopkeeper] = useState(false);
+  const [shopkeeperDropdownOpen, setShopkeeperDropdownOpen] = useState(false);
 
   const openReassignModal = async (order) => {
     setReassignModalOrder(order);
@@ -201,8 +202,20 @@ const AdminDashboard = ({ initialTab }) => {
       return;
     }
     setEditingItem(item);
+    setShopkeeperDropdownOpen(false);
+
+    // Fetch shopkeepers list for multi-select dropdown if on products tab
     if (initialTab === 'products' || initialTab === 'grid-products' || initialTab === 'bestsellers') {
-      setFormData(item ? { ...item } : { name: '', price: '', amount: '', stock_count: -1, is_out_of_stock: false, category_id: categories[0]?.id, is_grid: initialTab === 'grid-products', is_bestseller: initialTab === 'bestsellers' });
+      try {
+        const { data: sks } = await supabase.from('access_codes').select('*').eq('role', 'shopkeeper');
+        setActiveShopkeepersList(sks || []);
+      } catch (err) {
+        console.error('Error fetching shopkeepers for product form:', err);
+      }
+    }
+
+    if (initialTab === 'products' || initialTab === 'grid-products' || initialTab === 'bestsellers') {
+      setFormData(item ? { ...item } : { name: '', price: '', amount: '', stock_count: -1, is_out_of_stock: false, category_id: categories[0]?.id, is_grid: initialTab === 'grid-products', is_bestseller: initialTab === 'bestsellers', tags: '', shopkeeper_codes: '' });
     } else if (initialTab === 'banners') {
       setFormData(item ? { ...item } : { bg_color: '#F8CB46', order_index: 1 });
     } else if (initialTab === 'categories') {
@@ -1332,17 +1345,217 @@ const AdminDashboard = ({ initialTab }) => {
                     <input type="text" className="admin-input" placeholder="e.g. 20% OFF" value={formData.sticker||''} onChange={e=>setFormData({...formData, sticker:e.target.value})}/>
                   </div>
                   <div className="form-group">
-                    <label>Tags & Shopkeeper Codes (Comma-separated)</label>
+                    <label>Product Search Tags (Comma-separated)</label>
                     <input 
                       type="text" 
                       className="admin-input" 
-                      placeholder="e.g. doodh, dairy, morning, SK_SHOP1, SK_SHOP2" 
+                      placeholder="e.g. doodh, dairy, morning, snacks, breakfast" 
                       value={formData.tags||''} 
                       onChange={e=>setFormData({...formData, tags:e.target.value})}
                     />
                     <small style={{ fontSize: '11.5px', color: 'var(--color-text-light)', marginTop: '4px', display: 'block' }}>
-                      Add search keywords, synonyms, or shopkeeper codes (e.g. <code>SK101</code>) to link availability.
+                      Keywords and synonyms for search bar and voice query algorithm.
                     </small>
+                  </div>
+
+                  {/* Shopkeeper Availability Tag & Multi-select Dropdown */}
+                  <div className="form-group" style={{ position: 'relative' }}>
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Shopkeeper Availability Assignment</span>
+                      {formData.shopkeeper_codes && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, shopkeeper_codes: '' })}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          Clear All (Available to All)
+                        </button>
+                      )}
+                    </label>
+
+                    {/* Trigger Input / Box */}
+                    <div 
+                      onClick={() => setShopkeeperDropdownOpen(prev => !prev)}
+                      style={{
+                        minHeight: '44px',
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        border: shopkeeperDropdownOpen ? '2px solid #2563eb' : '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: shopkeeperDropdownOpen ? '0 0 0 3px rgba(37,99,235,0.1)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {(() => {
+                        const selectedCodes = (formData.shopkeeper_codes || '')
+                          .split(',')
+                          .map(s => s.trim().toUpperCase())
+                          .filter(Boolean);
+
+                        if (selectedCodes.length === 0) {
+                          return (
+                            <span style={{ color: 'var(--color-text-light)', fontSize: '13px' }}>
+                              🏪 Click to select Shopkeepers (Default: Available to all shopkeepers)
+                            </span>
+                          );
+                        }
+
+                        return selectedCodes.map(code => {
+                          const skObj = (activeShopkeepersList || []).find(s => s.code?.toUpperCase() === code);
+                          return (
+                            <span 
+                              key={code}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#eff6ff',
+                                color: '#1e40af',
+                                border: '1px solid #bfdbfe',
+                                borderRadius: '16px',
+                                padding: '3px 9px',
+                                fontSize: '12px',
+                                fontWeight: '700'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newCodes = selectedCodes.filter(c => c !== code);
+                                setFormData({ ...formData, shopkeeper_codes: newCodes.join(', ') });
+                              }}
+                            >
+                              <span>{code}{skObj?.name ? ` (${skObj.name})` : ''}</span>
+                              <span style={{ cursor: 'pointer', fontWeight: '900', marginLeft: '2px' }}>×</span>
+                            </span>
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    <small style={{ fontSize: '11.5px', color: 'var(--color-text-light)', marginTop: '4px', display: 'block' }}>
+                      Click to pick which shopkeeper(s) fulfill this product. Only assigned shopkeepers get new order alert bells.
+                    </small>
+
+                    {/* Dropdown Menu */}
+                    {shopkeeperDropdownOpen && (
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 9999,
+                          marginTop: '6px',
+                          background: '#ffffff',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '14px',
+                          boxShadow: '0 12px 28px rgba(0,0,0,0.15)',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          padding: '6px'
+                        }}
+                      >
+                        {activeShopkeepersList.length === 0 ? (
+                          <div style={{ padding: '12px', fontSize: '12.5px', color: '#64748b', textAlign: 'center' }}>
+                            No shopkeepers registered yet in Access Codes.
+                          </div>
+                        ) : (
+                          activeShopkeepersList.map(sk => {
+                            const cleanCode = (sk.code || '').trim().toUpperCase();
+                            const selectedCodes = (formData.shopkeeper_codes || '')
+                              .split(',')
+                              .map(s => s.trim().toUpperCase())
+                              .filter(Boolean);
+                            const isSelected = selectedCodes.includes(cleanCode);
+
+                            return (
+                              <div
+                                key={sk.id || sk.code}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  let nextCodes;
+                                  if (isSelected) {
+                                    nextCodes = selectedCodes.filter(c => c !== cleanCode);
+                                  } else {
+                                    nextCodes = [...selectedCodes, cleanCode];
+                                  }
+                                  setFormData({ ...formData, shopkeeper_codes: nextCodes.join(', ') });
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '9px 12px',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  background: isSelected ? '#f0fdf4' : 'transparent',
+                                  transition: 'background 0.1s ease',
+                                  marginBottom: '2px'
+                                }}
+                              >
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontWeight: '800', fontSize: '13px', color: isSelected ? '#15803d' : '#0f172a' }}>
+                                    {cleanCode}
+                                  </span>
+                                  <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                                    {sk.name || 'Shopkeeper Partner'} {sk.mobile ? `· ${sk.mobile}` : ''}
+                                  </span>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  readOnly
+                                  style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    accentColor: '#16a34a',
+                                    cursor: 'pointer'
+                                  }}
+                                />
+                              </div>
+                            );
+                          })
+                        )}
+                        <div style={{
+                          borderTop: '1px solid #f1f5f9',
+                          paddingTop: '6px',
+                          display: 'flex',
+                          justifyContent: 'flex-end'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShopkeeperDropdownOpen(false);
+                            }}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '8px',
+                              background: '#2563eb',
+                              color: '#fff',
+                              border: 'none',
+                              fontSize: '11.5px',
+                              fontWeight: '700',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label>Inventory Stock (-1 for unlimited)</label>

@@ -12,15 +12,49 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
   const [claiming, setClaiming] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
+  // Helper to test if a shopkeeper is eligible to take this order based on product shopkeeper tags
+  const isOrderAssignedToShopkeeper = (order, currentShopkeeperCode) => {
+    if (!order || !currentShopkeeperCode) return true;
+    const cleanCurrent = currentShopkeeperCode.trim().toUpperCase();
+
+    // If order was already assigned by Admin to a specific shopkeeper
+    if (order.accepted_by_shopkeeper) {
+      return order.accepted_by_shopkeeper.trim().toUpperCase() === cleanCurrent;
+    }
+
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (items.length === 0) return true;
+
+    // Check each product's name/shopkeeper tags in order items
+    // Format: '---SHOPKEEPERS:SK01, SK02---' or legacy '---TAGS:...SK01...---'
+    for (const item of items) {
+      const rawName = item.name || '';
+      const skMatch = rawName.match(/---SHOPKEEPERS:(.*?)---/);
+      if (skMatch && skMatch[1]) {
+        const allowedCodes = skMatch[1].split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+        // If product has restricted shopkeeper codes, currentShopkeeper MUST be in allowedCodes
+        if (allowedCodes.length > 0 && !allowedCodes.includes(cleanCurrent)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   // Subscribe to realtime orders
   useEffect(() => {
+    const currentCode = auth.getCode() || 'USER';
+
     const checkUnclaimedOrders = async (latestPayload = null) => {
       // If a realtime INSERT or UPDATE event brought an order, prioritize that immediately!
       if (latestPayload && latestPayload.new) {
         const newOrder = latestPayload.new;
         if (role === 'shopkeeper' && ['Placed', 'Payment Pending'].includes(newOrder.status) && !newOrder.accepted_by_shopkeeper) {
-          setIncomingOrder(newOrder);
-          setIsMuted(false);
+          if (isOrderAssignedToShopkeeper(newOrder, currentCode)) {
+            setIncomingOrder(newOrder);
+            setIsMuted(false);
+          }
           return;
         }
         if (role === 'rider' && !newOrder.accepted_by_rider) {
@@ -43,7 +77,7 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
         query = query.in('status', ['Preparing', 'Preparing (Accepted)', 'Ready for Pickup']).is('accepted_by_rider', null);
       }
 
-      const { data } = await query.order('created_at', { ascending: false }).limit(5);
+      const { data } = await query.order('created_at', { ascending: false }).limit(10);
       if (data && data.length > 0) {
         // Only trigger alert for orders created in the last 60 minutes
         const sixtyMinsAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -56,6 +90,10 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
             return !isStorePickup;
           });
           setIncomingOrder(nonPickupOrders.length > 0 ? nonPickupOrders[0] : null);
+        } else if (role === 'shopkeeper') {
+          // SHOPKEEPER: ONLY alert if current shopkeeper is eligible to fulfill this order!
+          const eligibleOrders = recentOrders.filter(o => isOrderAssignedToShopkeeper(o, currentCode));
+          setIncomingOrder(eligibleOrders.length > 0 ? eligibleOrders[0] : null);
         } else {
           setIncomingOrder(recentOrders.length > 0 ? recentOrders[0] : null);
         }

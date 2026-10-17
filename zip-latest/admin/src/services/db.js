@@ -376,14 +376,17 @@ export const db = {
         const sticker = stickerMatch ? stickerMatch[1] : null;
         const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
         const tags = tagsMatch ? tagsMatch[1] : '';
+        const skMatch = p.name.match(/---SHOPKEEPERS:(.*?)---/);
+        const shopkeeper_codes = skMatch ? skMatch[1] : '';
         
         let name = p.name
           .replace('---TAG:WAFER---', '')
           .replace('---TAG:GRID---', '')
           .replace('---TAG:BESTSELLER---', '')
           .replace(/---STICKER:.*?---/g, '')
-          .replace(/---TAGS:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags };
+          .replace(/---TAGS:.*?---/g, '')
+          .replace(/---SHOPKEEPERS:.*?---/g, '');
+        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags, shopkeeper_codes };
       });
     },
     getByCategory: async (categoryId) => {
@@ -398,7 +401,7 @@ export const db = {
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '').replace(/---TAGS:.*?---/g, '').replace(/---SHOPKEEPERS:.*?---/g, '');
         return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
       });
     },
@@ -438,7 +441,7 @@ export const db = {
         const stockVal = p.stock !== undefined && p.stock !== null ? Number(p.stock) : (p.stock_count !== undefined && p.stock_count !== null ? Number(p.stock_count) : null);
         const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (stockVal !== null && stockVal === 0);
 
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '');
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '').replace(/---TAGS:.*?---/g, '').replace(/---SHOPKEEPERS:.*?---/g, '').replace('---TAG:OOS---', '').replace('---TAG:OUT_OF_STOCK---', '');
         return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, is_out_of_stock, stock_count: stockVal ?? (is_out_of_stock ? 0 : -1) };
       });
     },
@@ -452,7 +455,12 @@ export const db = {
         const cleanTags = product.tags.trim().replace(/---/g, '');
         dbProduct.name = `${dbProduct.name}---TAGS:${cleanTags}---`;
       }
+      if (product.shopkeeper_codes && product.shopkeeper_codes.trim()) {
+        const cleanCodes = product.shopkeeper_codes.trim().replace(/---/g, '');
+        dbProduct.name = `${dbProduct.name}---SHOPKEEPERS:${cleanCodes}---`;
+      }
       delete dbProduct.tags;
+      delete dbProduct.shopkeeper_codes;
       
       if (product.is_out_of_stock || dbProduct.stock_count === 0 || dbProduct.stock === 0) {
         dbProduct.name = `${dbProduct.name}---TAG:OOS---`;
@@ -467,7 +475,7 @@ export const db = {
       const { data, error } = await supabase.from('products').insert([dbProduct]).select().single();
       if (error) console.error("DB Error (products add):", error);
       
-      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, tags: product.tags || '', is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
+      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, tags: product.tags || '', shopkeeper_codes: product.shopkeeper_codes || '', is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
     },
     update: async (id, product) => {
       const { is_wafer, is_grid, is_bestseller, sticker, categories, ...dbProduct } = product;
@@ -497,7 +505,14 @@ export const db = {
         const cleanTags = product.tags.trim().replace(/---/g, '');
         dbProduct.name = `${dbProduct.name}---TAGS:${cleanTags}---`;
       }
+
+      dbProduct.name = dbProduct.name.replace(/---SHOPKEEPERS:.*?---/g, '');
+      if (product.shopkeeper_codes && product.shopkeeper_codes.trim()) {
+        const cleanCodes = product.shopkeeper_codes.trim().replace(/---/g, '');
+        dbProduct.name = `${dbProduct.name}---SHOPKEEPERS:${cleanCodes}---`;
+      }
       delete dbProduct.tags;
+      delete dbProduct.shopkeeper_codes;
 
       if (product.is_out_of_stock || dbProduct.stock_count === 0 || dbProduct.stock === 0) {
         if (!dbProduct.name.includes('---TAG:OOS---')) {
@@ -514,7 +529,7 @@ export const db = {
       const { data, error } = await supabase.from('products').update(dbProduct).eq('id', id).select().single();
       if (error) console.error("DB Error (products update):", error);
       
-      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
+      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, tags: product.tags || '', shopkeeper_codes: product.shopkeeper_codes || '', is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
     },
     delete: async (id) => {
       const { error } = await supabase.from('products').delete().eq('id', id);

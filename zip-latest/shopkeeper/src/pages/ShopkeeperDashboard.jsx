@@ -51,8 +51,45 @@ export default function ShopkeeperDashboard() {
     };
   }, []);
 
+  // Helper to test if a shopkeeper is eligible to take this order based on product shopkeeper tags
+  const isOrderAssignedToShopkeeper = (order, currentShopkeeperCode) => {
+    if (!order || !currentShopkeeperCode) return true;
+    const cleanCurrent = currentShopkeeperCode.trim().toUpperCase();
+
+    // If order was already assigned by Admin to a specific shopkeeper
+    if (order.accepted_by_shopkeeper) {
+      return order.accepted_by_shopkeeper.trim().toUpperCase() === cleanCurrent;
+    }
+
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (items.length === 0) return true;
+
+    // Check each product's name/shopkeeper tags in order items
+    // Format: '---SHOPKEEPERS:SK01, SK02---'
+    for (const item of items) {
+      const rawName = item.name || '';
+      const skMatch = rawName.match(/---SHOPKEEPERS:(.*?)---/);
+      if (skMatch && skMatch[1]) {
+        const allowedCodes = skMatch[1].split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+        // If product has restricted shopkeeper codes, currentShopkeeper MUST be in allowedCodes
+        if (allowedCodes.length > 0 && !allowedCodes.includes(cleanCurrent)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   const handleAcceptOrder = async (orderId) => {
     try {
+      // Find order to check eligibility before accepting
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (targetOrder && !isOrderAssignedToShopkeeper(targetOrder, shopkeeperCode)) {
+        showToast('You are not assigned to fulfill the products in this order.', 'error');
+        return;
+      }
+
       // Atomic claim: only succeed if accepted_by_shopkeeper is currently null or already assigned to this shopkeeper
       const { data, error } = await supabase
         .from('orders')
@@ -80,6 +117,13 @@ export default function ShopkeeperDashboard() {
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
+      // Ensure only the shopkeeper who accepted the order (or is eligible) can update status / deliver it
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (targetOrder?.accepted_by_shopkeeper && targetOrder.accepted_by_shopkeeper.trim().toUpperCase() !== shopkeeperCode.trim().toUpperCase()) {
+        showToast(`This order is assigned to shopkeeper ${targetOrder.accepted_by_shopkeeper}. You cannot alter its delivery status.`, 'error');
+        return;
+      }
+
       await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
       showToast(`Order status updated to ${newStatus}`, 'success');
       fetchOrders(true);
@@ -88,7 +132,14 @@ export default function ShopkeeperDashboard() {
     }
   };
 
-  const activeOrders = orders.filter(o => ['Placed', 'Preparing', 'Payment Pending', 'Preparing (Accepted)', 'Ready for Pickup', 'Out for Delivery'].includes(o.status));
+  const activeOrders = orders.filter(o => {
+    const isStatusActive = ['Placed', 'Preparing', 'Payment Pending', 'Preparing (Accepted)', 'Ready for Pickup', 'Out for Delivery'].includes(o.status);
+    if (!isStatusActive) return false;
+    // Shopkeeper should see active orders that either:
+    // 1. They have already accepted (accepted_by_shopkeeper === shopkeeperCode)
+    // 2. Are unclaimed and eligible for them according to the product shopkeeper availability tags
+    return o.accepted_by_shopkeeper === shopkeeperCode || isOrderAssignedToShopkeeper(o, shopkeeperCode);
+  });
   const completedOrders = orders.filter(o => ['Delivered', 'Cancelled'].includes(o.status));
 
   useEffect(() => {

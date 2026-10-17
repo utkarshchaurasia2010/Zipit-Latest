@@ -376,14 +376,17 @@ export const db = {
         const sticker = stickerMatch ? stickerMatch[1] : null;
         const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
         const tags = tagsMatch ? tagsMatch[1] : '';
+        const skMatch = p.name.match(/---SHOPKEEPERS:(.*?)---/);
+        const shopkeeper_codes = skMatch ? skMatch[1] : '';
         
         let name = p.name
           .replace('---TAG:WAFER---', '')
           .replace('---TAG:GRID---', '')
           .replace('---TAG:BESTSELLER---', '')
           .replace(/---STICKER:.*?---/g, '')
-          .replace(/---TAGS:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags };
+          .replace(/---TAGS:.*?---/g, '')
+          .replace(/---SHOPKEEPERS:.*?---/g, '');
+        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags, shopkeeper_codes };
       });
     },
     getByCategory: async (categoryId) => {
@@ -398,7 +401,7 @@ export const db = {
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '').replace(/---TAGS:.*?---/g, '').replace(/---SHOPKEEPERS:.*?---/g, '');
         return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
       });
     },
@@ -435,7 +438,7 @@ export const db = {
         const stickerMatch = p.name.match(/---STICKER:(.*?)---/);
         const sticker = stickerMatch ? stickerMatch[1] : null;
         
-        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '');
+        let name = p.name.replace('---TAG:WAFER---', '').replace('---TAG:GRID---', '').replace('---TAG:BESTSELLER---', '').replace(/---STICKER:.*?---/g, '').replace(/---TAGS:.*?---/g, '').replace(/---SHOPKEEPERS:.*?---/g, '');
         return { ...p, name, is_wafer, is_grid, is_bestseller, sticker };
       });
     },
