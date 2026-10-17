@@ -1,11 +1,77 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, db } from '../services/db';
-import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound } from 'lucide-react';
+import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound, AlertTriangle, RefreshCw } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import SlideToAccept from '../components/SlideToAccept';
 import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default icon issues in bundlers
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+});
+
+// Resilient Map Error Boundary so any map/tile crash doesn't blank the entire screen
+class MapErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('MapErrorBoundary caught an error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          height: '100%',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f8fafc',
+          padding: '24px',
+          textAlign: 'center'
+        }}>
+          <AlertTriangle size={40} color="#f59e0b" style={{ marginBottom: '12px' }} />
+          <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
+            Interactive Map Temporarily Unavailable
+          </h4>
+          <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', maxWidth: '300px' }}>
+            Live location is still broadcasting to customer. You can use external Google Maps navigation below.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '10px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#0f172a',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={14} /> Retry Map
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Crisp SVG Icons
 const createSvgIcon = (svgContent, width = 36, height = 36) => {
@@ -36,6 +102,8 @@ export default function OrderMapPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
+  const [orderLoading, setOrderLoading] = useState(true);
+  const [orderError, setOrderError] = useState(null);
   const [storeLocation, setStoreLocation] = useState(DEFAULT_STORE_LOCATION);
   const [myLocation, setMyLocation] = useState(DEFAULT_STORE_LOCATION);
   const [showUpiQr, setShowUpiQr] = useState(false);
@@ -194,8 +262,26 @@ export default function OrderMapPage() {
   }, [order, myLocation[0], myLocation[1]]);
 
   const fetchOrder = async () => {
-    const { data } = await supabase.from('orders').select('*').eq('id', id).single();
-    setOrder(data);
+    try {
+      setOrderLoading(true);
+      setOrderError(null);
+      if (!id) {
+        setOrderError('No order ID provided in URL');
+        setOrderLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
+      if (error || !data) {
+        setOrderError(error?.message || 'Order not found or has been removed');
+      } else {
+        setOrder(data);
+      }
+    } catch (err) {
+      console.error('Error fetching order:', err);
+      setOrderError(err?.message || 'Failed to load order');
+    } finally {
+      setOrderLoading(false);
+    }
   };
 
   const handleUpdateStatus = async (status) => {
@@ -249,18 +335,77 @@ export default function OrderMapPage() {
     await handleUpdateStatus('Delivered');
   };
 
-  if (!order) {
+  if (orderLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--color-bg)' }}>
-        <div style={{ fontWeight: '600', color: 'var(--color-text-light)' }}>Loading Map...</div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', gap: '14px' }}>
+        <div style={{
+          width: '36px',
+          height: '36px',
+          border: '3.5px solid #e2e8f0',
+          borderTopColor: '#2563eb',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <div style={{ fontWeight: '700', fontSize: '14px', color: '#64748b' }}>Loading Map Route...</div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  const destLocation = [
-    Number(order.delivery_address?.lat) || 25.5900,
-    Number(order.delivery_address?.lng) || 83.5850
-  ];
+  if (orderError || !order) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', padding: '24px', textAlign: 'center' }}>
+        <AlertTriangle size={48} color="#ef4444" style={{ marginBottom: '16px' }} />
+        <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px' }}>
+          Unable to Load Order
+        </h2>
+        <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '320px', margin: '0 0 20px', lineHeight: '1.4' }}>
+          {orderError || 'This order does not exist or may have already been completed.'}
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => fetchOrder()}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '12px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#0f172a',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: '#2563eb',
+              color: '#ffffff',
+              fontWeight: '800',
+              fontSize: '13.5px',
+              cursor: 'pointer'
+            }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const rawLat = parseFloat(order.delivery_address?.lat);
+  const rawLng = parseFloat(order.delivery_address?.lng);
+  const destLocation = (!isNaN(rawLat) && !isNaN(rawLng))
+    ? [rawLat, rawLng]
+    : [25.5900, 83.5850];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-bg)', position: 'relative' }}>
@@ -303,41 +448,43 @@ export default function OrderMapPage() {
           flex: 1,
           textAlign: 'center'
         }}>
-          Order #{order.id.slice(0,6).toUpperCase()}
+          Order #{order.id ? String(order.id).slice(0,6).toUpperCase() : ''}
         </div>
       </div>
 
-      {/* Map View */}
-      <div style={{ flex: 1, position: 'relative' }}>
-        <MapContainer 
-          center={myLocation} 
-          zoom={15} 
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
-          attributionControl={false}
-          ref={mapRef}
-        >
-          <TileLayer 
-            url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
-            subdomains={['0', '1', '2', '3']}
-            maxZoom={20} 
-          />
-          
-          <Marker position={storeLocation} icon={storeIcon} />
-          <Marker position={destLocation} icon={destIcon} />
-          
-          <Marker 
-            position={myLocation} 
-            icon={L.divIcon({
-              className: 'driver-marker',
-              html: `<div style="width: 20px; height: 20px; background: #2563eb; border: 4px solid #fff; border-radius: 50%; box-shadow: 0 0 16px rgba(37, 99, 235, 0.6);"></div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 10]
-            })} 
-          />
+      {/* Map View wrapped in MapErrorBoundary */}
+      <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%', minHeight: '300px' }}>
+        <MapErrorBoundary>
+          <MapContainer 
+            center={myLocation} 
+            zoom={15} 
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+            attributionControl={false}
+            ref={mapRef}
+          >
+            <TileLayer 
+              url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+              subdomains={['0', '1', '2', '3']}
+              maxZoom={20} 
+            />
+            
+            <Marker position={storeLocation} icon={storeIcon} />
+            <Marker position={destLocation} icon={destIcon} />
+            
+            <Marker 
+              position={myLocation} 
+              icon={L.divIcon({
+                className: 'driver-marker',
+                html: `<div style="width: 20px; height: 20px; background: #2563eb; border: 4px solid #fff; border-radius: 50%; box-shadow: 0 0 16px rgba(37, 99, 235, 0.6);"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              })} 
+            />
 
-          <Polyline positions={routePolyline || [myLocation, destLocation]} color="#2563eb" weight={5} opacity={0.8} dashArray={routePolyline ? undefined : "8, 10"} />
-        </MapContainer>
+            <Polyline positions={routePolyline || [myLocation, destLocation]} color="#2563eb" weight={5} opacity={0.8} dashArray={routePolyline ? undefined : "8, 10"} />
+          </MapContainer>
+        </MapErrorBoundary>
         
         {/* Recenter Button */}
         <button 
