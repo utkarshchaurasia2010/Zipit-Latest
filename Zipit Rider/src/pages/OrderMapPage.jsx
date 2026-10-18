@@ -110,27 +110,32 @@ function MapBoundsFitter({ positions }) {
   return null;
 }
 
-// Crisp SVG Icons
+// Crisp SVG Icon generator
 const createSvgIcon = (svgContent, width = 36, height = 36) => {
-  return new L.DivIcon({
-    className: 'custom-map-icon',
-    html: `<div style="width: ${width}px; height: ${height}px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">${svgContent}</div>`,
-    iconSize: [width, height],
-    iconAnchor: [width / 2, height / 2]
-  });
+  try {
+    return new L.DivIcon({
+      className: 'custom-map-icon',
+      html: `<div style="width: ${width}px; height: ${height}px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">${svgContent}</div>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2]
+    });
+  } catch (err) {
+    console.warn('Failed to create DivIcon:', err);
+    return undefined;
+  }
 };
 
-const storeIcon = createSvgIcon(`
+const STORE_ICON_HTML = `
   <div style="background: #0c831f; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
   </div>
-`, 34, 34);
+`;
 
-const destIcon = createSvgIcon(`
+const DEST_ICON_HTML = `
   <div style="background: #ef4444; width: 36px; height: 36px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff;">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   </div>
-`, 36, 36);
+`;
 
 const OLA_MAPS_API_KEY = 'cb1_4fid_1_1354e75ad3dae085ce92fc8f';
 const DEFAULT_STORE_LOCATION = [25.5788, 83.5780]; // Store location fallback
@@ -138,6 +143,23 @@ const DEFAULT_STORE_LOCATION = [25.5788, 83.5780]; // Store location fallback
 export default function OrderMapPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // Memoize icons safely inside component lifecycle
+  const storeIcon = React.useMemo(() => createSvgIcon(STORE_ICON_HTML, 34, 34), []);
+  const destIcon = React.useMemo(() => createSvgIcon(DEST_ICON_HTML, 36, 36), []);
+  const driverIcon = React.useMemo(() => {
+    try {
+      return L.divIcon({
+        className: 'driver-marker',
+        html: `<div style="width: 20px; height: 20px; background: #2563eb; border: 4px solid #fff; border-radius: 50%; box-shadow: 0 0 16px rgba(37, 99, 235, 0.6);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+    } catch (e) {
+      return undefined;
+    }
+  }, []);
+
   const [order, setOrder] = useState(null);
   const [orderLoading, setOrderLoading] = useState(true);
   const [orderError, setOrderError] = useState(null);
@@ -528,18 +550,9 @@ export default function OrderMapPage() {
               maxZoom={20} 
             />
             
-            <Marker position={storeLocation} icon={storeIcon} />
-            <Marker position={destLocation} icon={destIcon} />
-            
-            <Marker 
-              position={myLocation} 
-              icon={L.divIcon({
-                className: 'driver-marker',
-                html: `<div style="width: 20px; height: 20px; background: #2563eb; border: 4px solid #fff; border-radius: 50%; box-shadow: 0 0 16px rgba(37, 99, 235, 0.6);"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-              })} 
-            />
+            {storeIcon && <Marker position={storeLocation} icon={storeIcon} />}
+            {destIcon && <Marker position={destLocation} icon={destIcon} />}
+            {driverIcon && <Marker position={myLocation} icon={driverIcon} />}
 
             {/* Verified numerical positions only to prevent leaflet canvas crash */}
             {(() => {
