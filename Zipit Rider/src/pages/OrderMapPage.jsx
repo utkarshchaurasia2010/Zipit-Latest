@@ -175,12 +175,14 @@ export default function OrderMapPage() {
   const mapRef = useRef(null);
 
   useEffect(() => {
-    db.branding.get().then(b => {
-      if (b && b.store_lat && b.store_lng) {
-        const storeCoords = [Number(b.store_lat), Number(b.store_lng)];
-        setStoreLocation(storeCoords);
-      }
-    }).catch(() => {});
+    if (db?.branding?.get) {
+      db.branding.get().then(b => {
+        if (b && b.store_lat && b.store_lng) {
+          const storeCoords = [Number(b.store_lat), Number(b.store_lng)];
+          setStoreLocation(storeCoords);
+        }
+      }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
