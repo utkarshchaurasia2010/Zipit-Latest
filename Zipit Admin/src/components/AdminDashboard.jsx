@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db, supabase } from '../services/db';
-import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff, Phone, MapPin, UserCheck, Bike } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff, Phone, MapPin, UserCheck, Bike, Scan, Barcode, Camera } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import './AdminDashboard.css';
 
@@ -215,7 +215,7 @@ const AdminDashboard = ({ initialTab }) => {
     }
 
     if (initialTab === 'products' || initialTab === 'grid-products' || initialTab === 'bestsellers') {
-      setFormData(item ? { ...item } : { name: '', price: '', amount: '', stock_count: -1, is_out_of_stock: false, category_id: categories[0]?.id, is_grid: initialTab === 'grid-products', is_bestseller: initialTab === 'bestsellers', tags: '', shopkeeper_codes: '' });
+      setFormData(item ? { ...item } : { name: '', price: '', mrp: '', amount: '', barcode: '', stock_count: -1, is_out_of_stock: false, category_id: categories[0]?.id, is_grid: initialTab === 'grid-products', is_bestseller: initialTab === 'bestsellers', tags: '', shopkeeper_codes: '' });
     } else if (initialTab === 'banners') {
       setFormData(item ? { ...item } : { bg_color: '#F8CB46', order_index: 1 });
     } else if (initialTab === 'categories') {
@@ -1314,12 +1314,44 @@ const AdminDashboard = ({ initialTab }) => {
                   </div>
                   <div className="form-row">
                     <div className="form-group half">
-                      <label>Price (₹)</label>
+                      <label>Selling Price (₹)</label>
                       <input type="number" className="admin-input" value={formData.price||''} onChange={e=>setFormData({...formData, price:e.target.value})} required/>
                     </div>
                     <div className="form-group half">
-                      <label>Amount (e.g. 1kg)</label>
+                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>MRP (₹)</span>
+                        {formData.mrp && Number(formData.mrp) > Number(formData.price) && (
+                          <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>
+                            {Math.round(((Number(formData.mrp) - Number(formData.price)) / Number(formData.mrp)) * 100)}% OFF
+                          </span>
+                        )}
+                      </label>
+                      <input 
+                        type="number" 
+                        className="admin-input" 
+                        placeholder="Optional (e.g. 120)" 
+                        value={formData.mrp||''} 
+                        onChange={e=>setFormData({...formData, mrp:e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group half">
+                      <label>Amount (e.g. 1kg, 500ml)</label>
                       <input type="text" className="admin-input" value={formData.amount||''} onChange={e=>setFormData({...formData, amount:e.target.value})} required/>
+                    </div>
+                    <div className="form-group half">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Barcode size={14} color="#2563eb" /> Barcode (EAN/UPC)
+                      </label>
+                      <input 
+                        type="text" 
+                        className="admin-input" 
+                        placeholder="e.g. 8901234567890" 
+                        value={formData.barcode||''} 
+                        onChange={e=>setFormData({...formData, barcode:e.target.value.trim()})}
+                      />
                     </div>
                   </div>
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', margin: '14px 0'}}>

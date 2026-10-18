@@ -54,11 +54,47 @@ const ProductDetailsSheet = ({ product, onClose, cart, updateCartQty }) => {
         </div>
         
         <div className="details-content">
-          <h2 className="details-title">{product.name}</h2>
-          
-          <div className="details-delivery-tag" style={{marginBottom: '12px'}}>
-            <Clock size={14} /> Delivery in {getProductDeliveryTime(product.name)} mins
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            {/* Veg / Non-Veg Indicator */}
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '16px',
+              height: '16px',
+              border: product.is_non_edible ? '1.5px solid #64748b' : '1.5px solid #16a34a',
+              borderRadius: '4px',
+              padding: '1px'
+            }}>
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: product.is_non_edible ? '#64748b' : '#16a34a'
+              }} />
+            </span>
+
+            {/* Delivery time pill */}
+            <div className="details-delivery-tag" style={{ margin: 0 }}>
+              <Clock size={13} /> {getProductDeliveryTime(product.name)} mins
+            </div>
+
+            {/* MRP Discount badge */}
+            {product.mrp && Number(product.mrp) > Number(product.price) && (
+              <span style={{
+                background: '#dcfce7',
+                color: '#15803d',
+                fontSize: '11px',
+                fontWeight: '800',
+                padding: '3px 8px',
+                borderRadius: '6px'
+              }}>
+                {Math.round(((Number(product.mrp) - Number(product.price)) / Number(product.mrp)) * 100)}% OFF
+              </span>
+            )}
           </div>
+
+          <h2 className="details-title">{product.name}</h2>
 
           {product.is_out_of_stock || product.stock_count === 0 ? (
             <div style={{background: 'rgba(240, 68, 56, 0.1)', color: '#d92d20', padding: '8px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', width: 'max-content'}}>
@@ -151,8 +187,13 @@ const ProductDetailsSheet = ({ product, onClose, cart, updateCartQty }) => {
           
           <div className="details-action-bar-sticky">
             <div className="details-action-bar-left">
-              <div className="details-action-price">
+              <div className="details-action-price" style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                 {product.is_wafer ? <span className="wafer-price-tag" style={{fontSize:'14px', padding:'2px 8px'}}>₹{product.price}</span> : <>₹{product.price}</>}
+                {product.mrp && Number(product.mrp) > Number(product.price) && (
+                  <span style={{ fontSize: '13px', color: '#94a3b8', textDecoration: 'line-through', fontWeight: '500' }}>
+                    ₹{product.mrp}
+                  </span>
+                )}
               </div>
               <div className="details-action-amount">{product.amount}</div>
             </div>

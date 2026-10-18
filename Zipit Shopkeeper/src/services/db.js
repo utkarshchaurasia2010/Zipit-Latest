@@ -378,6 +378,10 @@ export const db = {
         const tags = tagsMatch ? tagsMatch[1] : '';
         const skMatch = p.name.match(/---SHOPKEEPERS:(.*?)---/);
         const shopkeeper_codes = skMatch ? skMatch[1] : '';
+        const barcodeMatch = p.name.match(/---BARCODE:(.*?)---/);
+        const barcode = barcodeMatch ? barcodeMatch[1] : (p.barcode || '');
+        const mrpMatch = p.name.match(/---MRP:(.*?)---/);
+        const mrp = mrpMatch ? Number(mrpMatch[1]) : (p.mrp ? Number(p.mrp) : null);
         
         let name = p.name
           .replace('---TAG:WAFER---', '')
@@ -385,8 +389,10 @@ export const db = {
           .replace('---TAG:BESTSELLER---', '')
           .replace(/---STICKER:.*?---/g, '')
           .replace(/---TAGS:.*?---/g, '')
-          .replace(/---SHOPKEEPERS:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags, shopkeeper_codes };
+          .replace(/---SHOPKEEPERS:.*?---/g, '')
+          .replace(/---BARCODE:.*?---/g, '')
+          .replace(/---MRP:.*?---/g, '');
+        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags, shopkeeper_codes, barcode, mrp };
       });
     },
     getByCategory: async (categoryId) => {

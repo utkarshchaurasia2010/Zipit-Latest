@@ -378,6 +378,10 @@ export const db = {
         const tags = tagsMatch ? tagsMatch[1] : '';
         const skMatch = p.name.match(/---SHOPKEEPERS:(.*?)---/);
         const shopkeeper_codes = skMatch ? skMatch[1] : '';
+        const barcodeMatch = p.name.match(/---BARCODE:(.*?)---/);
+        const barcode = barcodeMatch ? barcodeMatch[1] : (p.barcode || '');
+        const mrpMatch = p.name.match(/---MRP:(.*?)---/);
+        const mrp = mrpMatch ? mrpMatch[1] : (p.mrp || '');
         
         let name = p.name
           .replace('---TAG:WAFER---', '')
@@ -385,8 +389,10 @@ export const db = {
           .replace('---TAG:BESTSELLER---', '')
           .replace(/---STICKER:.*?---/g, '')
           .replace(/---TAGS:.*?---/g, '')
-          .replace(/---SHOPKEEPERS:.*?---/g, '');
-        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags, shopkeeper_codes };
+          .replace(/---SHOPKEEPERS:.*?---/g, '')
+          .replace(/---BARCODE:.*?---/g, '')
+          .replace(/---MRP:.*?---/g, '');
+        return { ...p, name, is_wafer, is_grid, is_bestseller, sticker, tags, shopkeeper_codes, barcode, mrp };
       });
     },
     getByCategory: async (categoryId) => {
@@ -459,8 +465,17 @@ export const db = {
         const cleanCodes = product.shopkeeper_codes.trim().replace(/---/g, '');
         dbProduct.name = `${dbProduct.name}---SHOPKEEPERS:${cleanCodes}---`;
       }
+      if (product.barcode && String(product.barcode).trim()) {
+        const cleanBarcode = String(product.barcode).trim().replace(/---/g, '');
+        dbProduct.name = `${dbProduct.name}---BARCODE:${cleanBarcode}---`;
+      }
+      if (product.mrp && !isNaN(Number(product.mrp))) {
+        dbProduct.name = `${dbProduct.name}---MRP:${Number(product.mrp)}---`;
+      }
       delete dbProduct.tags;
       delete dbProduct.shopkeeper_codes;
+      delete dbProduct.barcode;
+      delete dbProduct.mrp;
       
       if (product.is_out_of_stock || dbProduct.stock_count === 0 || dbProduct.stock === 0) {
         dbProduct.name = `${dbProduct.name}---TAG:OOS---`;
@@ -475,7 +490,7 @@ export const db = {
       const { data, error } = await supabase.from('products').insert([dbProduct]).select().single();
       if (error) console.error("DB Error (products add):", error);
       
-      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, tags: product.tags || '', shopkeeper_codes: product.shopkeeper_codes || '', is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
+      return data ? { ...data, name: product.name, is_wafer: !!is_wafer, is_grid: !!is_grid, is_bestseller: !!is_bestseller, sticker: sticker || null, tags: product.tags || '', shopkeeper_codes: product.shopkeeper_codes || '', barcode: product.barcode || '', mrp: product.mrp || '', is_out_of_stock: !!dbProduct.is_out_of_stock } : null;
     },
     update: async (id, product) => {
       const { is_wafer, is_grid, is_bestseller, sticker, categories, ...dbProduct } = product;
@@ -511,8 +526,22 @@ export const db = {
         const cleanCodes = product.shopkeeper_codes.trim().replace(/---/g, '');
         dbProduct.name = `${dbProduct.name}---SHOPKEEPERS:${cleanCodes}---`;
       }
+
+      dbProduct.name = dbProduct.name.replace(/---BARCODE:.*?---/g, '');
+      if (product.barcode && String(product.barcode).trim()) {
+        const cleanBarcode = String(product.barcode).trim().replace(/---/g, '');
+        dbProduct.name = `${dbProduct.name}---BARCODE:${cleanBarcode}---`;
+      }
+
+      dbProduct.name = dbProduct.name.replace(/---MRP:.*?---/g, '');
+      if (product.mrp && !isNaN(Number(product.mrp))) {
+        dbProduct.name = `${dbProduct.name}---MRP:${Number(product.mrp)}---`;
+      }
+
       delete dbProduct.tags;
       delete dbProduct.shopkeeper_codes;
+      delete dbProduct.barcode;
+      delete dbProduct.mrp;
 
       if (product.is_out_of_stock || dbProduct.stock_count === 0 || dbProduct.stock === 0) {
         if (!dbProduct.name.includes('---TAG:OOS---')) {

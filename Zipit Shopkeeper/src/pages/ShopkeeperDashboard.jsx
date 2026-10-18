@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase, db } from '../services/db';
-import { ShoppingBag, Clock, CheckCircle2, MapPin, Phone, User, Package, Bike, ArrowLeft, Calendar, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, MapPin, Phone, User, Package, Bike, ArrowLeft, Calendar, ChevronRight, Barcode } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
+import BarcodePackingModal from '../components/BarcodePackingModal';
 import { auth } from '../services/auth';
 import { useToast } from '../context/ToastContext';
 import './ShopkeeperDashboard.css';
@@ -15,6 +16,7 @@ export default function ShopkeeperDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [viewingDetailOrder, setViewingDetailOrder] = useState(null);
+  const [packingModalOrder, setPackingModalOrder] = useState(null);
   const [ordersTab, setOrdersTab] = useState('completed'); // 'completed' | 'all'
   const { showToast } = useToast();
 
@@ -398,7 +400,48 @@ export default function ShopkeeperDashboard() {
               <span style={{ color: '#15803d' }}>₹{order.total}</span>
             </div>
           </div>
+
+          {/* Action Bar for Detailed View if order is active */}
+          {!['Delivered', 'Cancelled'].includes(order.status) && (
+            <div style={{ marginTop: '10px' }}>
+              <button 
+                onClick={() => setPackingModalOrder(order)}
+                style={{
+                  width: '100%',
+                  padding: '14px 18px',
+                  background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)'
+                }}
+              >
+                <Barcode size={20} color="#38bdf8" />
+                <span>Scan & Pack Verification (Camera)</span>
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Barcode Packing Modal in Detail View */}
+        {packingModalOrder && (
+          <BarcodePackingModal
+            order={packingModalOrder}
+            onClose={() => setPackingModalOrder(null)}
+            onComplete={() => {
+              const isPickup = packingModalOrder.delivery_address?.is_pickup || packingModalOrder.delivery_address?.order_type === 'PICKUP';
+              handleUpdateStatus(packingModalOrder.id, isPickup ? 'Delivered' : 'Ready for Pickup');
+              setPackingModalOrder(null);
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -656,6 +699,33 @@ export default function ShopkeeperDashboard() {
                 {/* Order Status Action Controls */}
                 <div className="details-section actions-section">
                   <h3>Status Actions</h3>
+                  
+                  {/* Scan & Pack Barcode verification button */}
+                  <button 
+                    onClick={() => setPackingModalOrder(selectedOrder)}
+                    style={{
+                      width: '100%',
+                      marginBottom: '10px',
+                      padding: '12px 16px',
+                      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Barcode size={18} color="#38bdf8" />
+                    <span>Scan & Pack Verification (Camera)</span>
+                  </button>
+
                   <div className="status-buttons-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
                     <button 
                       onClick={() => handleUpdateStatus(selectedOrder.id, 'Preparing')}
@@ -680,6 +750,19 @@ export default function ShopkeeperDashboard() {
             </div>
           )}
         </div>
+
+        {/* Barcode Packing Modal */}
+        {packingModalOrder && (
+          <BarcodePackingModal
+            order={packingModalOrder}
+            onClose={() => setPackingModalOrder(null)}
+            onComplete={() => {
+              const isPickup = packingModalOrder.delivery_address?.is_pickup || packingModalOrder.delivery_address?.order_type === 'PICKUP';
+              handleUpdateStatus(packingModalOrder.id, isPickup ? 'Delivered' : 'Ready for Pickup');
+              setPackingModalOrder(null);
+            }}
+          />
+        )}
       </div>
     );
   }
