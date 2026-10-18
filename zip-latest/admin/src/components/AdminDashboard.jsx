@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db, supabase } from '../services/db';
 import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff, Phone, MapPin, UserCheck, Bike, Scan, Barcode, Camera } from 'lucide-react';
+import BarcodeScanModal from './BarcodeScanModal';
 import { useToast } from '../context/ToastContext';
 import './AdminDashboard.css';
 
@@ -21,6 +22,7 @@ const AdminDashboard = ({ initialTab }) => {
   const [imageFiles, setImageFiles] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+  const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   
   // Specific view modals
   const [viewUser, setViewUser] = useState(null);
@@ -1342,16 +1344,59 @@ const AdminDashboard = ({ initialTab }) => {
                       <input type="text" className="admin-input" value={formData.amount||''} onChange={e=>setFormData({...formData, amount:e.target.value})} required/>
                     </div>
                     <div className="form-group half">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Barcode size={14} color="#2563eb" /> Barcode (EAN/UPC)
-                      </label>
-                      <input 
-                        type="text" 
-                        className="admin-input" 
-                        placeholder="e.g. 8901234567890" 
-                        value={formData.barcode||''} 
-                        onChange={e=>setFormData({...formData, barcode:e.target.value.trim()})}
-                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', margin: 0 }}>
+                          <Barcode size={14} color="#2563eb" /> Barcode (EAN/UPC)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setIsBarcodeScannerOpen(true)}
+                          style={{
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '8px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Camera size={12} /> Scan Camera
+                        </button>
+                      </div>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input 
+                          type="text" 
+                          className="admin-input" 
+                          placeholder="Scan camera or type barcode" 
+                          value={formData.barcode||''} 
+                          onChange={e=>setFormData({...formData, barcode:e.target.value.trim()})}
+                          style={{ paddingRight: '36px' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setIsBarcodeScannerOpen(true)}
+                          title="Open Camera Barcode Scanner"
+                          style={{
+                            position: 'absolute',
+                            right: '6px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#2563eb',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '4px'
+                          }}
+                        >
+                          <Scan size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', margin: '14px 0'}}>
@@ -1715,6 +1760,19 @@ const AdminDashboard = ({ initialTab }) => {
             </form>
           </div>
         </div>,
+        document.body
+      )}
+
+      {/* Barcode Camera Scanner Modal */}
+      {isBarcodeScannerOpen && createPortal(
+        <BarcodeScanModal
+          isOpen={isBarcodeScannerOpen}
+          onClose={() => setIsBarcodeScannerOpen(false)}
+          onDetected={(scannedCode) => {
+            setFormData(prev => ({ ...prev, barcode: scannedCode }));
+            showToast(`Scanned Barcode: ${scannedCode}`, 'success');
+          }}
+        />,
         document.body
       )}
 
