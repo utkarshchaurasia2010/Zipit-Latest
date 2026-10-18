@@ -117,12 +117,20 @@ export default function ShopkeeperDashboard() {
     }
   };
 
-  const handleUpdateStatus = async (orderId, newStatus) => {
+  const handleUpdateStatus = async (orderId, newStatus, bypassVerification = false) => {
     try {
       // Ensure only the shopkeeper who accepted the order (or is eligible) can update status / deliver it
       const targetOrder = orders.find(o => o.id === orderId);
       if (targetOrder?.accepted_by_shopkeeper && targetOrder.accepted_by_shopkeeper.trim().toUpperCase() !== shopkeeperCode.trim().toUpperCase()) {
         showToast(`This order is assigned to shopkeeper ${targetOrder.accepted_by_shopkeeper}. You cannot alter its delivery status.`, 'error');
+        return;
+      }
+
+      // STRICT VERIFICATION CHECK: Delivery orders CANNOT be marked 'Ready for Pickup' (or pickup orders 'Delivered')
+      // without first scanning barcodes or verifying all items
+      if (['Ready for Pickup', 'Delivered'].includes(newStatus) && !bypassVerification) {
+        setPackingModalOrder(targetOrder);
+        showToast('Please scan & verify the items before marking Ready for Pickup.', 'error');
         return;
       }
 
@@ -437,7 +445,7 @@ export default function ShopkeeperDashboard() {
             onClose={() => setPackingModalOrder(null)}
             onComplete={() => {
               const isPickup = packingModalOrder.delivery_address?.is_pickup || packingModalOrder.delivery_address?.order_type === 'PICKUP';
-              handleUpdateStatus(packingModalOrder.id, isPickup ? 'Delivered' : 'Ready for Pickup');
+              handleUpdateStatus(packingModalOrder.id, isPickup ? 'Delivered' : 'Ready for Pickup', true);
               setPackingModalOrder(null);
             }}
           />
@@ -758,7 +766,7 @@ export default function ShopkeeperDashboard() {
             onClose={() => setPackingModalOrder(null)}
             onComplete={() => {
               const isPickup = packingModalOrder.delivery_address?.is_pickup || packingModalOrder.delivery_address?.order_type === 'PICKUP';
-              handleUpdateStatus(packingModalOrder.id, isPickup ? 'Delivered' : 'Ready for Pickup');
+              handleUpdateStatus(packingModalOrder.id, isPickup ? 'Delivered' : 'Ready for Pickup', true);
               setPackingModalOrder(null);
             }}
           />
