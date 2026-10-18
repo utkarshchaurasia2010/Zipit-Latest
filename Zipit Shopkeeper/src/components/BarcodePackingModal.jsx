@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, CheckCircle2, AlertTriangle, Barcode, Volume2, VolumeX, Sparkles, Check, ChevronRight } from 'lucide-react';
+import { supabase } from '../services/db';
 
 export default function BarcodePackingModal({ order, onClose, onComplete }) {
   const [itemsStatus, setItemsStatus] = useState(() => {
@@ -7,19 +8,71 @@ export default function BarcodePackingModal({ order, onClose, onComplete }) {
     (order.items || []).forEach((item, index) => {
       const key = `${item.id || item.name}_${index}`;
       const neededQty = item.quantity || item.qty || 1;
+      
+      // Check if barcode is already present in item object or inside item.name
+      let existingBarcode = item.barcode || '';
+      if (!existingBarcode && item.name) {
+        const match = item.name.match(/---BARCODE:(.*?)---/);
+        if (match) existingBarcode = match[1];
+      }
+
       initial[key] = {
-        name: item.name,
+        id: item.id,
+        name: item.name ? item.name.replace(/---.*?---/g, '').trim() : 'Item',
+        rawName: item.name,
         amount: item.amount,
         price: item.price,
         image_url: item.image_url,
         neededQty,
         scannedQty: 0,
-        barcode: item.barcode || '',
+        barcode: existingBarcode,
         verified: false
       };
     });
     return initial;
   });
+
+  // Fetch latest barcodes from products table for items in this order
+  useEffect(() => {
+    const itemIds = (order.items || []).map(i => i.id).filter(Boolean);
+    if (itemIds.length === 0) return;
+
+    async function fetchLatestBarcodes() {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, name')
+          .in('id', itemIds);
+
+        if (!error && data) {
+          const barcodeMap = {};
+          data.forEach(p => {
+            const match = p.name?.match(/---BARCODE:(.*?)---/);
+            if (match && match[1]) {
+              barcodeMap[p.id] = match[1].trim();
+            }
+          });
+
+          setItemsStatus(prev => {
+            const next = { ...prev };
+            let changed = false;
+            Object.keys(next).forEach(key => {
+              const item = next[key];
+              if (item.id && barcodeMap[item.id] && next[key].barcode !== barcodeMap[item.id]) {
+                next[key] = { ...item, barcode: barcodeMap[item.id] };
+                changed = true;
+              }
+            });
+            return changed ? next : prev;
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch latest barcodes for order items:', err);
+      }
+    }
+
+    fetchLatestBarcodes();
+  }, [order]);
 
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraActive, setCameraActive] = useState(true);
@@ -82,18 +135,38 @@ export default function BarcodePackingModal({ order, onClose, onComplete }) {
     }
     setLastScannedResult({ code: cleanCode, time: Date.now() });
 
-    // Look for matching item by barcode or name match
+    // Normalize scanned code (trim, uppercase, remove hyphens/spaces)
+    const normalizedScanned = cleanCode.replace(/[\s\-_]/g, '');
+
+    // Look for matching item by barcode, rawName, or fuzzy match
     let matchedKey = null;
     for (const [key, item] of Object.entries(itemsStatus)) {
       if (item.verified) continue; // Skip already finished items
 
-      // 1. Direct barcode match
-      if (item.barcode && item.barcode.toUpperCase() === cleanCode) {
+      const itemBarcode = item.barcode ? String(item.barcode).trim().toUpperCase().replace(/[\s\-_]/g, '') : '';
+
+      // 1. Exact or normalized barcode match
+      if (itemBarcode && (itemBarcode === normalizedScanned || itemBarcode.includes(normalizedScanned) || normalizedScanned.includes(itemBarcode))) {
         matchedKey = key;
         break;
       }
-      // 2. Barcode stored inside item name or clean code matching
-      if (cleanCode.length >= 4 && item.name.toUpperCase().includes(cleanCode)) {
+
+      // 2. Numeric barcode match ignoring leading zeroes (e.g., UPC 0890... vs 890...)
+      if (itemBarcode && /^\d+$/.test(itemBarcode) && /^\d+$/.test(normalizedScanned)) {
+        if (BigInt(itemBarcode) === BigInt(normalizedScanned)) {
+          matchedKey = key;
+          break;
+        }
+      }
+
+      // 3. Barcode stored inside rawName
+      if (item.rawName && item.rawName.toUpperCase().includes(normalizedScanned)) {
+        matchedKey = key;
+        break;
+      }
+
+      // 4. Barcode contained in item name
+      if (normalizedScanned.length >= 4 && item.name.toUpperCase().includes(normalizedScanned)) {
         matchedKey = key;
         break;
       }

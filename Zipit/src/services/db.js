@@ -744,6 +744,10 @@ export const db = {
         const sticker = stickerMatch ? stickerMatch[1] : null;
         const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
         const tags = tagsMatch ? tagsMatch[1] : '';
+        const barcodeMatch = p.name.match(/---BARCODE:(.*?)---/);
+        const barcode = barcodeMatch ? barcodeMatch[1] : (p.barcode || '');
+        const mrpMatch = p.name.match(/---MRP:(.*?)---/);
+        const mrp = mrpMatch ? Number(mrpMatch[1]) : (p.mrp ? Number(p.mrp) : null);
 
         const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
         const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
@@ -755,7 +759,10 @@ export const db = {
           .replace('---TAG:OOS---', '')
           .replace('---TAG:OUT_OF_STOCK---', '')
           .replace(/---STICKER:.*?---/g, '')
-          .replace(/---TAGS:.*?---/g, '');
+          .replace(/---TAGS:.*?---/g, '')
+          .replace(/---SHOPKEEPERS:.*?---/g, '')
+          .replace(/---BARCODE:.*?---/g, '')
+          .replace(/---MRP:.*?---/g, '');
         return { 
           ...p, 
           name, 
@@ -764,6 +771,8 @@ export const db = {
           is_bestseller, 
           sticker,
           tags,
+          barcode,
+          mrp,
           is_out_of_stock: !!is_out_of_stock,
           stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
         };
@@ -803,6 +812,10 @@ export const db = {
         const sticker = stickerMatch ? stickerMatch[1] : null;
         const tagsMatch = p.name.match(/---TAGS:(.*?)---/);
         const tags = tagsMatch ? tagsMatch[1] : '';
+        const barcodeMatch = p.name.match(/---BARCODE:(.*?)---/);
+        const barcode = barcodeMatch ? barcodeMatch[1] : (p.barcode || '');
+        const mrpMatch = p.name.match(/---MRP:(.*?)---/);
+        const mrp = mrpMatch ? Number(mrpMatch[1]) : (p.mrp ? Number(p.mrp) : null);
 
         const rawStock = p.stock_count !== undefined && p.stock_count !== null ? p.stock_count : (p.stock !== undefined && p.stock !== null ? p.stock : null);
         const is_out_of_stock = p.is_out_of_stock === true || p.name.includes('---TAG:OOS---') || p.name.includes('---TAG:OUT_OF_STOCK---') || (rawStock !== null && Number(rawStock) === 0);
@@ -814,7 +827,10 @@ export const db = {
           .replace('---TAG:OOS---', '')
           .replace('---TAG:OUT_OF_STOCK---', '')
           .replace(/---STICKER:.*?---/g, '')
-          .replace(/---TAGS:.*?---/g, '');
+          .replace(/---TAGS:.*?---/g, '')
+          .replace(/---SHOPKEEPERS:.*?---/g, '')
+          .replace(/---BARCODE:.*?---/g, '')
+          .replace(/---MRP:.*?---/g, '');
         return { 
           ...p, 
           name, 
@@ -823,6 +839,8 @@ export const db = {
           is_bestseller, 
           sticker,
           tags,
+          barcode,
+          mrp,
           is_out_of_stock: !!is_out_of_stock,
           stock_count: is_out_of_stock ? 0 : (rawStock !== null ? Number(rawStock) : 100)
         };
