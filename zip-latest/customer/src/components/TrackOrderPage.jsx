@@ -23,41 +23,61 @@ class MapErrorBoundary extends React.Component {
   }
 }
 
-// Custom crisp SVG Map Markers
+// Custom crisp SVG Map Markers creator
 const createSvgIcon = (svgContent, width = 36, height = 36) => {
-  return new L.DivIcon({
-    className: 'custom-map-icon',
-    html: `<div style="width: ${width}px; height: ${height}px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">${svgContent}</div>`,
-    iconSize: [width, height],
-    iconAnchor: [width / 2, height / 2]
-  });
+  try {
+    return new L.DivIcon({
+      className: 'custom-map-icon',
+      html: `<div style="width: ${width}px; height: ${height}px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">${svgContent}</div>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2]
+    });
+  } catch (e) {
+    return undefined;
+  }
 };
 
-const storeIcon = createSvgIcon(`
+const STORE_ICON_HTML = `
   <div style="background: #0c831f; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
   </div>
-`, 34, 34);
+`;
 
-const destIcon = createSvgIcon(`
+const DEST_ICON_HTML = `
   <div style="background: #ef4444; width: 36px; height: 36px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff;">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   </div>
-`, 36, 36);
+`;
 
-const driverIcon = createSvgIcon(`
+const DRIVER_ICON_HTML = `
   <div style="background: #2563eb; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid #ffffff; box-shadow: 0 0 15px rgba(37, 99, 235, 0.6); animation: pulse-ring 2s infinite;">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
   </div>
-`, 38, 38);
+`;
+
+// Invalidate container dimensions so Leaflet renders smoothly without gray tiles
+const MapResizer = () => {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch (_) {}
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+};
 
 // Auto-fit route bounds component
 const MapBoundsFitter = ({ positions }) => {
   const map = useMap();
   useEffect(() => {
     if (positions && positions.length > 0) {
-      const bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, animate: true });
+      try {
+        const bounds = L.latLngBounds(positions);
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, animate: true });
+      } catch (_) {}
     }
   }, [map, JSON.stringify(positions)]);
   return null;
@@ -76,6 +96,10 @@ const MapUpdater = ({ center }) => {
 const DeliveryMap = ({ status, order }) => {
   const isOnTheWay = status === 'Out for Delivery';
   const isDelivered = status === 'Delivered';
+
+  const storeIcon = React.useMemo(() => createSvgIcon(STORE_ICON_HTML, 34, 34), []);
+  const destIcon = React.useMemo(() => createSvgIcon(DEST_ICON_HTML, 36, 36), []);
+  const driverIcon = React.useMemo(() => createSvgIcon(DRIVER_ICON_HTML, 38, 38), []);
 
   const [storeLocation, setStoreLocation] = useState([25.5788, 83.5780]);
 
@@ -187,13 +211,14 @@ const DeliveryMap = ({ status, order }) => {
         {/* Route Line */}
         <Polyline positions={routePositions} color="#0c831f" weight={5} opacity={0.8} dashArray="6, 8" />
         
-        <Marker position={storeLocation} icon={storeIcon} />
-        <Marker position={destLocation} icon={destIcon} />
+        {storeIcon && <Marker position={storeLocation} icon={storeIcon} />}
+        {destIcon && <Marker position={destLocation} icon={destIcon} />}
         
-        {showRiderMarker && (
+        {showRiderMarker && driverIcon && (
           <Marker position={riderPos} icon={driverIcon} />
         )}
         
+        <MapResizer />
         <MapBoundsFitter positions={routePositions} />
         <MapUpdater center={isOnTheWay ? riderPos : null} />
       </MapContainer>
