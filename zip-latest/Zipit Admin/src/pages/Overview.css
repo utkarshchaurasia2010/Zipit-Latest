@@ -1,0 +1,250 @@
+.overview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.overview-top-row {
+  display: flex;
+  gap: 24px;
+}
+
+/* Brand Card (Zipit Unique Identity) */
+.brand-summary-card {
+  flex: 0 0 350px;
+  background: linear-gradient(135deg, #F8CB46 0%, #F59E0B 100%);
+  border-radius: 16px;
+  padding: 32px 24px;
+  color: #101828;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-summary-card::after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+}
+
+.brand-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2;
+}
+
+.brand-logo {
+  height: 48px;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.brand-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(16, 24, 40, 0.7);
+}
+
+.brand-metrics {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  margin-top: 40px;
+  z-index: 2;
+}
+
+.growth-badge {
+  background: #FFFFFF;
+  color: #16A34A;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  margin-right: auto;
+}
+
+.brand-metric-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-metric-item .b-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.brand-metric-item .b-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: rgba(16, 24, 40, 0.6);
+}
+
+/* Quick Stats Row */
+.quick-stats-container {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid var(--color-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+}
+
+.stat-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon-wrapper.blue { background: #EFF8FF; color: #175CD3; }
+.stat-icon-wrapper.green { background: #ECFDF3; color: #027A48; }
+.stat-icon-wrapper.purple { background: #F4F3FF; color: #5925DC; }
+.stat-icon-wrapper.orange { background: #FEF6EE; color: #B93815; }
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-info h3 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1;
+}
+
+.stat-info p {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-light);
+  margin: 0;
+}
+
+/* Analytics Chart Area */
+.chart-section {
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid var(--color-border);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.chart-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.chart-filters {
+  display: flex;
+  background: var(--color-background);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.chart-filters button {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-filters button.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* RESPONSIVE MEDIA QUERIES FOR OVERVIEW PAGE */
+@media (max-width: 900px) {
+  .overview-top-row {
+    flex-direction: column;
+  }
+
+  .brand-summary-card {
+    flex: 1 1 auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 600px) {
+  .quick-stats-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .stat-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .stat-info h3 {
+    font-size: 20px;
+  }
+
+  .chart-section {
+    padding: 16px 12px;
+  }
+
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+

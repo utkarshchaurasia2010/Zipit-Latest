@@ -1,0 +1,345 @@
+/* ── Full-fledged Substitute Selection Page ─────────── */
+.substitute-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background, #f8fafc);
+  padding-bottom: 90px;
+  animation: fadeIn 0.25s ease;
+  min-height: 100vh;
+}
+
+.substitute-page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.substitute-page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+  letter-spacing: -0.5px;
+}
+
+.substitute-header-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-text-light, #64748b);
+  font-weight: 500;
+}
+
+/* Item Tabs */
+.substitute-item-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  overflow-x: auto;
+}
+
+.substitute-item-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--color-text-light, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.substitute-item-tab.active {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+/* Out of stock Banner */
+.substitute-out-banner {
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.substitute-out-tag {
+  display: inline-block;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
+.substitute-out-title {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.substitute-out-meta {
+  font-size: 13px;
+  color: var(--color-text-light, #64748b);
+  font-weight: 600;
+}
+
+.substitute-chosen-chip {
+  font-size: 13.5px;
+  color: var(--color-text, #0f172a);
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.substitute-chosen-chip strong {
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+/* Category Filter Bar (Rounded Edge Rectangular Buttons) */
+.substitute-categories-bar {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  overflow-x: auto;
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  scrollbar-width: none;
+}
+
+.substitute-categories-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.substitute-cat-pill {
+  white-space: nowrap;
+  padding: 9px 20px;
+  border-radius: 20px; /* Rounded edge rectangular button */
+  border: 1.5px solid var(--color-border, #cbd5e1);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-light, #475569);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.substitute-cat-pill.active {
+  background: #0c831f !important;
+  color: #ffffff !important;
+  border-color: #0c831f !important;
+  box-shadow: 0 4px 12px rgba(12, 131, 31, 0.25);
+}
+
+/* Product Grid */
+.substitute-products-grid {
+  padding: 20px 20px 100px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.substitute-prod-card {
+  background: var(--color-surface, #ffffff);
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.substitute-prod-card.selected {
+  border-color: #0c831f !important;
+  background: #f0fdf4 !important;
+  box-shadow: 0 4px 14px rgba(12, 131, 31, 0.15) !important;
+}
+
+.substitute-prod-img-wrapper {
+  width: 100%;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.substitute-prod-img-wrapper img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.substitute-chosen-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #0c831f !important;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(12, 131, 31, 0.4);
+}
+
+.substitute-prod-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.substitute-prod-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+  line-height: 1.3;
+}
+
+.substitute-prod-price-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.substitute-prod-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text, #0f172a);
+}
+
+.substitute-diff-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.substitute-diff-tag.diff-higher {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.substitute-diff-tag.diff-lower {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+/* Green + ADD Buttons (Pure Quick Commerce Green #0c831f) */
+.substitute-add-btn {
+  width: 100%;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1.5px solid #0c831f !important;
+  background: #ffffff !important;
+  color: #0c831f !important;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(12, 131, 31, 0.1);
+}
+
+.substitute-add-btn.added {
+  background: #0c831f !important;
+  color: #ffffff !important;
+  border-color: #0c831f !important;
+  box-shadow: 0 4px 12px rgba(12, 131, 31, 0.35) !important;
+}
+
+.substitute-add-btn:active {
+  transform: scale(0.96);
+}
+
+/* Fixed Screen-Border Bottom Action Bar (Identical to Home BottomNav) */
+.substitute-bottom-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  background: var(--color-surface, #ffffff) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top-left-radius: 20px !important;
+  border-top-right-radius: 20px !important;
+  border-top: 3px solid var(--color-border, #e2e8f0) !important;
+  padding: 12px 16px 16px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.16) !important;
+  z-index: 9999 !important;
+}
+
+.substitute-bottom-btn {
+  padding: 14px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: none;
+}
+
+/* Left Red Refund Button */
+.substitute-bottom-btn.refund-btn {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3) !important;
+}
+
+.substitute-bottom-btn.refund-btn:active {
+  transform: scale(0.97);
+  background: #b91c1c !important;
+}
+
+/* Right Substitute Product Solid Brand Green Button */
+.substitute-bottom-btn.replace-btn.active {
+  background: #0c831f !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(12, 131, 31, 0.4) !important;
+}
+
+/* Greyish disabled state when no product is chosen yet */
+.substitute-bottom-btn.replace-btn.inactive {
+  background: #94a3b8 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  cursor: not-allowed !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+

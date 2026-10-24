@@ -1,0 +1,221 @@
+.legal-policies-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 90px;
+  animation: pageFadeIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+.legal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(20px);
+}
+
+.legal-header h1 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+/* Horizontal Policy Pill Tabs */
+.policy-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 57px;
+  z-index: 40;
+}
+
+.policy-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.policy-tab-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--color-surface-muted);
+  color: var(--color-text-light);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.policy-tab-chip:active {
+  transform: scale(0.96);
+}
+
+.policy-tab-chip.active {
+  background: var(--color-primary);
+  color: #111827;
+  border-color: var(--color-primary);
+  box-shadow: 0 3px 10px rgba(248, 203, 70, 0.35);
+}
+
+body[data-theme="dark"] .policy-tab-chip.active {
+  color: #000000;
+}
+
+.legal-content-container {
+  padding: 16px;
+  max-width: 650px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Intro Card */
+.policy-intro-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.policy-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.policy-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.1);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.policy-date {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.policy-intro-card h2 {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.policy-intro-card p {
+  font-size: 13.5px;
+  color: var(--color-text-light);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Section Cards */
+.policy-section-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.policy-section-card h3 {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.policy-section-card p {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--color-text-light);
+  margin: 0;
+}
+
+/* Grievance Card */
+.legal-grievance-card {
+  margin-top: 6px;
+  background-color: var(--color-surface);
+  border: 1px dashed var(--color-primary);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.grievance-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.grievance-header h4 {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.legal-grievance-card p {
+  font-size: 13px;
+  color: var(--color-text-light);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
+.grievance-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.contact-row a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.response-time {
+  font-size: 11.5px;
+  color: var(--color-text-light);
+  font-style: italic;
+}
