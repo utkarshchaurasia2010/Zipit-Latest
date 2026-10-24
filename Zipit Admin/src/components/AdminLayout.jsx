@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers, IndianRupee } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import './AdminLayout.css';
 
@@ -171,6 +171,7 @@ const AdminLayout = ({ profile, setProfile }) => {
 
   const navItems = [
     { name: 'Overview', path: '/', icon: <LayoutDashboard size={20} /> },
+    { name: 'Revenues', path: '/revenues', icon: <IndianRupee size={20} /> },
     { name: 'Orders', path: '/orders', icon: <ShoppingBag size={20} /> },
     { name: 'Categories', path: '/categories', icon: <Grid size={20} /> },
     { name: 'Products', path: '/products', icon: <List size={20} /> },

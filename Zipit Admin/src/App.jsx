@@ -8,6 +8,7 @@ import Settings from './pages/Settings';
 import AdminDashboard from './components/AdminDashboard';
 import AccessCodesManager from './components/AccessCodesManager';
 import SectionsManager from './pages/SectionsManager';
+import RevenuesPage from './pages/RevenuesPage';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 
@@ -78,6 +79,7 @@ function App() {
           {isAdmin ? (
             <Route path="/" element={<AdminLayout profile={profile} setProfile={setProfile} />}>
               <Route index element={<Overview />} />
+              <Route path="revenues" element={<RevenuesPage />} />
               <Route path="categories" element={<AdminDashboard key="categories" initialTab="categories" />} />
               <Route path="products" element={<AdminDashboard key="products" initialTab="products" />} />
               <Route path="grid-products" element={<AdminDashboard key="grid-products" initialTab="grid-products" />} />
