@@ -317,6 +317,9 @@ body[data-theme="light"] .category-window-grid {
 @media (min-width: 1024px) {
   .product-grid-container {
     padding: 32px 48px 80px;
+    max-width: 1320px;
+    margin: 0 auto;
+    width: 100%;
   }
 
   .category-grid {
