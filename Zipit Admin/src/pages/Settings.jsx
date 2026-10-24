@@ -311,10 +311,25 @@ const Settings = ({ profile, setProfile }) => {
               }
             }}
             disabled={saving}
-            className="save-btn"
-            style={{ width: 'auto', padding: '10px 20px', margin: 0 }}
+            className="save-settings-btn"
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '11px 22px',
+              background: '#0c831f',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
           >
-            <Save size={16} />
+            <Save size={16} color="#ffffff" strokeWidth={2.2} />
             <span>{saving ? 'Saving...' : 'Save Geofence'}</span>
           </button>
         </div>
@@ -451,7 +466,7 @@ const Settings = ({ profile, setProfile }) => {
         </div>
 
         {/* Save Fees Button */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '16px' }}>
           <button 
             type="button" 
             onClick={async () => {
@@ -466,10 +481,25 @@ const Settings = ({ profile, setProfile }) => {
               }
             }}
             disabled={saving}
-            className="save-btn"
-            style={{ width: 'auto', padding: '10px 24px', margin: 0 }}
+            className="save-settings-btn"
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '11px 24px',
+              background: '#0c831f',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
           >
-            <Save size={16} />
+            <Save size={16} color="#ffffff" strokeWidth={2.2} />
             <span>{saving ? 'Saving...' : 'Save Fee Settings'}</span>
           </button>
         </div>

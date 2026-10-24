@@ -347,133 +347,198 @@ const AdminDashboard = ({ initialTab }) => {
 
   const printOrderReceipt = (order) => {
     try {
-      const orderDate = new Date(order.created_at || Date.now()).toLocaleString('en-IN', {
+      const invoiceDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-GB', {
         day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        month: 'long',
+        year: 'numeric'
       });
 
       const subtotal = (order.items || []).reduce((sum, i) => sum + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
-      const isRefundedOrReq = order.status === 'Refunded' || order.status === 'Refund Requested';
       const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
       const deliveryCharge = Number(order.delivery_charge) || 0;
       const handlingCharge = Number(order.small_cart_charge) || 0;
       const discountAmount = Number(order.discount_amount) || 0;
-      const gstEstimated = Math.round((subtotal * 0.05 / 1.05) * 100) / 100;
+      const total = Number(order.total) || 0;
+
+      const addr = order.delivery_address || {};
+      const details = addr.details || addr.address || '';
+      const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Zipit Store Hubs' : 'Customer Location');
 
       const html = `
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Invoice - Order #${order.id.slice(0,8).toUpperCase()}</title>
+            <title>Invoice - #${order.id.slice(0,8).toUpperCase()}</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
-              body { font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; line-height: 1.5; font-size: 13px; }
-              .bill-header { text-align: center; border-bottom: 2.5px solid #0c831f; padding-bottom: 16px; margin-bottom: 20px; }
-              .bill-logo { font-size: 32px; font-weight: 900; color: #0c831f; letter-spacing: -1.5px; margin: 0; }
-              .bill-sub { font-size: 12px; color: #64748b; font-weight: 600; margin-top: 2px; }
-              .status-chip { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-top: 8px; }
-              .status-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-              .status-red { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-              .status-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
-              .meta-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
-              .meta-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-              .meta-row:last-child { margin-bottom: 0; }
-              .lbl { color: #64748b; font-weight: 600; }
-              .val { font-weight: 700; color: #0f172a; }
-              .table-head { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-              .item-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-              .item-left { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-              .item-title { font-weight: 700; color: #0f172a; font-size: 13.5px; }
-              .item-meta { font-size: 11px; color: #64748b; }
-              .item-tag-refund { color: #dc2626; font-weight: 700; font-size: 11px; }
-              .item-tag-sub { color: #15803d; font-weight: 700; font-size: 11px; }
-              .item-price { font-weight: 800; color: #0f172a; white-space: nowrap; margin-left: 12px; }
-              .total-card { margin-top: 18px; border-top: 2px solid #0f172a; padding-top: 14px; }
-              .total-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
-              .grand-total { display: flex; justify-content: space-between; font-size: 17px; font-weight: 900; margin-top: 10px; border-top: 1.5px dashed #cbd5e1; padding-top: 10px; color: #0c831f; }
-              .footer { text-align: center; margin-top: 28px; font-size: 11.5px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 14px; }
+              @page { size: A4; margin: 15mm; }
+              * { box-sizing: border-box; }
+              body { 
+                font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
+                padding: 40px 48px; 
+                color: #111827; 
+                max-width: 620px; 
+                margin: 0 auto; 
+                background: #FDFCF7; 
+                font-size: 13px; 
+                line-height: 1.5; 
+              }
+              .invoice-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
+              .brand-logo-mark { font-family: 'Cinzel', serif; font-size: 36px; font-weight: 800; color: #111827; letter-spacing: -1px; line-height: 1; }
+              .brand-tagline { font-size: 11px; color: #6B7280; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 4px; font-weight: 600; }
+              .invoice-title { font-family: 'Cinzel', serif; font-size: 32px; font-weight: 700; letter-spacing: 3px; color: #111827; text-align: right; margin: 0; }
+              
+              .billed-meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
+              .meta-block { max-width: 58%; }
+              .meta-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 6px; }
+              .meta-text { color: #111827; font-size: 13px; font-weight: 700; }
+              .meta-subtext { font-size: 12px; color: #4B5563; margin-top: 2px; }
+              .meta-right { text-align: right; }
+
+              .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+              .invoice-table th { text-align: left; padding: 10px 0; border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; font-size: 11.5px; font-weight: 700; color: #111827; }
+              .invoice-table td { padding: 12px 0; border-bottom: 1px solid #E5E7EB; color: #111827; font-size: 13px; vertical-align: top; }
+              .invoice-table th.num, .invoice-table td.num { text-align: right; }
+
+              .totals-container { display: flex; justify-content: flex-end; margin-bottom: 40px; }
+              .totals-table { width: 250px; }
+              .totals-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #4B5563; }
+              .totals-row.grand-total { border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; margin-top: 8px; padding: 12px 0; font-size: 18px; font-weight: 800; color: #111827; }
+
+              .thank-you-note { font-family: 'Cinzel', serif; font-size: 22px; font-weight: 600; color: #111827; margin-bottom: 32px; }
+              .payment-info-box { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 20px; border-top: 1px dashed #D1D5DB; }
+              .payment-info-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 4px; }
+              .signature-mark { font-family: 'Cinzel', serif; font-size: 18px; font-weight: 700; color: #111827; text-align: right; }
+
               @media print { 
-                body { padding: 0; } 
+                body { padding: 0; background: #fff; } 
                 .no-print { display: none !important; }
               }
             </style>
           </head>
           <body>
-            <div class="bill-header">
-              <h1 class="bill-logo">Zipit</h1>
-              <div class="bill-sub">Admin Retail & Audit Invoice</div>
-              <div class="status-chip ${isRefundedOrReq ? 'status-red' : order.status === 'Delivered' ? 'status-green' : 'status-blue'}">
-                ${order.status}
+            <div class="invoice-top">
+              <div>
+                <div class="brand-logo-mark">ZIPIT &amp; CO.</div>
+                <div class="brand-tagline">Retail &amp; Express Logistics</div>
+              </div>
+              <div>
+                <h1 class="invoice-title">INVOICE</h1>
               </div>
             </div>
 
-            <div class="meta-card">
-              <div class="meta-row"><span class="lbl">Order Ref:</span><span class="val">#${order.id.slice(0, 8).toUpperCase()}</span></div>
-              <div class="meta-row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
-              <div class="meta-row"><span class="lbl">Fulfillment:</span><span class="val" style="${isPickup ? 'color:#15803d; font-weight:900;' : ''}">${isPickup ? '🛍️ STORE PICKUP (Ready ~1 hr)' : '🛵 HOME DELIVERY'}</span></div>
-              <div class="meta-row"><span class="lbl">Customer:</span><span class="val">${order.profiles?.name || order.delivery_address?.name || 'Guest Customer'}</span></div>
-              ${(order.profiles?.phone || order.delivery_address?.phone) ? `<div class="meta-row"><span class="lbl">Contact Phone:</span><span class="val">${order.profiles?.phone || order.delivery_address?.phone}</span></div>` : ''}
-              <div class="meta-row"><span class="lbl">Payment Gateway:</span><span class="val">${order.payment_method || 'Cash / Online'}</span></div>
-              ${order.delivery_address?.landmark ? `<div class="meta-row" style="background:#fee2e2; padding:4px 6px; border-radius:4px; margin: 4px 0;"><span class="lbl" style="color:#b91c1c; font-weight:bold;">🚩 Landmark:</span><span class="val" style="font-weight:bold; color:#b91c1c;">${order.delivery_address.landmark}</span></div>` : ''}
-              ${order.delivery_address?.village_area ? `<div class="meta-row"><span class="lbl">📍 Village / Area:</span><span class="val">${order.delivery_address.village_area}</span></div>` : ''}
-              ${order.delivery_address?.family_head ? `<div class="meta-row"><span class="lbl">🏠 House/Family:</span><span class="val">${order.delivery_address.family_head}</span></div>` : ''}
-              ${order.delivery_address?.alt_phone ? `<div class="meta-row"><span class="lbl">Alt Contact:</span><span class="val">${order.delivery_address.alt_phone}</span></div>` : ''}
-              <div class="meta-row"><span class="lbl">Shopkeeper:</span><span class="val">${order.accepted_by_shopkeeper ? `✓ ${order.accepted_by_shopkeeper}` : 'Pending Acceptance'}</span></div>
-              ${isPickup ? `
-                <div class="meta-row"><span class="lbl">Rider / Delivery:</span><span class="val" style="color: #64748b;">N/A (Store Pickup)</span></div>
-              ` : `
-                <div class="meta-row"><span class="lbl">Assigned Rider:</span><span class="val">${order.accepted_by_rider ? `🛵 ${order.accepted_by_rider}` : 'Unclaimed / Pending Rider'}</span></div>
-              `}
-              ${isPickup ? `
-                <div class="meta-row" style="background:#dcfce7; padding:6px 8px; border-radius:6px; margin-top:6px;">
-                  <span class="lbl" style="color:#15803d; font-weight:bold;">Store Pickup:</span>
-                  <span class="val" style="color:#15803d; font-weight:bold;">${order.delivery_address?.store_location || 'Zipit Store Hubs'} (${order.delivery_address?.pickup_time_estimate || 'Ready in ~1 hr'})</span>
+            <div class="billed-meta-row">
+              <div class="meta-block">
+                <div class="meta-title">BILLED TO:</div>
+                <div class="meta-text">${addr.name || order.profiles?.name || 'Customer'}</div>
+                ${(addr.phone || order.profiles?.phone) ? `<div class="meta-subtext">${addr.phone || order.profiles?.phone}</div>` : ''}
+                <div class="meta-subtext">${cleanAddress}</div>
+                ${addr.landmark ? `<div class="meta-subtext">Landmark: ${addr.landmark}</div>` : ''}
+                ${addr.village_area ? `<div class="meta-subtext">Area: ${addr.village_area}</div>` : ''}
+              </div>
+
+              <div class="meta-right">
+                <div style="font-weight: 700; color: #111827;">Invoice No. ${order.id.slice(0, 8).toUpperCase()}</div>
+                <div style="color: #6B7280; font-size: 12px; margin-top: 3px;">${invoiceDate}</div>
+                <div style="font-size: 12px; margin-top: 6px; font-weight: 600; color: #16A34A;">
+                  ${order.status} (${isPickup ? 'STORE PICKUP' : 'EXPRESS DELIVERY'})
                 </div>
-              ` : order.delivery_address ? `
-                <div class="meta-row" style="margin-top: 6px;"><span class="lbl">Delivery Address:</span><span class="val" style="text-align: right; max-width: 260px;">${order.delivery_address.details?.split('\n---TAG:')[0] || order.delivery_address.full_address || order.delivery_address.address || 'Customer Location'}</span></div>
-              ` : ''}
+              </div>
             </div>
 
-            <div class="table-head">Order Items & Substitutions</div>
-            ${(order.items || []).map(item => `
-              <div class="item-row">
-                <div class="item-left">
-                  <span class="item-title">${item.qty}× ${item.name}</span>
-                  <span class="item-meta">Unit Price: ₹${item.price}</span>
-                  ${item.is_refund_chosen || item.status === 'REFUND_REQUESTED' || item.status === 'REFUNDED_SUBSTITUTE' ? `<span class="item-tag-refund">🚫 Customer Chose Refund</span>` : ''}
-                  ${item.is_substituted ? `<span class="item-tag-sub">🔄 Substituted Product</span>` : ''}
-                  ${item.is_unavailable && !item.is_substituted && !item.is_refund_chosen ? `<span class="item-tag-refund">Out of Stock</span>` : ''}
+            <table class="invoice-table">
+              <thead>
+                <tr>
+                  <th style="width: 50%;">Item</th>
+                  <th class="num" style="width: 15%;">Quantity</th>
+                  <th class="num" style="width: 15%;">Unit Price</th>
+                  <th class="num" style="width: 20%;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(order.items || []).map(item => {
+                  const qty = Number(item.qty) || 1;
+                  const price = Number(item.price) || 0;
+                  const lineTotal = qty * price;
+                  return `
+                    <tr>
+                      <td>
+                        <strong>${item.name}</strong>
+                        ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626;">Refund requested</div>` : ''}
+                        ${item.is_substituted ? `<div style="font-size: 11px; color: #16A34A;">Substituted product</div>` : ''}
+                      </td>
+                      <td class="num">${qty}</td>
+                      <td class="num">₹${price}</td>
+                      <td class="num" style="font-weight: 600;">₹${lineTotal}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+
+            <div class="totals-container">
+              <div class="totals-table">
+                <div class="totals-row">
+                  <span>Subtotal</span>
+                  <span>₹${subtotal}</span>
                 </div>
-                <span class="item-price">₹${(item.price * item.qty).toFixed(2)}</span>
-              </div>
-            `).join('')}
-
-            <div class="total-card">
-              <div class="total-row"><span class="lbl">Items Subtotal</span><span class="val">₹${subtotal.toFixed(2)}</span></div>
-              ${handlingCharge > 0 ? `<div class="total-row"><span class="lbl">Handling / Platform Fee</span><span class="val">₹${handlingCharge}</span></div>` : ''}
-              ${deliveryCharge > 0 ? `
-                <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val">₹${deliveryCharge}</span></div>
-              ` : `
-                <div class="total-row"><span class="lbl">Delivery Fee</span><span class="val" style="color:#15803d; font-weight:700;">FREE</span></div>
-              `}
-              ${discountAmount > 0 ? `<div class="total-row"><span class="lbl">Discounts / Coupons</span><span class="val" style="color:#16a34a; font-weight:700;">-₹${discountAmount}</span></div>` : ''}
-              <div class="total-row"><span class="lbl">Taxes (GST Included ~5%)</span><span class="val">₹${gstEstimated.toFixed(2)}</span></div>
-              <div class="grand-total">
-                <span>Grand Total</span>
-                <span>₹${order.total}</span>
+                ${handlingCharge > 0 ? `
+                  <div class="totals-row">
+                    <span>Handling Fee</span>
+                    <span>₹${handlingCharge}</span>
+                  </div>
+                ` : ''}
+                ${deliveryCharge > 0 ? `
+                  <div class="totals-row">
+                    <span>Delivery Fee</span>
+                    <span>₹${deliveryCharge}</span>
+                  </div>
+                ` : `
+                  <div class="totals-row">
+                    <span>Delivery Fee</span>
+                    <span style="color: #16A34A;">₹0 (Free)</span>
+                  </div>
+                `}
+                ${discountAmount > 0 ? `
+                  <div class="totals-row" style="color: #16A34A;">
+                    <span>Discount</span>
+                    <span>-₹${discountAmount}</span>
+                  </div>
+                ` : ''}
+                <div class="totals-row grand-total">
+                  <span>Total</span>
+                  <span>₹${total}</span>
+                </div>
               </div>
             </div>
 
-            <div class="footer">
-              Zipit Quick Commerce Admin Portal • Internal Store Receipt<br/>
-              Printed on ${new Date().toLocaleTimeString('en-IN')}
+            <div class="thank-you-note">
+              Thank you!
             </div>
 
-            <div class="no-print" style="margin-top: 20px; text-align: center;">
-              <button onclick="window.print()" style="background:#0c831f; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-weight:700; cursor:pointer;">
-                🖨️ Click to Print Receipt
+            <div class="payment-info-box">
+              <div>
+                <div class="payment-info-title">PAYMENT INFORMATION</div>
+                <div style="font-size: 12.5px; color: #374151;">
+                  Mode: <strong>${order.payment_method || 'Online (UPI)'}</strong>
+                </div>
+                <div style="font-size: 11.5px; color: #6B7280; margin-top: 2px;">
+                  Official computerized invoice issued by Zipit Quick Commerce
+                </div>
+              </div>
+              <div>
+                <div class="signature-mark">Zipit Express</div>
+                <div style="font-size: 11px; color: #6B7280; text-align: right; margin-top: 2px;">
+                  support@zipit.com
+                </div>
+              </div>
+            </div>
+
+            <div class="no-print" style="margin-top: 30px; text-align: center;">
+              <button onclick="window.print()" style="background:#111827; color:#fff; border:none; padding:12px 28px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
+                Print Invoice
               </button>
             </div>
 

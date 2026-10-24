@@ -217,27 +217,51 @@ export default function AccessCodesManager() {
                         {c.mobile || 'N/A'}
                       </td>
                       <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(c)}
-                          style={{
-                            background: isActive ? '#dcfce7' : '#fee2e2',
-                            color: isActive ? '#15803d' : '#b91c1c',
-                            border: `1px solid ${isActive ? '#86efac' : '#fca5a5'}`,
-                            padding: '4px 10px',
-                            borderRadius: '16px',
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(c)}
+                            role="switch"
+                            aria-checked={isActive}
+                            style={{
+                              position: 'relative',
+                              width: '44px',
+                              height: '24px',
+                              borderRadius: '24px',
+                              background: isActive ? '#10b981' : '#cbd5e1',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '2px',
+                              transition: 'background-color 0.25s ease, box-shadow 0.2s ease',
+                              outline: 'none',
+                              boxShadow: isActive ? '0 2px 6px rgba(16, 185, 129, 0.35)' : 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                            title={isActive ? 'Click to Disable / Lock ID' : 'Click to Enable / Unlock ID'}
+                          >
+                            <span
+                              style={{
+                                display: 'block',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                background: '#ffffff',
+                                transform: isActive ? 'translateX(20px)' : 'translateX(0px)',
+                                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                              }}
+                            />
+                          </button>
+                          <span style={{
                             fontSize: '12px',
                             fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                          title={isActive ? 'Click to Disable / Lock ID' : 'Click to Enable / Unlock ID'}
-                        >
-                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: isActive ? '#15803d' : '#b91c1c' }}></span>
-                          {isActive ? 'Active' : 'Disabled'}
-                        </button>
+                            letterSpacing: '0.3px',
+                            color: isActive ? '#059669' : '#94a3b8'
+                          }}>
+                            {isActive ? 'ACTIVE' : 'DISABLED'}
+                          </span>
+                        </div>
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
