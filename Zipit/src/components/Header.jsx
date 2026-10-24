@@ -5,6 +5,7 @@ import { requestFirebaseNotificationPermission } from '../services/firebase';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { getCartDeliveryTime } from '../utils/time';
+import { t } from '../utils/i18n';
 import './Header.css';
 
 const SolidUserIcon = ({ size = 24, color = "currentColor" }) => (
@@ -115,7 +116,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               onClick={() => navigate && navigate('/')}
             >
               <Home size={17} />
-              <span>Home</span>
+              <span>{t('home', 'Home')}</span>
             </button>
             <button 
               type="button" 
@@ -123,7 +124,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               onClick={() => navigate && navigate('/categories')}
             >
               <LayoutGrid size={17} />
-              <span>Categories</span>
+              <span>{t('categories', 'Categories')}</span>
             </button>
             <button 
               type="button" 
@@ -131,7 +132,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               onClick={() => navigate && navigate('/track')}
             >
               <Navigation size={17} />
-              <span>Orders</span>
+              <span>{t('orders', 'Orders')}</span>
             </button>
             <button 
               type="button" 
@@ -139,7 +140,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               onClick={() => navigate && navigate('/wishlist')}
             >
               <Heart size={17} />
-              <span>Wishlist</span>
+              <span>{t('wishlist', 'Wishlist')}</span>
             </button>
           </nav>
 

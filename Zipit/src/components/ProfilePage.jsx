@@ -5,6 +5,7 @@ import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
 import Toast from './Toast';
+import { t, translations } from '../utils/i18n';
 
 const SolidUserIcon = ({ size = 24, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
@@ -21,16 +22,24 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   const [toast, setToast] = useState({ visible: false, title: '', message: '' });
   const [isLangModalOpen, setIsLangModalOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [currentLang, setCurrentLang] = useState(() => localStorage.getItem('zipit_app_language') || 'en');
+  const [currentLang, setCurrentLang] = useState(() => localStorage.getItem('zipit_app_language') || userProfile?.preferred_language || 'en');
 
-  const handleLanguageSelect = (langCode) => {
+  const handleLanguageSelect = async (langCode) => {
     setCurrentLang(langCode);
     localStorage.setItem('zipit_app_language', langCode);
+    
+    // Sync preferred language to database profile without breaking offline
+    try {
+      if (userProfile?.id) {
+        supabase.from('profiles').update({ preferred_language: langCode }).eq('id', userProfile.id).then();
+      }
+    } catch (_) {}
+
     setIsLangModalOpen(false);
     setToast({
       visible: true,
-      title: 'Language Updated',
-      message: langCode === 'hi' ? 'भाषा हिन्दी पर सेट कर दी गई है।' : langCode === 'hinglish' ? 'Language set to Hinglish.' : 'Language set to English.'
+      title: langCode === 'hi' ? 'भाषा बदली गई' : 'Language Updated',
+      message: langCode === 'hi' ? 'ऐप की भाषा हिन्दी पर सेट कर दी गई है।' : langCode === 'hinglish' ? 'Language set to Hinglish.' : 'Language set to English.'
     });
   };
 
@@ -148,9 +157,9 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/past-orders')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-blue">
-                <BookOpen size={18} color="var(--color-text)" />
+                <BookOpen size={18} color={theme === 'dark' ? '#93c5fd' : '#1d4ed8'} />
               </div>
-              <span>Your Orders</span>
+              <span>{t('orders', 'Your Orders')}</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
@@ -158,9 +167,9 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/wishlist')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-pink">
-                <Heart size={18} color="var(--color-text)" />
+                <Heart size={18} color={theme === 'dark' ? '#f472b6' : '#db2777'} />
               </div>
-              <span>My Wishlist</span>
+              <span>{t('wishlist', 'My Wishlist')}</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
@@ -168,9 +177,9 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/saved-addresses')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-purple">
-                <MapPin size={18} color="var(--color-text)" />
+                <MapPin size={18} color={theme === 'dark' ? '#c084fc' : '#7e22ce'} />
               </div>
-              <span>Address Book</span>
+              <span>{t('address_book', 'Address Book')}</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
@@ -178,20 +187,20 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/payment-methods')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-green">
-                <CreditCard size={18} color="var(--color-text)" />
+                <CreditCard size={18} color={theme === 'dark' ? '#86efac' : '#15803d'} />
               </div>
-              <span>Payment Methods</span>
+              <span>{t('payment_methods', 'Payment Methods')}</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
 
           <div className="menu-item" onClick={() => setIsLangModalOpen(true)}>
             <div className="menu-item-left">
-              <div className="menu-icon-box" style={{ background: '#e0e7ff', color: '#4338ca' }}>
-                <Languages size={18} />
+              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(99, 102, 241, 0.2)' : '#e0e7ff' }}>
+                <Languages size={18} color={theme === 'dark' ? '#a5b4fc' : '#4338ca'} />
               </div>
               <div>
-                <span style={{ display: 'block' }}>App Language</span>
+                <span style={{ display: 'block' }}>{t('app_language', 'App Language')}</span>
                 <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '500' }}>
                   {currentLang === 'hi' ? 'हिन्दी (Hindi)' : currentLang === 'hinglish' ? 'Hinglish' : 'English'}
                 </span>
@@ -202,11 +211,11 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
 
           <div className="menu-item" onClick={() => setIsSupportOpen(true)}>
             <div className="menu-item-left">
-              <div className="menu-icon-box" style={{ background: '#dcfce7', color: '#15803d' }}>
-                <HelpCircle size={18} />
+              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7' }}>
+                <HelpCircle size={18} color={theme === 'dark' ? '#6ee7b7' : '#15803d'} />
               </div>
               <div>
-                <span style={{ display: 'block' }}>Customer Support</span>
+                <span style={{ display: 'block' }}>{t('customer_support', 'Customer Support')}</span>
                 <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '500' }}>Instant Help, WhatsApp & Call</span>
               </div>
             </div>
@@ -215,10 +224,10 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
 
           <div className="menu-item" onClick={() => navigate('/legal', { state: { policy: 'terms' } })}>
             <div className="menu-item-left">
-              <div className="menu-icon-box menu-icon-orange" style={{ background: 'rgba(248, 203, 70, 0.15)' }}>
-                <ShieldCheck size={18} color="var(--color-primary)" />
+              <div className="menu-icon-box menu-icon-orange" style={{ background: theme === 'dark' ? 'rgba(248, 203, 70, 0.2)' : 'rgba(248, 203, 70, 0.15)' }}>
+                <ShieldCheck size={18} color={theme === 'dark' ? '#fde047' : '#b45309'} />
               </div>
-              <span>Legal & Policies</span>
+              <span>{t('legal_policies', 'Legal & Policies')}</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
@@ -228,7 +237,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
               <div className="menu-icon-box" style={{ background: 'transparent' }}>
                 <LogOut size={20} color="var(--color-danger)" />
               </div>
-              <span style={{color: 'var(--color-danger)'}}>Log Out</span>
+              <span style={{color: 'var(--color-danger)'}}>{t('logout', 'Log Out')}</span>
             </div>
           </div>
         </div>
@@ -240,6 +249,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             inset: 0,
             background: 'rgba(15, 23, 42, 0.6)',
             backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'flex-end',
@@ -248,12 +258,15 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             <div style={{
               background: 'var(--color-surface)',
               width: '100%',
-              maxWidth: '460px',
+              maxWidth: '480px',
               borderTopLeftRadius: '24px',
               borderTopRightRadius: '24px',
-              padding: '24px',
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              padding: '24px 20px calc(24px + env(safe-area-inset-bottom, 0px))',
               border: '1px solid var(--color-border)',
-              boxShadow: '0 -10px 25px rgba(0,0,0,0.15)',
+              borderBottom: 'none',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
               animation: 'slideUp 0.25s ease-out'
             }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -261,7 +274,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                   <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', margin: 0 }}>Select Language / भाषा चुनें</h3>
                   <p style={{ fontSize: '12px', color: 'var(--color-text-light)', margin: '4px 0 0' }}>Choose your preferred app language</p>
                 </div>
-                <button onClick={() => setIsLangModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--color-text-light)' }}>✕</button>
+                <button onClick={() => setIsLangModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--color-text-light)', padding: '4px 8px' }}>✕</button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -279,19 +292,20 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                         padding: '14px 16px',
                         borderRadius: '14px',
                         border: isSelected ? '2px solid #0c831f' : '1px solid var(--color-border)',
-                        background: isSelected ? '#f0fdf4' : 'var(--color-surface-muted)',
+                        background: isSelected ? (theme === 'dark' ? 'rgba(12, 131, 31, 0.15)' : '#f0fdf4') : 'var(--color-surface-muted)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         cursor: 'pointer',
-                        textAlign: 'left'
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: '800', fontSize: '15px', color: isSelected ? '#0c831f' : 'var(--color-text)' }}>{l.title}</div>
+                        <div style={{ fontWeight: '800', fontSize: '15px', color: isSelected ? '#10b981' : 'var(--color-text)' }}>{l.title}</div>
                         <div style={{ fontSize: '12px', color: 'var(--color-text-light)', marginTop: '2px' }}>{l.sub}</div>
                       </div>
-                      {isSelected && <span style={{ fontSize: '18px', color: '#0c831f', fontWeight: '800' }}>✓</span>}
+                      {isSelected && <span style={{ fontSize: '18px', color: '#10b981', fontWeight: '800' }}>✓</span>}
                     </button>
                   );
                 })}
@@ -307,6 +321,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             inset: 0,
             background: 'rgba(15, 23, 42, 0.6)',
             backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'flex-end',
@@ -315,20 +330,23 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             <div style={{
               background: 'var(--color-surface)',
               width: '100%',
-              maxWidth: '460px',
+              maxWidth: '480px',
               borderTopLeftRadius: '24px',
               borderTopRightRadius: '24px',
-              padding: '24px',
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              padding: '24px 20px calc(24px + env(safe-area-inset-bottom, 0px))',
               border: '1px solid var(--color-border)',
-              boxShadow: '0 -10px 25px rgba(0,0,0,0.15)',
+              borderBottom: 'none',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
               animation: 'slideUp 0.25s ease-out'
             }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', margin: 0 }}>Customer Support & Help</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-text-light)', margin: '4px 0 0' }}>We are here 7 AM - 11 PM to help you</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', margin: 0 }}>{t('support_help', 'Customer Support & Help')}</h3>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-light)', margin: '4px 0 0' }}>{t('support_sub', 'We are here 7 AM - 11 PM to help you')}</p>
                 </div>
-                <button onClick={() => setIsSupportOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--color-text-light)' }}>✕</button>
+                <button onClick={() => setIsSupportOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--color-text-light)', padding: '4px 8px' }}>✕</button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -351,7 +369,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                   }}
                 >
                   <MessageCircle size={20} />
-                  <span>Chat on WhatsApp (Fastest)</span>
+                  <span>{t('whatsapp_chat', 'Chat on WhatsApp (Fastest)')}</span>
                 </a>
 
                 <a
@@ -370,8 +388,8 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                     fontSize: '14px'
                   }}
                 >
-                  <PhoneCall size={20} color="#0c831f" />
-                  <span>Call Customer Care</span>
+                  <PhoneCall size={20} color="#10b981" />
+                  <span>{t('call_care', 'Call Customer Care')}</span>
                 </a>
 
                 <button
@@ -394,8 +412,13 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                     textAlign: 'left'
                   }}
                 >
-                  <BookOpen size={20} color="#2563eb" />
-                  <span>Order Issues & Refund Status</span>
+                  <BookOpen size={20} color="#3b82f6" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: '800' }}>{t('order_issues', 'Order Issues & Refund Status')}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--color-text-light)', fontWeight: '500', marginTop: '2px' }}>
+                      {t('order_issues_desc', 'Check live status of cancellation, missing items, or refunds')}
+                    </div>
+                  </div>
                 </button>
               </div>
             </div>

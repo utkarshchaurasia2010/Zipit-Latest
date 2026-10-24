@@ -515,52 +515,35 @@ const AdminLayout = ({ profile, setProfile }) => {
               disabled={togglingStore}
               role="switch"
               aria-checked={isStoreOpen}
-              title={isStoreOpen ? 'Click to pause store (stop accepting orders)' : 'Click to resume store (accept orders)'}
+              title={isStoreOpen ? 'Store is live: click to pause taking orders' : 'Store is paused: click to resume taking orders'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '5px 12px 5px 10px',
-                borderRadius: '24px',
-                border: isStoreOpen ? '1px solid #86efac' : '1px solid #fca5a5',
-                background: isStoreOpen ? '#f0fdf4' : '#fef2f2',
-                color: isStoreOpen ? '#15803d' : '#b91c1c',
-                fontWeight: 800,
-                fontSize: '12px',
-                letterSpacing: '0.2px',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: '999px',
+                border: isStoreOpen ? '1px solid #10b981' : '1px solid #cbd5e1',
+                background: isStoreOpen ? '#ecfdf5' : 'var(--color-surface)',
+                color: isStoreOpen ? '#047857' : 'var(--color-text-light)',
+                fontWeight: 700,
+                fontSize: '12.5px',
                 cursor: togglingStore ? 'not-allowed' : 'pointer',
                 marginRight: '8px',
                 transition: 'all 0.2s ease',
-                boxShadow: isStoreOpen ? '0 1px 4px rgba(34, 197, 94, 0.15)' : '0 1px 4px rgba(239, 68, 68, 0.15)'
+                boxShadow: isStoreOpen ? '0 1px 3px rgba(16, 185, 129, 0.15)' : 'none'
               }}
             >
-              {/* Mini animated switch pill */}
-              <div style={{
-                position: 'relative',
-                width: '32px',
-                height: '18px',
-                borderRadius: '18px',
-                background: isStoreOpen ? '#22c55e' : '#cbd5e1',
-                padding: '2px',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'background-color 0.2s ease'
-              }}>
-                <span style={{
-                  display: 'block',
-                  width: '14px',
-                  height: '14px',
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
                   borderRadius: '50%',
-                  background: '#ffffff',
-                  transform: isStoreOpen ? 'translateX(14px)' : 'translateX(0px)',
-                  transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)'
-                }} />
-              </div>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Power size={13} strokeWidth={2.5} />
-                {togglingStore ? 'Updating...' : (isStoreOpen ? 'Store LIVE' : 'Store PAUSED')}
-              </span>
+                  background: isStoreOpen ? '#10b981' : '#94a3b8',
+                  boxShadow: isStoreOpen ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              />
+              <span>{togglingStore ? 'Updating...' : (isStoreOpen ? 'Store Online' : 'Store Paused')}</span>
             </button>
 
             <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">

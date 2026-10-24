@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, LayoutGrid, Navigation, ShoppingCart } from 'lucide-react';
+import { t } from '../utils/i18n';
 import './BottomNav.css';
 
 const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
@@ -13,7 +14,7 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         aria-label="Home"
       >
         <Home size={22} strokeWidth={activeTab === 'home' ? 2.2 : 1.5} />
-        <span className="nav-label">Home</span>
+        <span className="nav-label">{t('home', 'Home')}</span>
       </div>
       <div 
         className={`nav-item ${activeTab === 'categories' ? 'active' : ''}`} 
@@ -23,7 +24,7 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         aria-label="Categories"
       >
         <LayoutGrid size={22} strokeWidth={activeTab === 'categories' ? 2.2 : 1.5} />
-        <span className="nav-label">Categories</span>
+        <span className="nav-label">{t('categories', 'Categories')}</span>
       </div>
       <div 
         className={`nav-item ${activeTab === 'track' ? 'active' : ''}`} 
@@ -33,7 +34,7 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         aria-label="Track Order"
       >
         <Navigation size={22} strokeWidth={activeTab === 'track' ? 2.2 : 1.5} />
-        <span className="nav-label">Track</span>
+        <span className="nav-label">{t('track', 'Track')}</span>
       </div>
       <div 
         className="nav-item" 
@@ -43,7 +44,7 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         aria-label="Cart"
       >
         <ShoppingCart size={22} strokeWidth={1.5} />
-        <span className="nav-label">Cart</span>
+        <span className="nav-label">{t('cart', 'Cart')}</span>
       </div>
     </nav>
   );

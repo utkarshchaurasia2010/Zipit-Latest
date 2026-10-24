@@ -170,21 +170,22 @@ export const downloadInvoice = (order) => {
           }
 
           .totals-row.grand-total {
-            border-top: 1.5px solid #111827;
-            border-bottom: 1.5px solid #111827;
+            border-top: 2px solid #111827;
+            border-bottom: 2px solid #111827;
             margin-top: 8px;
-            padding: 12px 0;
-            font-size: 18px;
+            padding: 10px 0;
+            font-size: 16px;
             font-weight: 800;
             color: #111827;
           }
 
           .thank-you-note {
             font-family: 'Cinzel', serif;
-            font-size: 20px;
-            font-weight: 600;
-            color: #111827;
-            margin-bottom: 32px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #374151;
+            margin-bottom: 28px;
           }
 
           .payment-info-box {
@@ -206,7 +207,7 @@ export const downloadInvoice = (order) => {
 
           .signature-mark {
             font-family: 'Cinzel', serif;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             color: #111827;
             text-align: right;
@@ -224,7 +225,7 @@ export const downloadInvoice = (order) => {
         <div class="invoice-top">
           <div>
             <div class="brand-logo-mark">ZIPIT & CO.</div>
-            <div class="brand-tagline">Rural & Semi-Urban Express Delivery</div>
+            <div class="brand-tagline">Quick Commerce Delivery</div>
           </div>
           <div>
             <h1 class="invoice-title">INVOICE</h1>
@@ -310,7 +311,7 @@ export const downloadInvoice = (order) => {
               </div>
             ` : ''}
             <div class="totals-row grand-total">
-              <span>Total</span>
+              <span>Total Amount</span>
               <span>₹${total}</span>
             </div>
           </div>
@@ -333,15 +334,22 @@ export const downloadInvoice = (order) => {
           <div>
             <div class="signature-mark">Zipit Express</div>
             <div style="font-size: 11px; color: #6B7280; text-align: right; margin-top: 2px;">
-              support@zipit.com
+              zipitrural@gmail.com
             </div>
           </div>
         </div>
 
         <script>
-          window.onload = function() {
-            window.print();
-          };
+          var hasPrinted = false;
+          window.addEventListener('load', function() {
+            if (!hasPrinted) {
+              hasPrinted = true;
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 150);
+            }
+          });
         </script>
       </body>
     </html>

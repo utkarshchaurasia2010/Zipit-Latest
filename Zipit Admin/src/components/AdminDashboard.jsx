@@ -405,12 +405,12 @@ const AdminDashboard = ({ initialTab }) => {
               .totals-container { display: flex; justify-content: flex-end; margin-bottom: 40px; }
               .totals-table { width: 250px; }
               .totals-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #4B5563; }
-              .totals-row.grand-total { border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; margin-top: 8px; padding: 12px 0; font-size: 18px; font-weight: 800; color: #111827; }
+              .totals-row.grand-total { border-top: 2px solid #111827; border-bottom: 2px solid #111827; margin-top: 8px; padding: 10px 0; font-size: 16px; font-weight: 800; color: #111827; }
 
-              .thank-you-note { font-family: 'Cinzel', serif; font-size: 22px; font-weight: 600; color: #111827; margin-bottom: 32px; }
+              .thank-you-note { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #374151; margin-bottom: 28px; }
               .payment-info-box { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 20px; border-top: 1px dashed #D1D5DB; }
               .payment-info-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 4px; }
-              .signature-mark { font-family: 'Cinzel', serif; font-size: 18px; font-weight: 700; color: #111827; text-align: right; }
+              .signature-mark { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; color: #111827; text-align: right; }
 
               @media print { 
                 body { padding: 0; background: #fff; } 
@@ -422,7 +422,7 @@ const AdminDashboard = ({ initialTab }) => {
             <div class="invoice-top">
               <div>
                 <div class="brand-logo-mark">ZIPIT &amp; CO.</div>
-                <div class="brand-tagline">Retail &amp; Express Logistics</div>
+                <div class="brand-tagline">Quick Commerce Delivery</div>
               </div>
               <div>
                 <h1 class="invoice-title">INVOICE</h1>
@@ -508,7 +508,7 @@ const AdminDashboard = ({ initialTab }) => {
                   </div>
                 ` : ''}
                 <div class="totals-row grand-total">
-                  <span>Total</span>
+                  <span>Total Amount</span>
                   <span>₹${total}</span>
                 </div>
               </div>
@@ -531,7 +531,7 @@ const AdminDashboard = ({ initialTab }) => {
               <div>
                 <div class="signature-mark">Zipit Express</div>
                 <div style="font-size: 11px; color: #6B7280; text-align: right; margin-top: 2px;">
-                  support@zipit.com
+                  zipitrural@gmail.com
                 </div>
               </div>
             </div>
@@ -543,11 +543,15 @@ const AdminDashboard = ({ initialTab }) => {
             </div>
 
             <script>
+              var hasPrinted = false;
               window.addEventListener('load', function() {
-                setTimeout(function() {
-                  window.focus();
-                  window.print();
-                }, 250);
+                if (!hasPrinted) {
+                  hasPrinted = true;
+                  setTimeout(function() {
+                    window.focus();
+                    window.print();
+                  }, 150);
+                }
               });
             </script>
           </body>
