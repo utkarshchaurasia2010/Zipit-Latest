@@ -307,39 +307,78 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Daily Shift Earnings & COD Cash Settlement Banner */}
+      {/* Daily Shift Earnings & Metrics Cards (Quick Eats partner layout) */}
       {(() => {
         const todayStr = new Date().toDateString();
         const todayDelivered = historyOrders.filter(o => new Date(o.created_at).toDateString() === todayStr);
         const todayCount = todayDelivered.length;
-        const todayEarnings = todayCount * 30; // ₹30 flat payout per order
+        const todayEarnings = todayCount * 30; // ₹30 payout per order
         const todayCodCash = todayDelivered
           .filter(o => (o.payment_method || 'COD').toUpperCase() === 'COD')
           .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
         return (
           <div style={{
-            background: '#0f172a',
-            padding: '14px 16px',
-            color: '#ffffff',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: '10px',
-            borderBottom: '1px solid #1e293b'
+            background: 'var(--color-surface)',
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--color-border)',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
           }}>
-            <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Today's Drops</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#38bdf8', marginTop: '2px' }}>{todayCount}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.2px' }}>
+                Shift Summary · Today
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#16a34a', background: '#dcfce7', padding: '3px 9px', borderRadius: '12px' }}>
+                ₹30 / drop
+              </span>
             </div>
 
-            <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Payout Earned</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#4ade80', marginTop: '2px' }}>₹{todayEarnings}</div>
-            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '12px'
+            }}>
+              <div style={{ 
+                background: '#f8fafc', 
+                padding: '12px', 
+                borderRadius: '16px', 
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Orders</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', marginTop: '4px' }}>{todayCount}</div>
+                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600', marginTop: '2px' }}>Completed</div>
+              </div>
 
-            <div style={{ background: '#1e293b', padding: '10px 12px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '700', textTransform: 'uppercase' }}>COD Cash in Hand</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#fbbf24', marginTop: '2px' }}>₹{todayCodCash}</div>
+              <div style={{ 
+                background: '#f0fdf4', 
+                padding: '12px', 
+                borderRadius: '16px', 
+                border: '1px solid #bbf7d0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '700', textTransform: 'uppercase' }}>Earnings</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: '#15803d', marginTop: '4px' }}>₹{todayEarnings}</div>
+                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600', marginTop: '2px' }}>Payout</div>
+              </div>
+
+              <div style={{ 
+                background: '#fffbeb', 
+                padding: '12px', 
+                borderRadius: '16px', 
+                border: '1px solid #fde68a',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', textTransform: 'uppercase' }}>COD Cash</div>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: '#b45309', marginTop: '4px' }}>₹{todayCodCash}</div>
+                <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '600', marginTop: '2px' }}>To settle</div>
+              </div>
             </div>
           </div>
         );

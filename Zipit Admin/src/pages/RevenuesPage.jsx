@@ -13,7 +13,7 @@ import {
   Filter,
   CheckCircle2,
   Clock,
-  Download
+  Upload
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -233,7 +233,7 @@ const RevenuesPage = () => {
           </div>
 
           <button className="export-csv-btn" onClick={exportRevenueCSV} title="Export financial ledger to CSV">
-            <Download size={16} />
+            <Upload size={16} />
             <span>Export CSV</span>
           </button>
         </div>

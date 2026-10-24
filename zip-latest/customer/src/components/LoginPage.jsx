@@ -23,12 +23,26 @@ const LoginPage = ({ onLogin }) => {
   const [step, setStep] = useState(1); // 1 = enter email, 2 = enter OTP
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const { showToast } = useToast();
   const [bgProducts, setBgProducts] = useState(DEFAULT_bgProducts);
   const [showTerms, setShowTerms] = useState(false);
   const [appLogo, setAppLogo] = useState(() => localStorage.getItem('zipit_cached_customer_logo') || '/logo_full.png');
+
+  // If user clicks Google auth and then cancels/returns back, reset googleLoading
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      // Short delay so if auth redirect is in progress it doesn't flicker
+      setTimeout(() => {
+        setGoogleLoading(false);
+      }, 1500);
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => window.removeEventListener('focus', handleWindowFocus);
+  }, []);
 
   useEffect(() => {
     db.branding.get().then(b => {
@@ -85,12 +99,17 @@ const LoginPage = ({ onLogin }) => {
   }, []);
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
+    setGoogleLoading(true);
     // Clear any stale local user caches before starting new authentication
     localStorage.removeItem('zipit_cached_user_profile');
     localStorage.removeItem('zipit_cached_addresses');
     localStorage.removeItem('zipit_verified_phone');
     localStorage.removeItem('zipit_active_user_id');
+
+    // Auto-timeout fallback if user taps back from OAuth consent screen
+    const fallbackTimer = setTimeout(() => {
+      setGoogleLoading(false);
+    }, 8000);
 
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -103,13 +122,15 @@ const LoginPage = ({ onLogin }) => {
         }
       });
       if (error) {
+        clearTimeout(fallbackTimer);
         showToast(error.message || 'Google sign-in failed', 'Error');
-        setLoading(false);
+        setGoogleLoading(false);
       }
     } catch (err) {
+      clearTimeout(fallbackTimer);
       console.error('Google Auth Error:', err);
       showToast(err.message || 'Could not initiate Google sign-in', 'Error');
-      setLoading(false);
+      setGoogleLoading(false);
     }
   };
 
@@ -120,7 +141,7 @@ const LoginPage = ({ onLogin }) => {
       showToast('Please enter a valid email address', 'Invalid Email');
       return;
     }
-    setLoading(true);
+    setEmailLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({ 
         email: cleanEmail,
@@ -138,7 +159,7 @@ const LoginPage = ({ onLogin }) => {
     } catch (err) {
       showToast(err.message || 'Failed to send OTP', 'Error');
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
   };
 
@@ -146,7 +167,7 @@ const LoginPage = ({ onLogin }) => {
     e.preventDefault();
     const cleanOtp = otp.trim();
     if (cleanOtp.length < 6) return;
-    setLoading(true);
+    setEmailLoading(true);
     try {
       const { data, error } = await supabase.auth.verifyOtp({ 
         email: email.trim(), 
@@ -162,7 +183,7 @@ const LoginPage = ({ onLogin }) => {
     } catch (err) {
       showToast(err.message || 'Verification error', 'Error');
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
   };
 
@@ -212,7 +233,7 @@ const LoginPage = ({ onLogin }) => {
             type="button" 
             className="google-signin-btn"
             onClick={handleGoogleLogin}
-            disabled={loading}
+            disabled={googleLoading || emailLoading}
           >
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -220,7 +241,7 @@ const LoginPage = ({ onLogin }) => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span>{loading ? 'Connecting to Google...' : 'Continue with Google'}</span>
+            <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
           </button>
 
           <div className="login-method-divider">
@@ -238,7 +259,7 @@ const LoginPage = ({ onLogin }) => {
                   placeholder="Enter your email address" 
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  disabled={loading}
+                  disabled={emailLoading || googleLoading}
                   required
                 />
               </div>
@@ -246,9 +267,9 @@ const LoginPage = ({ onLogin }) => {
               <button 
                 type="submit" 
                 className="modern-continue-btn" 
-                disabled={!email.includes('@') || loading}
+                disabled={!email.includes('@') || emailLoading || googleLoading}
               >
-                {loading ? 'Sending OTP...' : 'Send Verification OTP'}
+                {emailLoading ? 'Sending OTP...' : 'Send Verification OTP'}
               </button>
             </form>
           ) : (
@@ -272,7 +293,7 @@ const LoginPage = ({ onLogin }) => {
                   value={otp}
                   onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
                   autoFocus
-                  disabled={loading}
+                  disabled={emailLoading}
                   style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '20px', fontWeight: '800' }}
                 />
               </div>
@@ -280,9 +301,9 @@ const LoginPage = ({ onLogin }) => {
               <button 
                 type="submit" 
                 className="modern-continue-btn" 
-                disabled={otp.length !== 6 || loading}
+                disabled={otp.length !== 6 || emailLoading}
               >
-                {loading ? 'Verifying OTP...' : 'Verify OTP & Continue'}
+                {emailLoading ? 'Verifying OTP...' : 'Verify OTP & Continue'}
               </button>
 
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '4px' }}>

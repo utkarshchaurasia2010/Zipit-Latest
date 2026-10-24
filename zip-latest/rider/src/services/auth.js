@@ -18,6 +18,10 @@ export const auth = {
       throw new Error('Invalid Access Code. Please check code generated in Admin Panel.');
     }
 
+    if (data.is_active === false) {
+      throw new Error('Your Rider ID has been temporarily disabled by Admin. Please contact operations.');
+    }
+
     if (cleanMobile && data.mobile) {
       const dbMobile = data.mobile.replace(/[^0-9]/g, '');
       if (dbMobile !== cleanMobile && !dbMobile.endsWith(cleanMobile) && !cleanMobile.endsWith(dbMobile)) {

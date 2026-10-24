@@ -4,125 +4,259 @@ export const downloadInvoice = (order) => {
     return;
   }
 
-  const printWindow = window.open('', '_blank', 'width=600,height=850');
+  const printWindow = window.open('', '_blank', 'width=650,height=900');
   if (!printWindow) return;
 
-  const orderDate = new Date(order.created_at || Date.now()).toLocaleString('en-IN', {
+  const orderDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-GB', {
     day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+    month: 'long',
+    year: 'numeric'
   });
 
-  const isRefunded = order.status === 'Refunded' || order.status === 'Refund Requested';
   const isPickup = order.delivery_address?.is_pickup === true || order.delivery_address?.order_type === 'PICKUP';
 
-  // Extract address metadata tags
+  // Extract address metadata
   const addr = order.delivery_address || {};
   const details = addr.details || addr.address || '';
   const landmark = addr.landmark || details.match(/---TAG:LANDMARK:(.*?)---/)?.[1];
   const villageArea = addr.village_area || details.match(/---TAG:VILLAGE:(.*?)---/)?.[1];
-  const familyHead = addr.family_head || details.match(/---TAG:FAMILY_HEAD:(.*?)---/)?.[1];
-  const altPhone = addr.alt_phone || details.match(/---TAG:ALT_PHONE:(.*?)---/)?.[1];
-  const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Zipit Store Hubs' : 'Customer Location');
+  const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Zipit Store Hubs' : 'Customer Address');
 
   const subtotal = (order.items || []).reduce((acc, i) => acc + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
   const deliveryCharge = Number(order.delivery_charge) || 0;
   const handlingCharge = Number(order.small_cart_charge) || 0;
   const discountAmount = Number(order.discount_amount) || 0;
+  const total = Number(order.total) || 0;
 
-  // Approximate GST breakdown (5% included)
-  const gstEstimated = Math.round((subtotal * 0.05 / 1.05) * 100) / 100;
-  const cgst = (gstEstimated / 2).toFixed(2);
-  const sgst = (gstEstimated / 2).toFixed(2);
+  const invoiceNo = `INV-${order.id.slice(0, 8).toUpperCase()}`;
 
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Invoice - #${order.id.slice(0, 8).toUpperCase()}</title>
+        <title>Invoice - ${invoiceNo}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
-          @page { size: auto; margin: 12mm; }
+          @page { size: A4; margin: 15mm; }
+          * { box-sizing: border-box; }
           body { 
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
-            padding: 24px; 
-            color: #0f172a; 
-            max-width: 520px; 
+            padding: 40px 48px; 
+            color: #111827; 
+            max-width: 620px; 
             margin: 0 auto; 
-            line-height: 1.45;
-            background: #fff;
+            background: #FDFCF7;
+            font-size: 13px;
+            line-height: 1.5;
           }
-          .header { text-align: center; border-bottom: 2.5px solid #0c831f; padding-bottom: 14px; margin-bottom: 16px; }
-          .brand { font-size: 32px; font-weight: 900; color: #0c831f; letter-spacing: -1.5px; margin: 0; }
-          .sub-brand { font-size: 11.5px; color: #475467; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
-          .store-contact { font-size: 11px; color: #64748b; margin-top: 4px; }
-          .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; margin-top: 8px; }
-          .badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-          .badge-red { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-          .badge-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
           
-          .grid-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 12.5px; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-          .row:last-child { margin-bottom: 0; }
-          .lbl { color: #64748b; font-weight: 600; }
-          .val { font-weight: 700; color: #0f172a; text-align: right; }
-          
-          .address-card { background: #f1f5f9; border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 12px; }
-          .tag-pill { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-top: 4px; margin-right: 4px; }
-          
-          .items-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12.5px; }
-          .items-table th { text-align: left; padding: 8px 4px; border-bottom: 1.5px solid #cbd5e1; color: #475467; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-          .items-table td { padding: 8px 4px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-          .item-name { font-weight: 700; color: #0f172a; font-size: 13px; }
-          .item-sub { font-size: 11px; color: #dc2626; font-weight: 600; }
-          .num-col { text-align: right; }
+          .invoice-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+          }
 
-          .breakdown-box { margin-top: 12px; border-top: 1.5px dashed #cbd5e1; padding-top: 10px; font-size: 12.5px; }
-          .breakdown-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-          .grand-total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; border-top: 2px solid #0f172a; padding-top: 10px; margin-top: 8px; color: #0c831f; }
+          .brand-logo-mark {
+            font-family: 'Cinzel', serif;
+            font-size: 38px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -1.5px;
+            line-height: 1;
+          }
 
-          .gst-note { font-size: 11px; color: #64748b; background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 6px 10px; margin-top: 10px; }
-          .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 12px; }
-          @media print { body { padding: 0; } }
+          .brand-tagline {
+            font-size: 11px;
+            color: #6B7280;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 4px;
+            font-weight: 600;
+          }
+
+          .invoice-title {
+            font-family: 'Cinzel', serif;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #111827;
+            text-align: right;
+            margin: 0;
+          }
+
+          .billed-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 36px;
+          }
+
+          .meta-block {
+            max-width: 55%;
+          }
+
+          .meta-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #111827;
+            margin-bottom: 6px;
+          }
+
+          .meta-text {
+            color: #4B5563;
+            font-size: 13px;
+          }
+
+          .meta-subtext {
+            font-size: 12px;
+            color: #6B7280;
+            margin-top: 2px;
+          }
+
+          .meta-right {
+            text-align: right;
+          }
+
+          .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+          }
+
+          .invoice-table th {
+            text-align: left;
+            padding: 10px 0;
+            border-top: 1.5px solid #111827;
+            border-bottom: 1.5px solid #111827;
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: capitalize;
+            color: #111827;
+          }
+
+          .invoice-table td {
+            padding: 14px 0;
+            border-bottom: 1px solid #E5E7EB;
+            color: #111827;
+            font-size: 13px;
+            vertical-align: top;
+          }
+
+          .invoice-table th.num, .invoice-table td.num {
+            text-align: right;
+          }
+
+          .totals-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 40px;
+          }
+
+          .totals-table {
+            width: 240px;
+          }
+
+          .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+            color: #4B5563;
+          }
+
+          .totals-row.grand-total {
+            border-top: 1.5px solid #111827;
+            border-bottom: 1.5px solid #111827;
+            margin-top: 8px;
+            padding: 12px 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+          }
+
+          .thank-you-note {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 32px;
+          }
+
+          .payment-info-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 20px;
+            border-top: 1px dashed #D1D5DB;
+          }
+
+          .payment-info-title {
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #111827;
+            margin-bottom: 4px;
+          }
+
+          .signature-mark {
+            font-family: 'Cinzel', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+          }
+
+          @media print {
+            body { 
+              padding: 0; 
+              background: #fff; 
+            }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1 class="brand">Zipit</h1>
-          <div class="sub-brand">Instant 10-Minute Grocery & Essentials</div>
-          <div class="store-contact">Zipit Store Hubs | Support: support@zipit.com</div>
-          <div class="status-badge ${isRefunded ? 'badge-red' : order.status === 'Delivered' ? 'badge-green' : 'badge-blue'}">
-            ${isPickup ? '🛍️ STORE PICKUP' : '🛵 HOME DELIVERY'} • ${order.status}
+        <div class="invoice-top">
+          <div>
+            <div class="brand-logo-mark">ZIPIT & CO.</div>
+            <div class="brand-tagline">Rural & Semi-Urban Express Delivery</div>
+          </div>
+          <div>
+            <h1 class="invoice-title">INVOICE</h1>
           </div>
         </div>
 
-        <div class="grid-card">
-          <div class="row"><span class="lbl">Invoice Number:</span><span class="val">#INV-${order.id.slice(0, 8).toUpperCase()}</span></div>
-          <div class="row"><span class="lbl">Date & Time:</span><span class="val">${orderDate}</span></div>
-          <div class="row"><span class="lbl">Customer Name:</span><span class="val">${addr.name || order.profiles?.name || 'Customer'}</span></div>
-          ${(addr.phone || order.profiles?.phone) ? `<div class="row"><span class="lbl">Customer Phone:</span><span class="val">${addr.phone || order.profiles?.phone}</span></div>` : ''}
-          <div class="row"><span class="lbl">Payment Method:</span><span class="val">${order.payment_method || 'Online (UPI)'}</span></div>
-          
-          <div class="address-card">
-            <div style="font-weight: 700; color: #1e293b; margin-bottom: 2px;">
-              ${isPickup ? 'Store Pickup Details:' : 'Delivery Destination:'}
+        <div class="billed-meta-row">
+          <div class="meta-block">
+            <div class="meta-title">BILLED TO:</div>
+            <div class="meta-text" style="font-weight: 700;">${addr.name || order.profiles?.name || 'Customer'}</div>
+            ${(addr.phone || order.profiles?.phone) ? `<div class="meta-subtext">${addr.phone || order.profiles?.phone}</div>` : ''}
+            <div class="meta-subtext">${cleanAddress}</div>
+            ${landmark ? `<div class="meta-subtext">Landmark: ${landmark}</div>` : ''}
+            ${villageArea ? `<div class="meta-subtext">Area: ${villageArea}</div>` : ''}
+          </div>
+
+          <div class="meta-right">
+            <div style="font-weight: 700; color: #111827;">Invoice No. ${order.id.slice(0, 8).toUpperCase()}</div>
+            <div style="color: #6B7280; font-size: 12px; margin-top: 3px;">${orderDate}</div>
+            <div style="font-size: 11.5px; margin-top: 6px; font-weight: 600; color: #16A34A;">
+              ${order.status} (${isPickup ? 'STORE PICKUP' : 'EXPRESS DELIVERY'})
             </div>
-            <div style="color: #475467;">${cleanAddress}</div>
-            ${landmark ? `<span class="tag-pill" style="background:#fee2e2; color:#b91c1c;">🚩 Landmark: ${landmark}</span>` : ''}
-            ${villageArea ? `<span class="tag-pill" style="background:#e0f2fe; color:#0369a1;">📍 Area: ${villageArea}</span>` : ''}
-            ${familyHead ? `<span class="tag-pill" style="background:#fef3c7; color:#92400e;">🏠 House/Head: ${familyHead}</span>` : ''}
-            ${altPhone ? `<span class="tag-pill" style="background:#f1f5f9; color:#475467;">📞 Alt: ${altPhone}</span>` : ''}
           </div>
         </div>
 
-        <table class="items-table">
+        <table class="invoice-table">
           <thead>
             <tr>
-              <th style="width: 50%;">Item Description</th>
-              <th class="num-col" style="width: 15%;">Qty</th>
-              <th class="num-col" style="width: 15%;">Rate</th>
-              <th class="num-col" style="width: 20%;">Total</th>
+              <th style="width: 50%;">Item</th>
+              <th class="num" style="width: 15%;">Quantity</th>
+              <th class="num" style="width: 15%;">Unit Price</th>
+              <th class="num" style="width: 20%;">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -133,42 +267,75 @@ export const downloadInvoice = (order) => {
               return `
                 <tr>
                   <td>
-                    <div class="item-name">${item.name}</div>
-                    ${item.is_refund_chosen || item.status === 'REFUNDED_SUBSTITUTE' ? `<div class="item-sub">🚫 Refund Requested</div>` : ''}
-                    ${item.is_substituted ? `<div class="item-sub" style="color:#15803d">🔄 Substituted Item</div>` : ''}
+                    <strong>${item.name}</strong>
+                    ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626;">Refund requested</div>` : ''}
+                    ${item.is_substituted ? `<div style="font-size: 11px; color: #16A34A;">Substituted product</div>` : ''}
                   </td>
-                  <td class="num-col">${qty}</td>
-                  <td class="num-col">₹${price}</td>
-                  <td class="num-col" style="font-weight: 700;">₹${lineTotal}</td>
+                  <td class="num">${qty}</td>
+                  <td class="num">₹${price}</td>
+                  <td class="num" style="font-weight: 600;">₹${lineTotal}</td>
                 </tr>
               `;
             }).join('')}
           </tbody>
         </table>
 
-        <div class="breakdown-box">
-          <div class="breakdown-row"><span class="lbl">Items Subtotal:</span><span class="val">₹${subtotal}</span></div>
-          ${handlingCharge > 0 ? `<div class="breakdown-row"><span class="lbl">Handling / Platform Fee:</span><span class="val">₹${handlingCharge}</span></div>` : ''}
-          ${deliveryCharge > 0 ? `
-            <div class="breakdown-row"><span class="lbl">Delivery Fee:</span><span class="val">₹${deliveryCharge}</span></div>
-          ` : `
-            <div class="breakdown-row"><span class="lbl">Delivery Fee:</span><span class="val" style="color: #15803d;">FREE</span></div>
-          `}
-          ${discountAmount > 0 ? `<div class="breakdown-row"><span class="lbl">Discounts & Coupons:</span><span class="val" style="color: #16a34a;">-₹${discountAmount}</span></div>` : ''}
-          
-          <div class="grand-total-row">
-            <span>Grand Total</span>
-            <span>₹${order.total}</span>
+        <div class="totals-container">
+          <div class="totals-table">
+            <div class="totals-row">
+              <span>Subtotal</span>
+              <span>₹${subtotal}</span>
+            </div>
+            ${handlingCharge > 0 ? `
+              <div class="totals-row">
+                <span>Handling Fee</span>
+                <span>₹${handlingCharge}</span>
+              </div>
+            ` : ''}
+            ${deliveryCharge > 0 ? `
+              <div class="totals-row">
+                <span>Delivery Fee</span>
+                <span>₹${deliveryCharge}</span>
+              </div>
+            ` : `
+              <div class="totals-row">
+                <span>Delivery Fee</span>
+                <span style="color: #16A34A;">₹0 (Free)</span>
+              </div>
+            `}
+            ${discountAmount > 0 ? `
+              <div class="totals-row" style="color: #16A34A;">
+                <span>Discount</span>
+                <span>-₹${discountAmount}</span>
+              </div>
+            ` : ''}
+            <div class="totals-row grand-total">
+              <span>Total</span>
+              <span>₹${total}</span>
+            </div>
           </div>
         </div>
 
-        <div class="gst-note">
-          <strong>Tax Summary:</strong> Total GST included approx ₹${gstEstimated} (CGST 2.5%: ₹${cgst}, SGST 2.5%: ₹${sgst}).
+        <div class="thank-you-note">
+          Thank you!
         </div>
 
-        <div class="footer">
-          This is a computer-generated tax invoice issued by <strong>Zipit Quick Commerce</strong>.<br/>
-          Thank you for choosing Zipit for lightning-fast deliveries!
+        <div class="payment-info-box">
+          <div>
+            <div class="payment-info-title">PAYMENT INFORMATION</div>
+            <div style="font-size: 12.5px; color: #374151;">
+              Mode: <strong>${order.payment_method || 'Online (UPI)'}</strong>
+            </div>
+            <div style="font-size: 11.5px; color: #6B7280; margin-top: 2px;">
+              Computer-generated e-invoice for Zipit Quick Commerce
+            </div>
+          </div>
+          <div>
+            <div class="signature-mark">Zipit Express</div>
+            <div style="font-size: 11px; color: #6B7280; text-align: right; margin-top: 2px;">
+              support@zipit.com
+            </div>
+          </div>
         </div>
 
         <script>

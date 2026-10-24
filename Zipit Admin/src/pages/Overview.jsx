@@ -138,7 +138,7 @@ const Overview = () => {
             </div>
             <div className="stat-info">
               <h3>₹{(stats.totalRevenue).toLocaleString()}</h3>
-              <p>Gross Revenue ↗</p>
+              <p>Gross Revenue</p>
             </div>
           </div>
         </div>

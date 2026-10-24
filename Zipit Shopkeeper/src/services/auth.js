@@ -6,7 +6,7 @@ export const auth = {
   loginWithCode: async (code) => {
     const { data, error } = await supabase
       .from('access_codes')
-      .select('role')
+      .select('role, is_active')
       .eq('code', code.toUpperCase())
       .single();
 
@@ -15,6 +15,10 @@ export const auth = {
         throw new Error('Invalid access code.');
       }
       throw new Error(error.message);
+    }
+
+    if (data.is_active === false) {
+      throw new Error('Your Shopkeeper ID has been deactivated by Admin. Please contact store management.');
     }
     
     // Store in localStorage to persist session
