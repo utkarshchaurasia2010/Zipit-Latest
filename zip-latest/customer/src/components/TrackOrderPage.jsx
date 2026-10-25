@@ -485,13 +485,13 @@ const TrackOrderPage = ({ navigate }) => {
               <div key={order.id} className="track-card modern-track-card">
                 {/* 1. Header with Live Status & Date */}
                 <div className="track-card-header">
+                  <div className="track-header-left">
+                    <span className="track-order-id">#{order.id.split('-')[0].toUpperCase()}</span>
+                    <span className="track-date">{new Date(order.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
+                  </div>
                   <div className="track-status-pill" style={{ background: `${getStatusColor(order.status)}18`, color: getStatusColor(order.status) }}>
                     <span className="live-status-dot" style={{ background: getStatusColor(order.status) }} />
                     <span className="track-status-text">{order.status}</span>
-                  </div>
-                  <div className="track-header-meta">
-                    <span className="track-order-id">#{order.id.split('-')[0].toUpperCase()}</span>
-                    <span className="track-date">{new Date(order.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
                   </div>
                 </div>
 
