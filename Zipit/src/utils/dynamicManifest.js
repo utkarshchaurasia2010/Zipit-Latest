@@ -3,7 +3,7 @@
  * to allow home screen launcher icons to update without reinstalling.
  */
 
-export const applyDynamicBrandingIcons = (logoUrl, appName = 'Zipit') => {
+export const applyDynamicBrandingIcons = (logoUrl, appName = 'Quickly') => {
   if (!logoUrl) return;
 
   try {

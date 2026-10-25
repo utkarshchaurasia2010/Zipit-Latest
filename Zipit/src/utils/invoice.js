@@ -224,7 +224,7 @@ export const downloadInvoice = (order) => {
       <body>
         <div class="invoice-top">
           <div>
-            <div class="brand-logo-mark">ZIPIT & CO.</div>
+            <div class="brand-logo-mark">QUICKLY & CO.</div>
             <div class="brand-tagline">Quick Commerce Delivery</div>
           </div>
           <div>
@@ -328,11 +328,11 @@ export const downloadInvoice = (order) => {
               Mode: <strong>${order.payment_method || 'Online (UPI)'}</strong>
             </div>
             <div style="font-size: 11.5px; color: #6B7280; margin-top: 2px;">
-              Computer-generated e-invoice for Zipit Quick Commerce
+              Computer-generated e-invoice for Quickly Quick Commerce
             </div>
           </div>
           <div>
-            <div class="signature-mark">Zipit Express</div>
+            <div class="signature-mark">Quickly Express</div>
             <div style="font-size: 11px; color: #6B7280; text-align: right; margin-top: 2px;">
               zipitrural@gmail.com
             </div>

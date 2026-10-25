@@ -29,8 +29,8 @@ export default defineConfig({
       },
       manifest: {
         id: '/',
-        name: 'Zipit - India\'s Rural Delivery App',
-        short_name: 'Zipit',
+        name: 'Quickly - India\'s Rural Delivery App',
+        short_name: 'Quickly',
         description: 'Instant delivery app for rural and semi-urban India',
         theme_color: '#0a0a0c',
         background_color: '#0a0a0c',

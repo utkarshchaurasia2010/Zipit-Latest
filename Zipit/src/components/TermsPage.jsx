@@ -17,21 +17,21 @@ const TermsPage = ({ navigate, onBack }) => {
       icon: <Shield size={18} color="var(--color-primary)" />,
       title: "Acceptance of Terms",
       content:
-        "By accessing, downloading, or using the Zipit mobile application and services, you acknowledge that you have read, understood, and agreed to be bound by these Terms and Conditions. If you do not agree, please discontinue using the application."
+        "By accessing, downloading, or using the Quickly mobile application and services, you acknowledge that you have read, understood, and agreed to be bound by these Terms and Conditions. If you do not agree, please discontinue using the application."
     },
     {
       number: "2",
       icon: <Clock size={18} color="var(--color-primary)" />,
       title: "10-Minute Delivery Guarantee & Estimates",
       content:
-        "Our '10-minute delivery' is an estimated timeframe based on optimal traffic, weather, and store-capacity conditions. While we strive to meet this SLA on every order, Zipit is not liable for minor delays caused by severe weather, road blockages, or unexpected demand surges. Our rider safety is paramount."
+        "Our '10-minute delivery' is an estimated timeframe based on optimal traffic, weather, and store-capacity conditions. While we strive to meet this SLA on every order, Quickly is not liable for minor delays caused by severe weather, road blockages, or unexpected demand surges. Our rider safety is paramount."
     },
     {
       number: "3",
       icon: <CreditCard size={18} color="var(--color-primary)" />,
       title: "Pricing, Payments & COD",
       content:
-        "All prices listed on the app are inclusive of applicable GST unless stated otherwise. Cash on Delivery (COD) and online payments (UPI, Cards, NetBanking) are accepted. Zipit reserves the right to suspend COD privileges for accounts with repeated order rejections or fraudulent activity."
+        "All prices listed on the app are inclusive of applicable GST unless stated otherwise. Cash on Delivery (COD) and online payments (UPI, Cards, NetBanking) are accepted. Quickly reserves the right to suspend COD privileges for accounts with repeated order rejections or fraudulent activity."
     },
     {
       number: "4",
@@ -45,7 +45,7 @@ const TermsPage = ({ navigate, onBack }) => {
       icon: <MapPin size={18} color="var(--color-primary)" />,
       title: "Delivery Accuracy & Pinning",
       content:
-        "Users are responsible for providing precise GPS coordinates and accurate address details. Zipit is not responsible for failed deliveries resulting from incorrect map pins, unreachable contact numbers, or restricted premises access."
+        "Users are responsible for providing precise GPS coordinates and accurate address details. Quickly is not responsible for failed deliveries resulting from incorrect map pins, unreachable contact numbers, or restricted premises access."
     },
     {
       number: "6",
@@ -74,10 +74,10 @@ const TermsPage = ({ navigate, onBack }) => {
 
       <div className="terms-content">
         <div className="terms-intro-card">
-          <h2>Zipit Consumer Agreement</h2>
+          <h2>Quickly Consumer Agreement</h2>
           <div className="effective-date">Effective Date: July 28, 2026</div>
           <p>
-            Welcome to Zipit! These Terms and Conditions govern your use of our instant grocery delivery platform and mobile application. Please read them carefully before placing an order.
+            Welcome to Quickly! These Terms and Conditions govern your use of our instant grocery delivery platform and mobile application. Please read them carefully before placing an order.
           </p>
         </div>
 

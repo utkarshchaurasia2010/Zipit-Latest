@@ -13,7 +13,7 @@ const POLICIES = {
     sections: [
       {
         heading: '1. Platform Use & Eligibility',
-        text: 'By using the Zipit application and services, you confirm that you are at least 18 years old or are using the app under the supervision of a parent or guardian. You agree to provide true, accurate, and current information when creating an account or placing orders.'
+        text: 'By using the Quickly application and services, you confirm that you are at least 18 years old or are using the app under the supervision of a parent or guardian. You agree to provide true, accurate, and current information when creating an account or placing orders.'
       },
       {
         heading: '2. 10-Minute Delivery & Estimated Timelines',
@@ -25,11 +25,11 @@ const POLICIES = {
       },
       {
         heading: '4. Cash on Delivery (COD) & Payment Integrity',
-        text: 'We accept UPI, Debit/Credit Cards, Net Banking, and Cash on Delivery (COD). Zipit reserves the right to disable Cash on Delivery for accounts that demonstrate repeated delivery refusals, fraudulent claims, or unreasonable order cancellations.'
+        text: 'We accept UPI, Debit/Credit Cards, Net Banking, and Cash on Delivery (COD). Quickly reserves the right to disable Cash on Delivery for accounts that demonstrate repeated delivery refusals, fraudulent claims, or unreasonable order cancellations.'
       },
       {
         heading: '5. Limitation of Liability',
-        text: 'Zipit acts as an instant retail commerce platform. We source products from certified FMCG distributors and local producers. We are not liable for manufacturer packaging defects or product alterations done by third-party brands beyond our verifiable storage conditions.'
+        text: 'Quickly acts as an instant retail commerce platform. We source products from certified FMCG distributors and local producers. We are not liable for manufacturer packaging defects or product alterations done by third-party brands beyond our verifiable storage conditions.'
       }
     ]
   },
@@ -50,7 +50,7 @@ const POLICIES = {
       },
       {
         heading: '3. Data Security & Storage',
-        text: 'We utilize enterprise-grade encrypted databases (PostgreSQL/Supabase) with strict Row-Level Security (RLS) policies. Payment transactions are processed directly by certified RBI-compliant payment aggregators; Zipit never stores your bank account passwords, CVVs, or UPI PINs.'
+        text: 'We utilize enterprise-grade encrypted databases (PostgreSQL/Supabase) with strict Row-Level Security (RLS) policies. Payment transactions are processed directly by certified RBI-compliant payment aggregators; Quickly never stores your bank account passwords, CVVs, or UPI PINs.'
       },
       {
         heading: '4. User Rights & Account Deletion',
@@ -92,7 +92,7 @@ const POLICIES = {
     sections: [
       {
         heading: '1. Serviceable Locations & Hubs',
-        text: 'Zipit operates through hyperlocal fulfillment micro-warehouses (dark stores) catering to designated pin codes and village perimeters. Deliveries can only be dispatched to addresses within our designated active delivery zones.'
+        text: 'Quickly operates through hyperlocal fulfillment micro-warehouses (dark stores) catering to designated pin codes and village perimeters. Deliveries can only be dispatched to addresses within our designated active delivery zones.'
       },
       {
         heading: '2. Delivery Charges & Free Delivery Thresholds',
@@ -104,7 +104,7 @@ const POLICIES = {
       },
       {
         heading: '4. Contactless & Doorstep Delivery',
-        text: 'Our riders offer doorstep delivery. If you request the rider to leave the order with a guard, neighbor, or at your doorstep, Zipit is not liable for theft or damage occurring after successful drop-off notification.'
+        text: 'Our riders offer doorstep delivery. If you request the rider to leave the order with a guard, neighbor, or at your doorstep, Quickly is not liable for theft or damage occurring after successful drop-off notification.'
       }
     ]
   }
@@ -172,7 +172,7 @@ const LegalPoliciesPage = ({ navigate, onBack }) => {
           </div>
           <h2>{currentPolicy.title}</h2>
           <p>
-            Please read these terms carefully. They define our service commitments, user safeguards, and operational policies for Zipit customers.
+            Please read these terms carefully. They define our service commitments, user safeguards, and operational policies for Quickly customers.
           </p>
         </div>
 

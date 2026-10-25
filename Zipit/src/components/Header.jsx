@@ -140,8 +140,8 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
         {/* Brand & Delivery Pill */}
         <div className="desktop-header-left">
           <div className="desktop-brand" onClick={() => navigate && navigate('/')}>
-            <span className="brand-zip">Zip</span>
-            <span className="brand-it">it</span>
+            <span className="brand-zip" style={{ color: 'var(--color-text)' }}>Quick</span>
+            <span className="brand-it" style={{ color: '#10B981' }}>ly</span>
           </div>
 
           <div className="desktop-delivery-pill" onClick={onAddressClick} title="Change delivery location">
@@ -258,7 +258,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
         <div className="header-top" style={{ color: textColor }}>
           <div className="location-info" onClick={onAddressClick}>
             <div className="delivery-time">
-              <strong>Zipit in</strong>
+              <strong>Quickly in</strong>
               <h1>{getCartDeliveryTime(cart) || time} minutes</h1>
             </div>
             <div className="address" style={{ display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '240px', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>

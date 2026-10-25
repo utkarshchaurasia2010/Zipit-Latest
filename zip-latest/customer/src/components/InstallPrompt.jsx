@@ -58,7 +58,7 @@ const InstallPrompt = () => {
             </svg>
           </div>
           <div className="install-prompt-text">
-            <h4>Install Zipit App</h4>
+            <h4>Install Quickly App</h4>
             <p>Add to your home screen for a faster, full-screen experience!</p>
           </div>
         </div>

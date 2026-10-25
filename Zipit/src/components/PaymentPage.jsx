@@ -43,7 +43,7 @@ const PaymentPage = ({ navigate, cart, total, deliveryCharge, smallCartCharge, a
 
   const handleUpiClick = () => {
     setIsUpiOpen(true);
-    window.location.href = `upi://pay?pa=7290886111@ptyes&pn=Zipit%20Store&am=${total}&cu=INR&tn=Order%20Payment`;
+    window.location.href = `upi://pay?pa=7290886111@ptyes&pn=Quickly%20Store&am=${total}&cu=INR&tn=Order%20Payment`;
   };
 
   return (

@@ -655,7 +655,7 @@ const TrackOrderPage = ({ navigate }) => {
                         </span>
                       </div>
                       <div style={{ fontSize: '13.5px', color: '#1e293b', marginTop: '6px', fontWeight: '600' }}>
-                        Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Zipit Store Hubs'}</strong>
+                        Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Quickly Store Hubs'}</strong>
                       </div>
                     </div>
                   </div>

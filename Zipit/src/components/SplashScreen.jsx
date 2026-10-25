@@ -6,7 +6,7 @@ import './SplashScreen.css';
 const SplashScreen = () => {
   const [logo, setLogo] = useState(() => {
     const cached = localStorage.getItem('zipit_cached_customer_logo') || '/logo_full.png';
-    if (cached) applyDynamicBrandingIcons(cached, 'Zipit');
+    if (cached) applyDynamicBrandingIcons(cached, 'Quickly');
     return cached;
   });
 
@@ -14,7 +14,7 @@ const SplashScreen = () => {
     db.branding.get().then(b => {
       if (b?.customer_logo) {
         setLogo(b.customer_logo);
-        applyDynamicBrandingIcons(b.customer_logo, 'Zipit');
+        applyDynamicBrandingIcons(b.customer_logo, 'Quickly');
       }
     });
   }, []);
@@ -24,7 +24,7 @@ const SplashScreen = () => {
       <div className="splash-logo-container">
         <img 
           src={logo} 
-          alt="Zipit Logo" 
+          alt="Quickly Logo" 
           className="splash-logo" 
           width="148" 
           height="148" 
@@ -32,7 +32,7 @@ const SplashScreen = () => {
           decoding="async" 
         />
       </div>
-      <div className="splash-brand-text">zipit</div>
+      <div className="splash-brand-text">quickly</div>
       <div className="splash-tagline">Rural India's Instant Delivery</div>
     </div>
   );

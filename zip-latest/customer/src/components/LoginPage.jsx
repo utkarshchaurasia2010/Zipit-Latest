@@ -177,7 +177,7 @@ const LoginPage = ({ onLogin }) => {
       if (error) {
         showToast("Invalid or expired OTP: " + error.message, "Error");
       } else {
-        showToast('Logged in successfully! Welcome to Zipit.', 'Success');
+        showToast('Logged in successfully! Welcome to Quickly.', 'Success');
         onLogin();
       }
     } catch (err) {
@@ -219,7 +219,7 @@ const LoginPage = ({ onLogin }) => {
       <div className="login-content">
         <div className="logo-box">
           <div className="login-logo-container">
-            <img src={appLogo} alt="Zipit Logo" className="login-logo-image" />
+            <img src={appLogo} alt="Quickly Logo" className="login-logo-image" />
           </div>
         </div>
 

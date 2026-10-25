@@ -53,7 +53,7 @@ function UpdatePrompt() {
 
   const handleApplyUpdate = () => {
     if (newLogoUrl) {
-      applyDynamicBrandingIcons(newLogoUrl, 'Zipit');
+      applyDynamicBrandingIcons(newLogoUrl, 'Quickly');
     }
     if (needRefresh) {
       updateServiceWorker(true);

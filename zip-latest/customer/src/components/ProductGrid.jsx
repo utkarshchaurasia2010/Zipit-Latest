@@ -717,10 +717,10 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
           </button>
         </div>
         <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-muted, #555)', letterSpacing: '-1px' }}>
-          zipit
+          quickly
         </div>
         <p style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '8px' }}>
-          © {new Date().getFullYear()} Zipit Inc. Fast grocery delivery in rural & semi-urban India.
+          © {new Date().getFullYear()} Quickly Inc. Fast grocery delivery in rural & semi-urban India.
         </p>
       </footer>
 

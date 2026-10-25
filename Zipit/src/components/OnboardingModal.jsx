@@ -232,7 +232,7 @@ const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
             className="onboarding-submit-btn" 
             disabled={!formData.name.trim() || formData.phone.length < 10 || loading || cancelling}
           >
-            {loading ? 'Setting up your profile...' : cancelling ? 'Cancelling...' : 'Continue to Zipit'}
+            {loading ? 'Setting up your profile...' : cancelling ? 'Cancelling...' : 'Continue to Quickly'}
           </button>
         </form>
       </div>

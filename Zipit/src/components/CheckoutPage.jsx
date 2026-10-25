@@ -252,7 +252,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
       if (selectedPayment === 'UPI') {
         // Option to trigger intent if needed, otherwise just assume flow
-        window.location.href = `upi://pay?pa=9651568829@upi&pn=Zipit%20Store&am=${effectiveGrandTotal}&cu=INR&tn=Order%20Payment`;
+        window.location.href = `upi://pay?pa=9651568829@upi&pn=Quickly%20Store&am=${effectiveGrandTotal}&cu=INR&tn=Order%20Payment`;
         // We'll pause briefly to let intent fire
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
@@ -265,8 +265,8 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         is_pickup: true,
         order_type: 'PICKUP',
         type: 'STORE PICKUP',
-        details: `Store Pickup at Zipit Store Hubs (Ready around ${formattedPickupTime})`,
-        store_location: 'Zipit Store Hubs',
+        details: `Store Pickup at Quickly Store Hubs (Ready around ${formattedPickupTime})`,
+        store_location: 'Quickly Store Hubs',
         lat: geofenceConfig.store_lat,
         lng: geofenceConfig.store_lng,
         pickup_time_estimate: `Ready around ${formattedPickupTime} (~1 hr)`,
@@ -379,7 +379,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
             <div className="fulfillment-card-body">
               <h3 className="fulfillment-card-title">Store Pickup</h3>
-              <p className="fulfillment-card-desc">Pack & ready in ~1 hr at Zipit Store Hubs</p>
+              <p className="fulfillment-card-desc">Pack & ready in ~1 hr at Quickly Store Hubs</p>
             </div>
 
             <div className="fulfillment-card-footer">
@@ -397,7 +397,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             </div>
             <div className="pickup-notice-text" style={{ width: '100%' }}>
               <div className="pickup-notice-title-row">
-                <strong>Zipit Store Hubs</strong>
+                <strong>Quickly Store Hubs</strong>
                 <span className="pickup-ready-pill">Ready in ~1 hr</span>
               </div>
               <span style={{ fontSize: '11.5px', color: '#166534', margin: '4px 0 0 0' }}>
@@ -416,7 +416,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
           </div>
           <div className="delivery-time-info">
             <h2>{isPickup ? 'Ready for Pickup in ~1 hour' : `Delivery in ${getCartDeliveryTime(cart)} minutes`}</h2>
-            <p>{isPickup ? `Store pickup at Zipit Hub • ${totalItems} item${totalItems > 1 ? 's' : ''}` : `Shipment of ${totalItems} item${totalItems > 1 ? 's' : ''}`}</p>
+            <p>{isPickup ? `Store pickup at Quickly Hub • ${totalItems} item${totalItems > 1 ? 's' : ''}` : `Shipment of ${totalItems} item${totalItems > 1 ? 's' : ''}`}</p>
           </div>
         </div>
 
@@ -659,7 +659,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                 <div className="checkout-address-text">
                   <h3 className="checkout-address-title">
                     {isPickup ? (
-                      <span>Pickup from: <strong>Zipit Store Hubs (~1 hr)</strong></span>
+                      <span>Pickup from: <strong>Quickly Store Hubs (~1 hr)</strong></span>
                     ) : isOutOfRange ? (
                       <span style={{ color: '#ef4444', fontWeight: '700' }}>
                         Unserviceable: {deliveryDistance} km away (Max radius {geofenceConfig.max_delivery_radius_km} km)

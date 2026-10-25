@@ -53,7 +53,7 @@ const CustomerSupportPage = ({ navigate }) => {
         {/* Quick action contact channels */}
         <div className="support-actions-grid">
           <a
-            href="https://wa.me/919999999999?text=Hi%20Zipit%20Support,%20I%20need%20help%20with%20my%20order."
+            href="https://wa.me/919999999999?text=Hi%20Quickly%20Support,%20I%20need%20help%20with%20my%20order."
             target="_blank"
             rel="noopener noreferrer"
             className="support-action-card whatsapp"
