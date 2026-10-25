@@ -105,18 +105,17 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '12px' }}>
               <h3 style={{ margin: 0 }}>{userProfile?.name || 'Guest User'}</h3>
-              <span style={{ 
-                background: '#DCFCE7', 
-                color: '#15803D', 
-                fontSize: '11px', 
-                fontWeight: '800', 
-                padding: '2px 8px', 
-                borderRadius: '12px',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.15)'
-              }}>
-                ✓ Verified
-              </span>
+              <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="#2563EB" 
+                style={{ flexShrink: 0, filter: 'drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3))' }}
+                title="Verified Account"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M7.5 12.5L10.5 15.5L16.5 9" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
             </div>
             <p className="profile-contact" style={{ marginTop: '4px' }}>
               {userProfile?.phone || 'No phone'} • {userProfile?.email || 'No email'}

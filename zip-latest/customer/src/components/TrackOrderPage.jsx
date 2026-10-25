@@ -238,6 +238,11 @@ const DeliveryMap = ({ status, order }) => {
             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.5s infinite' }}></span>
             <span>Items packed · Rider picking up package</span>
           </>
+        ) : status === 'Placed' ? (
+          <>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', animation: 'pulse 1.5s infinite' }}></span>
+            <span>Order confirmed · Waiting for store packing</span>
+          </>
         ) : (
           <>
             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#0c831f', animation: 'pulse 1.5s infinite' }}></span>
@@ -251,6 +256,7 @@ const DeliveryMap = ({ status, order }) => {
 
 /* ───────── Main Page ───────── */
 const ACTIVE_STATUSES = [
+  'Placed',
   'Payment Pending',
   'Preparing',
   'Preparing (Accepted)',
@@ -393,6 +399,7 @@ const TrackOrderPage = ({ navigate }) => {
     if (status === 'Cancellation Rejected') return '#d97706';
     if (status === 'Refunded' || status === 'Cancelled') return '#64748b';
     if (status === 'Out for Delivery') return '#2563eb';
+    if (status === 'Placed') return '#10b981';
     return '#0c831f';
   };
 
@@ -422,14 +429,14 @@ const TrackOrderPage = ({ navigate }) => {
       } else if (status === 'Preparing' && order?.accepted_by_shopkeeper) {
         idx = 1; // Only advance to Packing once accepted by a shopkeeper
       } else {
-        idx = 0; // Order Confirmed, waiting for shopkeeper to accept
+        idx = 0; // Order Confirmed / Placed, waiting for shopkeeper to accept
       }
       return { steps: pickupSteps, currentIdx: idx };
     }
 
     const defaultSteps = ['Confirmed', 'Packing', 'Ready for Rider', 'On the way', 'Delivered'];
-    let idx = 1;
-    if (status === 'Payment Pending') {
+    let idx = 0;
+    if (status === 'Placed' || status === 'Payment Pending') {
       idx = 0;
     } else if (status === 'Preparing') {
       idx = order?.accepted_by_shopkeeper ? 1 : 0;
@@ -490,14 +497,14 @@ const TrackOrderPage = ({ navigate }) => {
 
                 {/* 2. Interactive Map with top-level container */}
                 {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && 
-                  (order.status === 'Out for Delivery' || order.status === 'Ready for Pickup' || order.status === 'Preparing' || order.status === 'Payment Pending') && 
+                  (order.status === 'Placed' || order.status === 'Out for Delivery' || order.status === 'Ready for Pickup' || order.status === 'Preparing' || order.status === 'Payment Pending') && 
                   order.delivery_address && (
                   <MapErrorBoundary key={order.id}>
                     <DeliveryMap status={order.status} order={order} />
                   </MapErrorBoundary>
                 )}
 
-                {/* 3. Modern Progress Stepper Bar (matching the mock) */}
+                {/* 3. Modern Progress Stepper Bar */}
                 {(() => {
                   const { steps, currentIdx } = getTimelineSteps(order.status, order);
                   return (
@@ -511,7 +518,7 @@ const TrackOrderPage = ({ navigate }) => {
                               <div className="modern-step-node">
                                 <div className={`modern-step-circle ${isDone ? 'done' : isActive ? 'active' : 'pending'}`}>
                                   {isDone ? (
-                                    <Check size={14} strokeWidth={3} />
+                                    <Check size={13} strokeWidth={3} />
                                   ) : (
                                     <span className="step-inner-dot" />
                                   )}
@@ -521,7 +528,9 @@ const TrackOrderPage = ({ navigate }) => {
                                 </span>
                               </div>
                               {i < steps.length - 1 && (
-                                <div className={`modern-step-divider ${i < currentIdx ? 'filled' : ''}`} />
+                                <div className="modern-step-connector">
+                                  <div className={`modern-step-line ${i < currentIdx ? 'filled' : ''}`} />
+                                </div>
                               )}
                             </React.Fragment>
                           );

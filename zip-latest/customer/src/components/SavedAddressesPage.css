@@ -26,11 +26,16 @@
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.action-item:hover {
-  background: linear-gradient(135deg, rgba(12, 131, 31, 0.14), rgba(16, 185, 129, 0.08));
-  border-color: #0c831f;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(12, 131, 31, 0.12);
+@media (hover: hover) {
+  .action-item:hover {
+    background: linear-gradient(135deg, rgba(12, 131, 31, 0.14), rgba(16, 185, 129, 0.08));
+    border-color: #0c831f;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(12, 131, 31, 0.12);
+  }
+  .action-item:hover .forward-arrow {
+    transform: translateX(4px);
+  }
 }
 .action-item:active {
   transform: scale(0.98);
@@ -39,9 +44,6 @@
   margin-left: auto;
   color: #0c831f;
   transition: transform 0.2s ease;
-}
-.action-item:hover .forward-arrow {
-  transform: translateX(4px);
 }
 .section-title {
   font-size: 12px;
@@ -60,10 +62,12 @@
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease;
   cursor: pointer;
 }
-.address-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border-color: rgba(16, 185, 129, 0.3);
+@media (hover: hover) {
+  .address-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
 }
 .address-card:active {
   transform: scale(0.985);

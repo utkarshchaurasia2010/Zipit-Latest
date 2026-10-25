@@ -66,22 +66,63 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
 
   return (
     <header className="app-header" style={{ background: bgColor, top: topOffset }}>
-      {/* ── Translucent Vector Curved Backdrop ── */}
+      {/* ── 3D Glowing Vector Curved Backdrop ── */}
       <div className="header-vector-bg" aria-hidden="true">
         <svg viewBox="0 0 400 160" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            {/* Light Mode Gradients */}
+            <linearGradient id="headerGrad1Light" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.45" />
+              <stop offset="60%" stopColor="#FFFFFF" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="headerGrad2Light" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFBEB" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="#FDE68A" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.1" />
+            </linearGradient>
+            <radialGradient id="headerGlowLight" cx="60%" cy="30%" r="70%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.5" />
+              <stop offset="70%" stopColor="#FFFFFF" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+            </radialGradient>
+
+            {/* Dark Mode Gradients */}
+            <linearGradient id="headerGrad1Dark" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#10B981" stopOpacity="0.22" />
+              <stop offset="70%" stopColor="#059669" stopOpacity="0.10" />
+              <stop offset="100%" stopColor="#047857" stopOpacity="0.02" />
+            </linearGradient>
+            <linearGradient id="headerGrad2Dark" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.20" />
+              <stop offset="60%" stopColor="#D97706" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#B45309" stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="headerGlowDark" cx="50%" cy="20%" r="80%">
+              <stop offset="0%" stopColor="#34D399" stopOpacity="0.25" />
+              <stop offset="60%" stopColor="#10B981" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#064E3B" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Primary Fluid Wave */}
           <path
-            d="M-20 -20 Q 80 120, 240 40 T 440 90 L 440 -40 Z"
-            fill={theme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.28)'}
+            d="M-20 -20 Q 80 130, 240 45 T 440 95 L 440 -40 Z"
+            fill={theme === 'dark' ? 'url(#headerGrad1Dark)' : 'url(#headerGrad1Light)'}
+            style={{ filter: theme === 'dark' ? 'drop-shadow(0 6px 12px rgba(16, 185, 129, 0.15))' : 'drop-shadow(0 4px 10px rgba(255, 255, 255, 0.25))' }}
           />
+          {/* Secondary Intersecting Wave */}
           <path
-            d="M100 -40 Q 220 140, 380 30 T 520 80 L 520 -40 Z"
-            fill={theme === 'dark' ? 'rgba(248, 203, 70, 0.05)' : 'rgba(255, 255, 255, 0.16)'}
+            d="M90 -40 Q 220 150, 380 35 T 530 85 L 530 -40 Z"
+            fill={theme === 'dark' ? 'url(#headerGrad2Dark)' : 'url(#headerGrad2Light)'}
+            style={{ filter: theme === 'dark' ? 'drop-shadow(0 4px 10px rgba(245, 158, 11, 0.12))' : 'drop-shadow(0 3px 8px rgba(253, 230, 138, 0.3))' }}
           />
+          {/* Glowing 3D Orb/Sphere Highlight */}
           <circle
-            cx="360"
-            cy="20"
-            r="70"
-            fill={theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(255, 255, 255, 0.15)'}
+            cx="355"
+            cy="24"
+            r="75"
+            fill={theme === 'dark' ? 'url(#headerGlowDark)' : 'url(#headerGlowLight)'}
           />
         </svg>
       </div>

@@ -97,13 +97,15 @@
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.support-action-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+@media (hover: hover) {
+  .support-action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
 }
 
 .support-action-card:active {
-  transform: scale(0.98);
+  transform: translateY(0) scale(0.98);
 }
 
 .support-action-icon {
