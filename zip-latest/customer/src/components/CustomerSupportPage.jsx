@@ -133,7 +133,7 @@ const CustomerSupportPage = ({ navigate }) => {
         {/* Support hours footer pill */}
         <div className="support-footer-note">
           <Clock size={16} color="var(--color-text-light)" />
-          <span>Operational Hours: 7:00 AM – 11:00 PM IST (Mon - Sun)</span>
+          <span>Operational Hours: 7:00 AM – 11:00 PM IST</span>
         </div>
       </div>
     </div>

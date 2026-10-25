@@ -210,11 +210,14 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 12px 18px;
+  border-radius: 999px;
   background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   color: var(--color-text-light);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   text-align: center;
+  margin: 8px auto 0;
+  width: fit-content;
 }
