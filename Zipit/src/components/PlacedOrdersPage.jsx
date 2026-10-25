@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PackageCheck, ShoppingBag, ChevronLeft, Check, X, AlertCircle } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { playBellSound } from '../utils/siren';
+import { PageSkeleton } from './SkeletonLoader';
 import './HistoryPage.css';
 
 const PlacedOrdersPage = ({ navigate }) => {
@@ -44,7 +45,7 @@ const PlacedOrdersPage = ({ navigate }) => {
   }, []);
 
   if (loading) {
-    return <div style={{flex:1, display:'flex', justifyContent:'center', alignItems:'center'}}>Loading orders...</div>;
+    return <PageSkeleton type="orders" />;
   }
 
   return (

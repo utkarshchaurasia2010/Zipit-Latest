@@ -66,6 +66,26 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
 
   return (
     <header className="app-header" style={{ background: bgColor, top: topOffset }}>
+      {/* ── Translucent Vector Curved Backdrop ── */}
+      <div className="header-vector-bg" aria-hidden="true">
+        <svg viewBox="0 0 400 160" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M-20 -20 Q 80 120, 240 40 T 440 90 L 440 -40 Z"
+            fill={theme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.28)'}
+          />
+          <path
+            d="M100 -40 Q 220 140, 380 30 T 520 80 L 520 -40 Z"
+            fill={theme === 'dark' ? 'rgba(248, 203, 70, 0.05)' : 'rgba(255, 255, 255, 0.16)'}
+          />
+          <circle
+            cx="360"
+            cy="20"
+            r="70"
+            fill={theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(255, 255, 255, 0.15)'}
+          />
+        </svg>
+      </div>
+
       {/* ── DESKTOP HEADER BAR (Visible only on desktop screens >= 1024px) ── */}
       <div className="desktop-header-row">
         {/* Brand & Delivery Pill */}

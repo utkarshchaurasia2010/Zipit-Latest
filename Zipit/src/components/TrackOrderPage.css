@@ -804,3 +804,272 @@ body[data-theme="dark"] .map-eta-badge {
   }
 }
 
+/* ── Modern AI Redesign: Stepper, Partner Card & Summary Box ── */
+.modern-track-card {
+  border-radius: 20px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  background: var(--color-surface);
+}
+
+.live-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1.5s infinite;
+}
+
+/* Modern Horizontal Stepper */
+.modern-stepper-container {
+  padding: 12px 6px;
+  background: var(--color-surface-muted);
+  border-radius: 16px;
+  margin: 6px 0;
+}
+
+.modern-stepper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modern-step-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 54px;
+}
+
+.modern-step-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.modern-step-circle.done {
+  background: #10B981;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+.modern-step-circle.active {
+  background: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  animation: activePulse 1.5s infinite;
+}
+
+.modern-step-circle.pending {
+  background: var(--color-border);
+  color: transparent;
+}
+
+.step-inner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+
+.modern-step-text {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-align: center;
+}
+
+.modern-step-text.done {
+  color: #10B981;
+  font-weight: 700;
+}
+
+.modern-step-text.active {
+  color: #2563EB;
+  font-weight: 800;
+}
+
+.modern-step-divider {
+  flex: 1;
+  height: 3px;
+  background: var(--color-border);
+  margin: 0 4px 18px;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+.modern-step-divider.filled {
+  background: #10B981;
+}
+
+/* Modern Delivery Partner Card */
+.modern-partner-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.partner-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.partner-avatar-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: #FFFFFF;
+  font-size: 18px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+
+.partner-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.partner-role-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.partner-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.partner-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.partner-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #FEF3C7;
+  color: #B45309;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.partner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.modern-call-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #10B981;
+  color: #FFFFFF;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.modern-call-btn:active {
+  transform: scale(0.95);
+}
+
+.modern-otp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface-muted);
+  border: 1px dashed var(--color-border);
+  padding: 6px 12px;
+  border-radius: 12px;
+}
+
+.modern-otp-pill .otp-lbl {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--color-text-light);
+}
+
+.modern-otp-pill .otp-val {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--color-text);
+  letter-spacing: 1.5px;
+  font-family: monospace;
+}
+
+/* Modern Order Summary Box */
+.modern-order-summary-box {
+  background: var(--color-surface-muted);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.summary-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.summary-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+}
+
+.summary-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.item-name-qty {
+  color: var(--color-text);
+}
+
+.item-name-qty strong {
+  color: #10B981;
+  margin-right: 4px;
+}
+
+.item-price {
+  font-weight: 700;
+  color: var(--color-text-light);
+}
+
+

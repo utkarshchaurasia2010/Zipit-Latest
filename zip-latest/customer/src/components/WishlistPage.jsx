@@ -3,6 +3,7 @@ import { ChevronLeft, Heart, ShoppingBag } from 'lucide-react';
 import { db } from '../services/db';
 import { useWishlist } from '../context/WishlistContext';
 import { getProductDeliveryTime } from '../utils/time';
+import { PageSkeleton } from './SkeletonLoader';
 import './WishlistPage.css';
 
 const WishlistPage = ({ navigate, cart, updateCartQty }) => {
@@ -28,7 +29,7 @@ const WishlistPage = ({ navigate, cart, updateCartQty }) => {
   };
 
   if (loading || wishlistLoading) {
-    return <div className="wishlist-page"><div className="loading-state">Loading your favorites...</div></div>;
+    return <PageSkeleton type="products" />;
   }
 
   return (

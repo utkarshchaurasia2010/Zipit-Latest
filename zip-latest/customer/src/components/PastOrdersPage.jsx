@@ -3,6 +3,7 @@ import { PackageCheck, ShoppingBag, ChevronLeft, RotateCcw, Download } from 'luc
 import { db, supabase } from '../services/db';
 import { downloadInvoice } from '../utils/invoice';
 import { useToast } from '../context/ToastContext';
+import { PageSkeleton } from './SkeletonLoader';
 import './HistoryPage.css';
 
 const PastOrdersPage = ({ navigate, updateCartQty }) => {
@@ -29,7 +30,7 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
   }, []);
 
   if (loading) {
-    return <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Loading...</div>;
+    return <PageSkeleton type="orders" />;
   }
 
   const handleReorder = (order) => {

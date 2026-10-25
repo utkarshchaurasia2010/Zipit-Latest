@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Check, Plus, RefreshCw, Ban, ShoppingBag, ArrowRight } from 'lucide-react';
 import { db, supabase } from '../services/db';
+import { PageSkeleton } from './SkeletonLoader';
 import './SubstituteSelectionPage.css';
 
 const SubstituteSelectionPage = ({ navigate }) => {
@@ -107,19 +108,7 @@ const SubstituteSelectionPage = ({ navigate }) => {
   };
 
   if (loading) {
-    return (
-      <div className="substitute-page">
-        <header className="substitute-page-header">
-          <button className="back-btn" onClick={() => navigate(-1)}>
-            <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
-          </button>
-          <h2>Substitute Selection</h2>
-        </header>
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-light)' }}>
-          Loading products…
-        </div>
-      </div>
-    );
+    return <PageSkeleton type="list" />;
   }
 
   if (!activeOrder) {

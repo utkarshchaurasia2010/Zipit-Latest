@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PackageCheck, ShoppingBag, X, Check, AlertCircle, MapPin, Navigation, ChevronLeft, RefreshCw, ArrowRight, Phone, ShieldCheck, Package, Store, Clock, CheckCircle2 } from 'lucide-react';
+import { PackageCheck, ShoppingBag, X, Check, AlertCircle, MapPin, Navigation, ChevronLeft, RefreshCw, ArrowRight, Phone, ShieldCheck, Package, Store, Clock, CheckCircle2, Star, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { playBellSound } from '../utils/siren';
+import { PageSkeleton } from './SkeletonLoader';
 import './TrackOrderPage.css';
 
 // Error boundary so a Leaflet crash never blanks the whole page
@@ -444,17 +445,7 @@ const TrackOrderPage = ({ navigate }) => {
   };
 
   if (loading) {
-    return (
-      <div className="track-page">
-        <div className="track-header">
-          <button className="back-btn" onClick={() => navigate(-1)} style={{ padding: '8px', margin: 0 }}>
-            <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
-          </button>
-          <h2>Track Orders</h2>
-        </div>
-        <div className="track-loading">Loading active orders…</div>
-      </div>
-    );
+    return <PageSkeleton type="track" />;
   }
 
   return (
@@ -484,30 +475,20 @@ const TrackOrderPage = ({ navigate }) => {
             const hasUnavailableItems = order.substitution_status === 'PENDING_CUSTOMER_ACTION';
 
             return (
-              <div key={order.id} className="track-card">
-                {/* Card Header */}
+              <div key={order.id} className="track-card modern-track-card">
+                {/* 1. Header with Live Status & Date */}
                 <div className="track-card-header">
                   <div className="track-status-pill" style={{ background: `${getStatusColor(order.status)}18`, color: getStatusColor(order.status) }}>
-                    <PackageCheck size={14} />
+                    <span className="live-status-dot" style={{ background: getStatusColor(order.status) }} />
                     <span>{order.status}</span>
                   </div>
-                  <span className="track-date">{new Date(order.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="track-order-id">#{order.id.split('-')[0].toUpperCase()}</span>
+                    <span className="track-date">{new Date(order.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
+                  </div>
                 </div>
 
-                {/* Order info */}
-                <div className="track-order-info">
-                  <span className="track-order-id">#{order.id.split('-')[0].toUpperCase()}</span>
-                  <span className="track-order-total">₹{order.total}</span>
-                </div>
-                <div className="track-items">
-                  {order.items.map((item, idx) => (
-                    <span key={idx} className={`track-item-chip ${item.is_refund_chosen ? 'refund-chosen' : item.is_unavailable ? 'unavailable' : ''}`}>
-                      {item.qty}× {item.name} {item.is_refund_chosen ? '(Refund Requested)' : item.is_unavailable ? '(Out of stock)' : ''}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Interactive Map (Only for Home Delivery orders) */}
+                {/* 2. Interactive Map with top-level container */}
                 {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && 
                   (order.status === 'Out for Delivery' || order.status === 'Ready for Pickup' || order.status === 'Preparing' || order.status === 'Payment Pending') && 
                   order.delivery_address && (
@@ -516,61 +497,93 @@ const TrackOrderPage = ({ navigate }) => {
                   </MapErrorBoundary>
                 )}
 
-                {/* Doorstep Handover OTP & Rider Contact Section (Home Delivery only) */}
-                {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && order.status !== 'Delivered' && (
-                  <div style={{
-                    background: '#f0fdf4',
-                    border: '1.5px solid #86efac',
-                    borderRadius: '16px',
-                    padding: '14px 16px',
-                    margin: '12px 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    boxShadow: '0 2px 8px rgba(12, 131, 31, 0.05)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ background: '#dcfce7', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <ShieldCheck size={22} color="#15803d" />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#166534', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Delivery Handover PIN
-                        </div>
-                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '2px', fontFamily: 'monospace' }}>
-                          {order.delivery_otp || '••••'}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#475467', marginTop: '2px' }}>
-                          Share with rider at doorstep to collect items
-                        </div>
+                {/* 3. Modern Progress Stepper Bar (matching the mock) */}
+                {(() => {
+                  const { steps, currentIdx } = getTimelineSteps(order.status, order);
+                  return (
+                    <div className="modern-stepper-container">
+                      <div className="modern-stepper-bar">
+                        {steps.map((label, i) => {
+                          const isDone = i < currentIdx;
+                          const isActive = i === currentIdx;
+                          return (
+                            <React.Fragment key={i}>
+                              <div className="modern-step-node">
+                                <div className={`modern-step-circle ${isDone ? 'done' : isActive ? 'active' : 'pending'}`}>
+                                  {isDone ? (
+                                    <Check size={14} strokeWidth={3} />
+                                  ) : (
+                                    <span className="step-inner-dot" />
+                                  )}
+                                </div>
+                                <span className={`modern-step-text ${isDone ? 'done' : isActive ? 'active' : ''}`}>
+                                  {label}
+                                </span>
+                              </div>
+                              {i < steps.length - 1 && (
+                                <div className={`modern-step-divider ${i < currentIdx ? 'filled' : ''}`} />
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </div>
                     </div>
+                  );
+                })()}
 
-                    {/* Call Delivery Partner: ONLY visible when Ready for Pickup or Out for Delivery */}
-                    {(order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') && order.accepted_by_rider && (
-                      <a 
-                        href="tel:9651568829"
-                        style={{
-                          background: '#0c831f',
-                          color: '#ffffff',
-                          padding: '10px 14px',
-                          borderRadius: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          textDecoration: 'none',
-                          fontWeight: '700',
-                          fontSize: '12.5px',
-                          boxShadow: '0 4px 12px rgba(12, 131, 31, 0.25)',
-                          flexShrink: 0
-                        }}
-                      >
-                        <Phone size={15} /> Call Rider
-                      </a>
-                    )}
+                {/* 4. Delivery Partner & Handover Card (Home Delivery) */}
+                {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && order.status !== 'Delivered' && (
+                  <div className="modern-partner-card">
+                    <div className="partner-avatar-wrapper">
+                      <div className="partner-avatar-circle">
+                        {order.accepted_by_rider ? order.accepted_by_rider.charAt(0).toUpperCase() : '🛵'}
+                      </div>
+                    </div>
+                    <div className="partner-details">
+                      <div className="partner-role-label">Delivery Partner</div>
+                      <div className="partner-name-row">
+                        <span className="partner-name">{order.accepted_by_rider || 'Assigning Rider...'}</span>
+                        <span className="partner-rating-badge">
+                          <Star size={11} fill="#F59E0B" color="#F59E0B" /> 4.9 ★
+                        </span>
+                      </div>
+                    </div>
+                    <div className="partner-actions">
+                      {(order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') && order.accepted_by_rider ? (
+                        <a href="tel:9651568829" className="modern-call-btn">
+                          <Phone size={14} />
+                          <span>Call</span>
+                        </a>
+                      ) : null}
+                      <div className="modern-otp-pill" title="Doorstep Handover OTP">
+                        <span className="otp-lbl">OTP</span>
+                        <span className="otp-val">{order.delivery_otp || '••••'}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
+
+                {/* 5. Collapsible Order Summary & Item Chips */}
+                <div className="modern-order-summary-box">
+                  <div className="summary-box-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <ShoppingBag size={16} color="var(--color-primary)" />
+                      <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--color-text)' }}>Order Summary</span>
+                      <span style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>({order.items.length} items)</span>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text)' }}>₹{order.total}</span>
+                  </div>
+                  <div className="summary-items-list">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="summary-item-row">
+                        <span className="item-name-qty">
+                          <strong>{item.qty}×</strong> {item.name}
+                        </span>
+                        <span className="item-price">₹{item.price ? item.price * item.qty : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Substitution Alert Banner */}
                 {hasUnavailableItems && (
@@ -626,71 +639,23 @@ const TrackOrderPage = ({ navigate }) => {
                           STORE PICKUP ORDER
                         </div>
                         <span style={{
-                          background: order.status === 'Delivered' 
-                            ? '#dcfce7' 
-                            : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') 
-                            ? '#bbf7d0' 
-                            : order.accepted_by_shopkeeper 
-                            ? '#fef3c7' 
-                            : '#e0f2fe',
-                          color: order.status === 'Delivered' 
-                            ? '#15803d' 
-                            : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') 
-                            ? '#166534' 
-                            : order.accepted_by_shopkeeper 
-                            ? '#92400e' 
-                            : '#0369a1',
+                          background: order.status === 'Delivered' ? '#dcfce7' : '#bbf7d0',
+                          color: '#166534',
                           fontWeight: '800',
                           fontSize: '11.5px',
                           padding: '4px 10px',
                           borderRadius: '8px',
                           border: '1px solid rgba(0,0,0,0.06)'
                         }}>
-                          {order.status === 'Delivered'
-                            ? 'Order Picked Up'
-                            : (order.status === 'Ready for Pickup' || order.status === 'Out for Delivery')
-                            ? 'Ready at Pickup Counter'
-                            : order.accepted_by_shopkeeper
-                            ? 'Shopkeeper is Packing Items'
-                            : 'Order Confirmed (Waiting for Store)'}
+                          {order.status === 'Delivered' ? 'Order Picked Up' : 'Ready at Pickup Counter'}
                         </span>
                       </div>
-
-                      <div style={{ fontSize: '13.5px', color: '#1e293b', marginTop: '6px', fontWeight: '600', lineHeight: '1.4' }}>
+                      <div style={{ fontSize: '13.5px', color: '#1e293b', marginTop: '6px', fontWeight: '600' }}>
                         Pickup Location: <strong style={{ color: '#0f172a' }}>{order.delivery_address?.store_location || 'Zipit Store Hubs'}</strong>
-                      </div>
-
-                      <div style={{ fontSize: '12.5px', color: '#475467', marginTop: '4px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Clock size={13} color="#64748b" />
-                        <span>{order.delivery_address?.pickup_time_estimate || 'Ready in approximately 1 hour after order'}</span>
-                      </div>
-
-                      <div style={{ fontSize: '12px', color: '#166534', marginTop: '6px', fontWeight: '600', background: '#dcfce7', padding: '4px 10px', borderRadius: '6px', display: 'inline-block' }}>
-                        {order.accepted_by_shopkeeper 
-                          ? `Accepted & Prepared by: ${order.accepted_by_shopkeeper}` 
-                          : 'Store will start packing once accepted at the counter'}
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* Dynamic Timeline */}
-                {(() => {
-                  const { steps, currentIdx } = getTimelineSteps(order.status, order);
-                  return (
-                    <div className="track-timeline">
-                      {steps.map((label, i) => (
-                        <div key={i} className={`track-step ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : ''}`}>
-                          <div className="track-step-dot">
-                            {i < currentIdx ? <Check size={12} /> : <span>{i + 1}</span>}
-                          </div>
-                          <span className="track-step-label">{label}</span>
-                          {i < steps.length - 1 && <div className="track-step-line" />}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
 
                 {/* Footer */}
                 <div className="track-footer">
