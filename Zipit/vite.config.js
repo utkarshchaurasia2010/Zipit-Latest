@@ -24,6 +24,21 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
+          },
+          {
+            // Cache Supabase REST API requests with StaleWhileRevalidate for fast offline and rural load
+            urlPattern: ({ url }) => url.origin.includes('supabase.co') && url.pathname.includes('/rest/v1/'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'quickly-supabase-api',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 24 * 60 * 60 // 1 day
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
           }
         ]
       },
@@ -60,6 +75,9 @@ export default defineConfig({
       }
     })
   ],
+  oxc: {
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
+  },
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {
