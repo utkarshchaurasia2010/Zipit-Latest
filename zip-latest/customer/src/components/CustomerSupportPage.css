@@ -1,0 +1,220 @@
+.customer-support-page {
+  flex: 1;
+  background-color: var(--color-background);
+  min-height: 100vh;
+  padding: 0 0 100px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.support-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.support-hero-card {
+  background: linear-gradient(135deg, rgba(12, 131, 31, 0.12) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 1px solid rgba(12, 131, 31, 0.25);
+  border-radius: 18px;
+  padding: 20px;
+  text-align: left;
+}
+
+.support-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-surface);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  margin-bottom: 10px;
+}
+
+.live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: supportPulse 2s infinite;
+}
+
+@keyframes supportPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.support-hero-card h3 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0 0 6px;
+}
+
+.support-hero-card p {
+  font-size: 13px;
+  color: var(--color-text-light);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.support-actions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.support-action-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 16px;
+  text-decoration: none;
+  color: var(--color-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.support-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.support-action-card:active {
+  transform: scale(0.98);
+}
+
+.support-action-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.whatsapp-icon {
+  background: #25D366;
+  color: #fff;
+}
+
+.phone-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.orders-icon {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.email-icon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.support-action-content {
+  flex: 1;
+}
+
+.support-action-content h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 3px;
+}
+
+.support-action-content span {
+  font-size: 12px;
+  color: var(--color-text-light);
+  display: block;
+}
+
+.support-faq-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 18px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.support-faq-heading {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0 0 12px;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--color-border);
+  padding: 12px 0;
+  cursor: pointer;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.faq-question {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.faq-answer {
+  padding-top: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+.faq-answer p {
+  font-size: 12.5px;
+  color: var(--color-text-light);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.support-footer-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-light);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}

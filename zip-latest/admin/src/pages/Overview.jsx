@@ -76,8 +76,8 @@ const Overview = () => {
     <div className="overview-page">
       <div className="overview-top-row">
         
-        {/* Brand Card (Inspired by Blinkit screenshot but unique Zipit) */}
-        <div className="brand-summary-card">
+        {/* Brand Card (Zipit Unique Identity) - Clickable to open Revenues */}
+        <div className="brand-summary-card" onClick={() => navigate('/revenues')} style={{ cursor: 'pointer' }} title="Click to view detailed Revenues & Settlements">
           <div className="brand-header">
             <img src="/logo_full.png" alt="Zipit" className="brand-logo" />
             <span className="brand-subtitle">India's Rural Delivery App</span>
@@ -91,7 +91,7 @@ const Overview = () => {
             
             <div className="brand-metric-item">
               <span className="b-value">₹{(stats.totalRevenue / 1000).toFixed(1)}K</span>
-              <span className="b-label">Current Month</span>
+              <span className="b-label">Current GMV (View ↗)</span>
             </div>
             
             <div className="brand-metric-item">
@@ -132,7 +132,7 @@ const Overview = () => {
             </div>
           </div>
 
-          <div className="stat-card" onClick={() => navigate('/orders')} style={{ cursor: 'pointer' }}>
+          <div className="stat-card" onClick={() => navigate('/revenues')} style={{ cursor: 'pointer' }} title="Click to open Revenue & Financial Analytics">
             <div className="stat-icon-wrapper orange">
               <DollarSign size={24} />
             </div>

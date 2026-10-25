@@ -27,6 +27,7 @@ const TrackOrderPage = React.lazy(() => import('./components/TrackOrderPage'));
 const SubstituteSelectionPage = React.lazy(() => import('./components/SubstituteSelectionPage'));
 const PastOrdersPage = React.lazy(() => import('./components/PastOrdersPage'));
 const LegalPoliciesPage = React.lazy(() => import('./components/LegalPoliciesPage'));
+const CustomerSupportPage = React.lazy(() => import('./components/CustomerSupportPage'));
 const ProductDetailsSheet = React.lazy(() => import('./components/ProductDetailsSheet'));
 const OfflineBanner = React.lazy(() => import('./components/OfflineBanner'));
 const UpdatePrompt = React.lazy(() => import('./components/UpdatePrompt'));
@@ -690,6 +691,8 @@ function AppContent() {
                 <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
                 <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} />} />
                 <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
+                <Route path="/customer-support" element={<CustomerSupportPage navigate={navigate} />} />
+                <Route path="/support" element={<CustomerSupportPage navigate={navigate} />} />
                 <Route path="/terms" element={<LegalPoliciesPage navigate={navigate} />} />
                 <Route path="/privacy" element={<LegalPoliciesPage navigate={navigate} />} />
                 <Route path="/refund" element={<LegalPoliciesPage navigate={navigate} />} />

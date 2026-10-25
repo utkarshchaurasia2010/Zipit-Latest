@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers, IndianRupee, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import './AdminLayout.css';
 
@@ -171,6 +171,7 @@ const AdminLayout = ({ profile, setProfile }) => {
 
   const navItems = [
     { name: 'Overview', path: '/', icon: <LayoutDashboard size={20} /> },
+    { name: 'Revenues', path: '/revenues', icon: <IndianRupee size={20} /> },
     { name: 'Orders', path: '/orders', icon: <ShoppingBag size={20} /> },
     { name: 'Categories', path: '/categories', icon: <Grid size={20} /> },
     { name: 'Products', path: '/products', icon: <List size={20} /> },
@@ -380,14 +381,13 @@ const AdminLayout = ({ profile, setProfile }) => {
                 onClick={async (e) => {
                   const btn = e.currentTarget;
                   btn.disabled = true;
-                  const originalText = btn.innerText;
-                  btn.innerText = 'Pushing...';
+                  const originalContent = btn.innerHTML;
+                  btn.innerHTML = '<span>Pushing...</span>';
                   const syncUrl = import.meta.env.VITE_SYNC_SERVER_URL || localStorage.getItem('zipit_sync_url') || 'https://zipit-sync.onrender.com';
                   const targetEndpoint = `${syncUrl.replace(/\/$/, '')}/sync/to-sheets`;
                   try {
                     let res = await fetch(targetEndpoint, { method: 'POST' }).catch(() => null);
                     if (!res || !res.ok) {
-                      // Fallback to local sync server or alternate path
                       res = await fetch('http://localhost:4000/sync/to-sheets', { method: 'POST' }).catch(() => null);
                     }
                     if (res && res.ok) {
@@ -408,27 +408,42 @@ const AdminLayout = ({ profile, setProfile }) => {
                     alert('Sync error: ' + err.message);
                   } finally {
                     btn.disabled = false;
-                    btn.innerText = originalText;
+                    btn.innerHTML = originalContent;
                   }
                 }}
-                style={{background: '#0c831f', color: 'white', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'}}
+                style={{
+                  background: 'linear-gradient(135deg, #0c831f 0%, #086317 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 2px 6px rgba(12, 131, 31, 0.2)'
+                }}
                 title="Push all products, orders, profiles to Google Sheets (Cloud: https://zipit-sync.onrender.com)"
               >
-                Push to Sheets
+                <ArrowUpCircle size={14} strokeWidth={2.4} />
+                <span>Push Sheets</span>
               </button>
               
               <button 
                 onClick={async (e) => {
                   const btn = e.currentTarget;
                   btn.disabled = true;
-                  const originalText = btn.innerText;
-                  btn.innerText = 'Pulling...';
+                  const originalContent = btn.innerHTML;
+                  btn.innerHTML = '<span>Pulling...</span>';
                   const syncUrl = import.meta.env.VITE_SYNC_SERVER_URL || localStorage.getItem('zipit_sync_url') || 'https://zipit-sync.onrender.com';
                   const targetEndpoint = `${syncUrl.replace(/\/$/, '')}/sync/from-sheets`;
                   try {
                     let res = await fetch(targetEndpoint, { method: 'POST' }).catch(() => null);
                     if (!res || !res.ok) {
-                      // Fallback to local sync server
                       res = await fetch('http://localhost:4000/sync/from-sheets', { method: 'POST' }).catch(() => null);
                     }
                     if (res && res.ok) {
@@ -445,13 +460,29 @@ const AdminLayout = ({ profile, setProfile }) => {
                     alert('Sync error: ' + err.message);
                   } finally {
                     btn.disabled = false;
-                    btn.innerText = originalText;
+                    btn.innerHTML = originalContent;
                   }
                 }}
-                style={{background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)', padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'}}
+                style={{
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}
                 title="Pull updated product prices/stock from Google Sheets (Cloud: https://zipit-sync.onrender.com)"
               >
-                Pull from Sheets
+                <ArrowDownCircle size={14} strokeWidth={2.4} />
+                <span>Pull Sheets</span>
               </button>
 
               <a
@@ -482,32 +513,37 @@ const AdminLayout = ({ profile, setProfile }) => {
             <button
               onClick={handleToggleStoreOpen}
               disabled={togglingStore}
-              title={isStoreOpen ? 'Click to pause store (stop accepting orders)' : 'Click to resume store (accept orders)'}
+              role="switch"
+              aria-checked={isStoreOpen}
+              title={isStoreOpen ? 'Store is live: click to pause taking orders' : 'Store is paused: click to resume taking orders'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '6px 14px',
-                borderRadius: '8px',
-                border: isStoreOpen ? '1px solid #86efac' : '1px solid #fca5a5',
-                background: isStoreOpen ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                color: isStoreOpen ? '#15803d' : '#b91c1c',
+                borderRadius: '999px',
+                border: isStoreOpen ? '1px solid #10b981' : '1px solid #cbd5e1',
+                background: isStoreOpen ? '#ecfdf5' : 'var(--color-surface)',
+                color: isStoreOpen ? '#047857' : 'var(--color-text-light)',
                 fontWeight: 700,
                 fontSize: '12.5px',
                 cursor: togglingStore ? 'not-allowed' : 'pointer',
                 marginRight: '8px',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                boxShadow: isStoreOpen ? '0 1px 3px rgba(16, 185, 129, 0.15)' : 'none'
               }}
             >
-              <Power size={14} color={isStoreOpen ? '#15803d' : '#b91c1c'} />
-              <span>{isStoreOpen ? 'Store Online' : 'Store Paused'}</span>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: isStoreOpen ? '#22c55e' : '#ef4444',
-                display: 'inline-block'
-              }} />
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: isStoreOpen ? '#10b981' : '#94a3b8',
+                  boxShadow: isStoreOpen ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              />
+              <span>{togglingStore ? 'Updating...' : (isStoreOpen ? 'Store Online' : 'Store Paused')}</span>
             </button>
 
             <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">

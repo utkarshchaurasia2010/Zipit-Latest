@@ -244,18 +244,18 @@ const Settings = ({ profile, setProfile }) => {
 
       {/* Geofencing & Service Radius Card */}
       <div className="settings-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
           <div>
-            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>📍 Store Geofencing & Delivery Radius</h3>
+            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>Store Geofencing & Delivery Radius</h3>
             <p style={{ color: 'var(--color-text-light)', fontSize: '13px', margin: '4px 0 0 0' }}>
-              Set your Dark Store dispatch location and maximum delivery boundary. Customer checkout will block orders outside this radius.
+              Define dispatch coordinates and maximum delivery range to control order serviceability.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '18px' }}>
           <div className="form-group">
-            <label>Dark Store Latitude</label>
+            <label>Store Latitude</label>
             <input 
               type="number" 
               step="0.0001"
@@ -267,7 +267,7 @@ const Settings = ({ profile, setProfile }) => {
           </div>
 
           <div className="form-group">
-            <label>Dark Store Longitude</label>
+            <label>Store Longitude</label>
             <input 
               type="number" 
               step="0.0001"
@@ -279,7 +279,7 @@ const Settings = ({ profile, setProfile }) => {
           </div>
 
           <div className="form-group">
-            <label>Max Delivery Radius (Kilometers)</label>
+            <label>Max Delivery Radius (km)</label>
             <input 
               type="number" 
               step="0.5"
@@ -293,10 +293,9 @@ const Settings = ({ profile, setProfile }) => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)', padding: '16px 20px', borderRadius: '14px', border: '1.5px solid #bbf7d0', flexWrap: 'wrap', gap: '14px', boxShadow: '0 2px 10px rgba(12, 131, 31, 0.04)' }}>
-          <div style={{ fontSize: '13px', color: '#166534', flex: 1, minWidth: '240px' }}>
-            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '2px', fontSize: '13.5px' }}>⚡ Active Geofence Rule</strong>
-            Customers located beyond <strong>{branding.max_delivery_radius_km ?? 8.5} km</strong> from the store coordinates will be protected from unserviceable order dispatch.
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface-muted)', padding: '14px 18px', borderRadius: '12px', border: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text)', flex: 1, minWidth: '240px' }}>
+            Customers beyond <strong>{branding.max_delivery_radius_km ?? 8.5} km</strong> cannot place orders.
           </div>
           <button 
             type="button" 
@@ -304,7 +303,7 @@ const Settings = ({ profile, setProfile }) => {
               try {
                 setSaving(true);
                 await db.branding.update(branding);
-                showToast('Geofence boundaries saved successfully!', 'success');
+                showToast('Geofence boundaries saved successfully.', 'success');
               } catch (err) {
                 showToast('Failed to save geofence: ' + err.message, 'error');
               } finally {
@@ -312,46 +311,42 @@ const Settings = ({ profile, setProfile }) => {
               }
             }}
             disabled={saving}
-            className="update-geofence-btn"
+            className="save-settings-btn"
             style={{ 
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '9px',
-              padding: '12px 24px',
-              background: 'linear-gradient(135deg, #0c831f 0%, #15803d 100%)',
+              gap: '8px',
+              padding: '11px 22px',
+              background: '#0c831f',
               color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13.5px',
               border: 'none',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: '800',
               cursor: saving ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 14px rgba(12, 131, 31, 0.35)',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              letterSpacing: '0.3px',
-              opacity: saving ? 0.75 : 1
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
-            onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.transform = 'translateY(-1.5px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(12, 131, 31, 0.45)'; } }}
-            onMouseLeave={(e) => { if (!saving) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(12, 131, 31, 0.35)'; } }}
           >
-            <Save size={18} strokeWidth={2.4} />
-            <span>{saving ? 'Updating...' : 'Update Geofence & Radius'}</span>
+            <Save size={16} color="#ffffff" strokeWidth={2.2} />
+            <span>{saving ? 'Saving...' : 'Save Geofence'}</span>
           </button>
         </div>
       </div>
 
       {/* Delivery & Service Cost Management Card */}
       <div className="settings-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
           <div>
-            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>💰 Delivery &amp; Service Fee Controls</h3>
+            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>Delivery & Service Fee Controls</h3>
             <p style={{ color: 'var(--color-text-light)', fontSize: '13px', margin: '4px 0 0 0' }}>
-              Configure delivery charge, handling fee, dynamic surge pricing, and free delivery thresholds. All updates sync instantly to customer checkout.
+              Manage delivery charges, platform handling fees, surge pricing, and free delivery thresholds.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '18px' }}>
           <div className="form-group">
             <label>Standard Delivery Fee (₹)</label>
             <input 
@@ -414,9 +409,9 @@ const Settings = ({ profile, setProfile }) => {
           {/* Free Delivery Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--color-surface-muted, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
             <div>
-              <div style={{ fontWeight: '700', fontSize: '13.5px' }}>Free Delivery Criteria</div>
+              <div style={{ fontWeight: '700', fontSize: '13.5px' }}>Free Delivery Threshold</div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>
-                {branding.free_delivery_enabled !== false ? `Active on orders above ₹${branding.free_delivery_min_amount ?? 149}` : 'Disabled (Delivery fee applies to all orders)'}
+                {branding.free_delivery_enabled !== false ? `Active on orders above ₹${branding.free_delivery_min_amount ?? 149}` : 'Disabled'}
               </div>
             </div>
             <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '46px', height: '24px' }}>
@@ -442,11 +437,11 @@ const Settings = ({ profile, setProfile }) => {
           {/* Surge Pricing Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--color-surface-muted, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
             <div>
-              <div style={{ fontWeight: '700', fontSize: '13.5px', color: branding.surge_enabled ? '#b45309' : 'inherit' }}>
-                🌧️ High Demand / Surge Fee
+              <div style={{ fontWeight: '700', fontSize: '13.5px' }}>
+                High Demand / Surge Pricing
               </div>
               <div style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>
-                {branding.surge_enabled ? `+₹${branding.surge_fee ?? 15} surge fee applied during peak/bad weather` : 'Normal operational pricing (no surge fee)'}
+                {branding.surge_enabled ? `+₹${branding.surge_fee ?? 15} surge charge active` : 'Standard rates active'}
               </div>
             </div>
             <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '46px', height: '24px' }}>
@@ -471,14 +466,14 @@ const Settings = ({ profile, setProfile }) => {
         </div>
 
         {/* Save Fees Button */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '16px' }}>
           <button 
             type="button" 
             onClick={async () => {
               try {
                 setSaving(true);
                 await db.branding.update(branding);
-                showToast('Fee policies & pricing saved successfully!', 'success');
+                showToast('Fee policies & pricing saved successfully.', 'success');
               } catch (err) {
                 showToast('Failed to save fees: ' + err.message, 'error');
               } finally {
@@ -486,10 +481,25 @@ const Settings = ({ profile, setProfile }) => {
               }
             }}
             disabled={saving}
-            className="save-btn"
-            style={{ width: 'auto', padding: '10px 24px' }}
+            className="save-settings-btn"
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '11px 24px',
+              background: '#0c831f',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
           >
-            <Save size={16} />
+            <Save size={16} color="#ffffff" strokeWidth={2.2} />
             <span>{saving ? 'Saving...' : 'Save Fee Settings'}</span>
           </button>
         </div>

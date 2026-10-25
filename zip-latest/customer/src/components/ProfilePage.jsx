@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -134,7 +134,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/past-orders')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-blue">
-                <BookOpen size={18} color="var(--color-text)" />
+                <BookOpen size={18} color={theme === 'dark' ? '#93c5fd' : '#1d4ed8'} />
               </div>
               <span>Your Orders</span>
             </div>
@@ -144,7 +144,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/wishlist')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-pink">
-                <Heart size={18} color="var(--color-text)" />
+                <Heart size={18} color={theme === 'dark' ? '#f472b6' : '#db2777'} />
               </div>
               <span>My Wishlist</span>
             </div>
@@ -154,7 +154,7 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/saved-addresses')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-purple">
-                <MapPin size={18} color="var(--color-text)" />
+                <MapPin size={18} color={theme === 'dark' ? '#c084fc' : '#7e22ce'} />
               </div>
               <span>Address Book</span>
             </div>
@@ -164,17 +164,27 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="menu-item" onClick={() => navigate('/payment-methods')}>
             <div className="menu-item-left">
               <div className="menu-icon-box menu-icon-green">
-                <CreditCard size={18} color="var(--color-text)" />
+                <CreditCard size={18} color={theme === 'dark' ? '#86efac' : '#15803d'} />
               </div>
               <span>Payment Methods</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
 
+          <div className="menu-item" onClick={() => navigate('/customer-support')}>
+            <div className="menu-item-left">
+              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7' }}>
+                <HelpCircle size={18} color={theme === 'dark' ? '#6ee7b7' : '#15803d'} />
+              </div>
+              <span>Customer Support</span>
+            </div>
+            <ChevronRight size={20} color="var(--color-text-light)" />
+          </div>
+
           <div className="menu-item" onClick={() => navigate('/legal', { state: { policy: 'terms' } })}>
             <div className="menu-item-left">
-              <div className="menu-icon-box menu-icon-orange" style={{ background: 'rgba(248, 203, 70, 0.15)' }}>
-                <ShieldCheck size={18} color="var(--color-primary)" />
+              <div className="menu-icon-box menu-icon-orange" style={{ background: theme === 'dark' ? 'rgba(248, 203, 70, 0.2)' : 'rgba(248, 203, 70, 0.15)' }}>
+                <ShieldCheck size={18} color={theme === 'dark' ? '#fde047' : '#b45309'} />
               </div>
               <span>Legal & Policies</span>
             </div>

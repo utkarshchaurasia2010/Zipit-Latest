@@ -1,0 +1,109 @@
+.payment-methods-page {
+  flex: 1;
+  background-color: var(--color-background);
+  min-height: 100vh;
+  padding: 0 0 100px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.payment-methods-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.payment-method-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.payment-method-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.payment-method-icon-box {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.payment-method-icon-box.upi {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.payment-method-icon-box.card {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+}
+
+.payment-method-icon-box.cod {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+.payment-method-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.payment-method-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.payment-method-sub {
+  font-size: 12.5px;
+  color: var(--color-text-light);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.payment-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.payment-secure-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--color-surface-muted);
+  border-radius: 12px;
+  color: var(--color-text-light);
+  font-size: 12px;
+  font-weight: 600;
+}

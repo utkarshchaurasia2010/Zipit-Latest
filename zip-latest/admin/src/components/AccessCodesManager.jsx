@@ -122,13 +122,28 @@ export default function AccessCodesManager() {
     }
   };
 
+  const handleToggleStatus = async (codeItem) => {
+    const newStatus = codeItem.is_active === false ? true : false;
+    const { error } = await supabase
+      .from('access_codes')
+      .update({ is_active: newStatus })
+      .eq('code', codeItem.code);
+
+    if (error) {
+      showToast(error.message, 'error');
+    } else {
+      showToast(`ID #${codeItem.code} is now ${newStatus ? 'ACTIVE' : 'DISABLED'}`, 'success');
+      fetchCodes();
+    }
+  };
+
   return (
     <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--color-text)', margin: 0 }}>Access Codes Management</h1>
           <p style={{ fontSize: '14px', color: 'var(--color-text-light)', margin: '4px 0 0' }}>
-            Generate 8-digit unique login codes for Shopkeepers and Delivery Riders
+            Generate and manage active/disabled login IDs for Shopkeepers and Delivery Riders
           </p>
         </div>
 
@@ -153,14 +168,14 @@ export default function AccessCodesManager() {
           width: '100%',
           boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
         }}>
-          <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: 'var(--color-surface-muted)', borderBottom: '1px solid var(--color-border)' }}>
                 <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px' }}>CODE</th>
                 <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px' }}>ROLE</th>
                 <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px' }}>NAME</th>
                 <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px' }}>MOBILE</th>
-                <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px' }}>CREATED</th>
+                <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px' }}>STATUS</th>
                 <th style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--color-text-light)', fontSize: '13px', textAlign: 'right' }}>ACTIONS</th>
               </tr>
             </thead>
@@ -172,55 +187,102 @@ export default function AccessCodesManager() {
                   </td>
                 </tr>
               ) : (
-                codes.map(c => (
-                  <tr key={c.code} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: '800', letterSpacing: '1px', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Key size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                        <span>{c.code}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        background: c.role === 'shopkeeper' ? '#dbeafe' : '#fef3c7',
-                        color: c.role === 'shopkeeper' ? '#1e40af' : '#92400e',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '700',
-                        textTransform: 'capitalize'
-                      }}>
-                        {c.role}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 16px', fontWeight: '600', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
-                      {c.name || 'N/A'}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--color-text-light)', whiteSpace: 'nowrap' }}>
-                      {c.mobile || 'N/A'}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--color-text-light)', fontSize: '13px', whiteSpace: 'nowrap' }}>
-                      {new Date(c.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => setViewingCode(c)}
-                          style={{ background: 'var(--color-surface-muted)', color: 'var(--color-text)', border: '1px solid var(--color-border)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <Eye size={14} /> Details
-                        </button>
-                        <button
-                          onClick={() => handleDelete(c.code)}
-                          style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12.5px', fontWeight: '700' }}
-                          title="Delete Code"
-                        >
-                          <Trash2 size={15} /> Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                codes.map(c => {
+                  const isActive = c.is_active !== false;
+                  return (
+                    <tr key={c.code} style={{ borderBottom: '1px solid var(--color-border)', opacity: isActive ? 1 : 0.65 }}>
+                      <td style={{ padding: '14px 16px', fontWeight: '800', letterSpacing: '1px', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Key size={16} style={{ color: isActive ? 'var(--color-primary)' : '#94a3b8', flexShrink: 0 }} />
+                          <span style={{ textDecoration: isActive ? 'none' : 'line-through' }}>{c.code}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          background: c.role === 'shopkeeper' ? '#dbeafe' : '#fef3c7',
+                          color: c.role === 'shopkeeper' ? '#1e40af' : '#92400e',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          textTransform: 'capitalize'
+                        }}>
+                          {c.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: '600', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                        {c.name || 'N/A'}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--color-text-light)', whiteSpace: 'nowrap' }}>
+                        {c.mobile || 'N/A'}
+                      </td>
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(c)}
+                            role="switch"
+                            aria-checked={isActive}
+                            style={{
+                              position: 'relative',
+                              width: '44px',
+                              height: '24px',
+                              borderRadius: '24px',
+                              background: isActive ? '#10b981' : '#cbd5e1',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '2px',
+                              transition: 'background-color 0.25s ease, box-shadow 0.2s ease',
+                              outline: 'none',
+                              boxShadow: isActive ? '0 2px 6px rgba(16, 185, 129, 0.35)' : 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                            title={isActive ? 'Click to Disable / Lock ID' : 'Click to Enable / Unlock ID'}
+                          >
+                            <span
+                              style={{
+                                display: 'block',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                background: '#ffffff',
+                                transform: isActive ? 'translateX(20px)' : 'translateX(0px)',
+                                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                              }}
+                            />
+                          </button>
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            letterSpacing: '0.3px',
+                            color: isActive ? '#059669' : '#94a3b8'
+                          }}>
+                            {isActive ? 'ACTIVE' : 'DISABLED'}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => setViewingCode(c)}
+                            style={{ background: 'var(--color-surface-muted)', color: 'var(--color-text)', border: '1px solid var(--color-border)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <Eye size={14} /> Details
+                          </button>
+                          <button
+                            onClick={() => handleDelete(c.code)}
+                            style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12.5px', fontWeight: '700' }}
+                            title="Delete Code"
+                          >
+                            <Trash2 size={15} /> Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, PhoneCall, MessageCircle } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -19,7 +19,6 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   const [formData, setFormData] = useState(userProfile || { name: 'New User', phone: '', email: '', photo: 'NU' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, title: '', message: '' });
-  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   React.useEffect(() => {
     if (userProfile) {
@@ -172,15 +171,12 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
 
-          <div className="menu-item" onClick={() => setIsSupportOpen(true)}>
+          <div className="menu-item" onClick={() => navigate('/customer-support')}>
             <div className="menu-item-left">
               <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7' }}>
                 <HelpCircle size={18} color={theme === 'dark' ? '#6ee7b7' : '#15803d'} />
               </div>
-              <div>
-                <span style={{ display: 'block' }}>Customer Support</span>
-                <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: '500' }}>Instant Help, WhatsApp & Call</span>
-              </div>
+              <span>Customer Support</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
@@ -204,117 +200,6 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             </div>
           </div>
         </div>
-
-        {/* ── Customer Support Modal ── */}
-        {isSupportOpen && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center'
-          }} onClick={() => setIsSupportOpen(false)}>
-            <div style={{
-              background: 'var(--color-surface)',
-              width: '100%',
-              maxWidth: '480px',
-              borderTopLeftRadius: '24px',
-              borderTopRightRadius: '24px',
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
-              padding: '24px 20px calc(24px + env(safe-area-inset-bottom, 0px))',
-              border: '1px solid var(--color-border)',
-              borderBottom: 'none',
-              boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
-              animation: 'slideUp 0.25s ease-out'
-            }} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-text)', margin: 0 }}>Customer Support &amp; Help</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-text-light)', margin: '4px 0 0' }}>We are here 7 AM - 11 PM to help you</p>
-                </div>
-                <button onClick={() => setIsSupportOpen(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--color-text-light)', padding: '4px 8px' }}>✕</button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <a
-                  href="https://wa.me/919999999999?text=Hi%20Zipit%20Support,%20I%20need%20help%20with%20my%20order."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: '14px',
-                    background: '#25D366',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    textDecoration: 'none',
-                    fontWeight: '800',
-                    fontSize: '14px',
-                    boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)'
-                  }}
-                >
-                  <MessageCircle size={20} />
-                  <span>Chat on WhatsApp (Fastest)</span>
-                </a>
-
-                <a
-                  href="tel:+919999999999"
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: '14px',
-                    background: 'var(--color-surface-muted)',
-                    color: 'var(--color-text)',
-                    border: '1px solid var(--color-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    textDecoration: 'none',
-                    fontWeight: '700',
-                    fontSize: '14px'
-                  }}
-                >
-                  <PhoneCall size={20} color="#10b981" />
-                  <span>Call Customer Care</span>
-                </a>
-
-                <button
-                  onClick={() => {
-                    setIsSupportOpen(false);
-                    navigate('/past-orders');
-                  }}
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: '14px',
-                    background: 'var(--color-surface-muted)',
-                    color: 'var(--color-text)',
-                    border: '1px solid var(--color-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    cursor: 'pointer',
-                    fontWeight: '700',
-                    fontSize: '14px',
-                    textAlign: 'left'
-                  }}
-                >
-                  <BookOpen size={20} color="#3b82f6" style={{ flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: '800' }}>Order Issues &amp; Refund Status</div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--color-text-light)', fontWeight: '500', marginTop: '2px' }}>
-                      Check live status of cancellation, missing items, or refunds
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         </>
       )}
 

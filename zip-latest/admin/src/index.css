@@ -34,6 +34,27 @@ body[data-theme="dark"] {
   --color-header-bg: #1E1E1E; /* Whole greyish black */
 }
 
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea {
+  background-color: transparent !important;
+  color: var(--color-text) !important;
+}
+
+body[data-theme="dark"] input::selection,
+body[data-theme="dark"] textarea::selection,
+body[data-theme="dark"] *::selection {
+  background: rgba(248, 203, 70, 0.3) !important;
+  color: #FFFFFF !important;
+}
+
+body[data-theme="dark"] input:-webkit-autofill,
+body[data-theme="dark"] input:-webkit-autofill:hover, 
+body[data-theme="dark"] input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text) !important;
+  -webkit-box-shadow: 0 0 0px 1000px #1E1E1E inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 body[data-theme="dark"] .section-title,
 body[data-theme="dark"] .category-name,
 body[data-theme="dark"] h2,
@@ -110,6 +131,50 @@ body[data-theme="dark"] .back-btn {
 }
 
 
+
+/* Sleek Custom Scrollbar Design */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0;
+  height: 0;
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+body[data-theme="dark"] * {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
 
 /* --- App Wide Animations --- */
 
