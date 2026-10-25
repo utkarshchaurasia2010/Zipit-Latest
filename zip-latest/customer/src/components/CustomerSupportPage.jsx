@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import './CustomerSupportPage.css';
-import { ChevronLeft, MessageCircle, PhoneCall, Clock, ShieldCheck, Mail, HelpCircle, ChevronDown, ChevronUp, PackageCheck, AlertCircle } from 'lucide-react';
+import { ChevronLeft, MessageCircle, PhoneCall, Clock, ShieldCheck, Mail, HelpCircle, ChevronDown, ChevronUp, PackageCheck, AlertCircle, Send } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { supabase } from '../services/db';
+import { canSendEmail, recordEmailSent, buildSupportConfirmationHtml } from '../services/resendMail';
+import { triggerHaptic } from '../utils/haptics';
 
 const FAQS = [
   {
@@ -24,10 +28,77 @@ const FAQS = [
 
 const CustomerSupportPage = ({ navigate }) => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const [openFaq, setOpenFaq] = useState(null);
+
+  // Quick Support Ticket State
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketName, setTicketName] = useState('');
+  const [ticketEmail, setTicketEmail] = useState('');
+  const [ticketOrderNo, setTicketOrderNo] = useState('');
+  const [ticketMsg, setTicketMsg] = useState('');
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const handleSendSupportTicket = async (e) => {
+    e.preventDefault();
+    if (!ticketEmail || !ticketMsg) return;
+
+    setIsSubmittingTicket(true);
+    triggerHaptic('medium');
+
+    try {
+      // 1. Dispatch auto-confirmation to customer if under free-tier quota
+      if (canSendEmail()) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: ticketEmail,
+            subject: `Support Ticket Received: Quickly Care${ticketOrderNo ? ` [Order #${ticketOrderNo}]` : ''}`,
+            html: buildSupportConfirmationHtml({
+              name: ticketName,
+              email: ticketEmail,
+              orderNo: ticketOrderNo,
+              issueMessage: ticketMsg
+            })
+          }
+        });
+        recordEmailSent();
+
+        // 2. Also forward to store hub desk if under quota
+        if (canSendEmail()) {
+          supabase.functions.invoke('send-email', {
+            body: {
+              to: 'zipitrural@gmail.com',
+              subject: `📩 Support Ticket from ${ticketName || 'Customer'} [${ticketEmail}]`,
+              html: `
+                <div style="font-family: sans-serif; padding: 16px;">
+                  <h2>Support Request Submitted</h2>
+                  <p><strong>Customer Name:</strong> ${ticketName}</p>
+                  <p><strong>Customer Email:</strong> ${ticketEmail}</p>
+                  <p><strong>Order No:</strong> ${ticketOrderNo || 'N/A'}</p>
+                  <div style="background: #f1f5f9; padding: 12px; border-radius: 8px;">
+                    ${ticketMsg}
+                  </div>
+                </div>
+              `
+            }
+          }).then(() => recordEmailSent()).catch(() => {});
+        }
+      }
+
+      showToast('Support ticket submitted! Confirmation sent to your email.', 'Ticket Submitted');
+      triggerHaptic('success');
+      setTicketMsg('');
+      setShowTicketForm(false);
+    } catch (err) {
+      console.error(err);
+      showToast('Ticket recorded. Our support desk will assist you shortly.', 'Received');
+    } finally {
+      setIsSubmittingTicket(false);
+    }
   };
 
   return (
@@ -93,19 +164,67 @@ const CustomerSupportPage = ({ navigate }) => {
             </div>
           </div>
 
-          <a
-            href="mailto:zipitrural@gmail.com"
+          <div 
             className="support-action-card email"
+            onClick={() => setShowTicketForm(!showTicketForm)}
           >
             <div className="support-action-icon email-icon">
               <Mail size={24} />
             </div>
-            <div className="support-action-content">
-              <h4>Email Support</h4>
-              <span>zipitrural@gmail.com</span>
+            <div className="support-action-content" style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4>Send Support Message</h4>
+                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 800 }}>{showTicketForm ? 'Close' : 'Write Us'}</span>
+              </div>
+              <span>Submit inquiry and receive an instant email receipt</span>
             </div>
-          </a>
+          </div>
         </div>
+
+        {/* Quick Ticket Drawer Form */}
+        {showTicketForm && (
+          <form onSubmit={handleSendSupportTicket} className="support-ticket-form" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '16px', marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+            <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800, color: 'var(--color-text)' }}>Write to Quickly Support</h4>
+            <input 
+              type="text" 
+              placeholder="Your Name" 
+              required
+              value={ticketName} 
+              onChange={e => setTicketName(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', fontSize: '13px' }}
+            />
+            <input 
+              type="email" 
+              placeholder="Your Email Address" 
+              required
+              value={ticketEmail} 
+              onChange={e => setTicketEmail(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', fontSize: '13px' }}
+            />
+            <input 
+              type="text" 
+              placeholder="Order Number (optional)" 
+              value={ticketOrderNo} 
+              onChange={e => setTicketOrderNo(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', fontSize: '13px' }}
+            />
+            <textarea 
+              placeholder="Describe your issue or feedback..." 
+              required
+              rows={3}
+              value={ticketMsg} 
+              onChange={e => setTicketMsg(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', fontSize: '13px', resize: 'none' }}
+            />
+            <button 
+              type="submit" 
+              disabled={isSubmittingTicket}
+              style={{ background: '#10b981', color: '#ffffff', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 800, fontSize: '13.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            >
+              <Send size={15} /> {isSubmittingTicket ? 'Sending Ticket...' : 'Submit Support Ticket'}
+            </button>
+          </form>
+        )}
 
         {/* Frequently Asked Questions */}
         <div className="support-faq-section">

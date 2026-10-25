@@ -7,6 +7,7 @@ import { triggerConfetti, triggerMoneyConfetti } from '../utils/confetti';
 import { triggerHaptic } from '../utils/haptics';
 import { useToast } from '../context/ToastContext';
 import { useWishlist } from '../context/WishlistContext';
+import { canSendEmail, recordEmailSent, buildCustomerOrderEmailHtml, buildAdminNewOrderAlertHtml } from '../services/resendMail';
 import './CheckoutPage.css';
 import './ProductListPage.css'; // For the bestseller-card style
 
@@ -278,7 +279,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         order_type: 'DELIVERY'
       };
 
-      await db.orders.add({
+      const createdOrder = await db.orders.add({
         items: cart,
         total: effectiveGrandTotal,
         deliveryCharge: effectiveDeliveryCharge,
@@ -289,6 +290,41 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         discountAmount: discountAmount || 0,
         couponCode: appliedCoupon ? appliedCoupon.code : null
       });
+
+      // ── Resend Email Triggers (Guarded by Free Tier Daily Rate Limit) ──
+      if (canSendEmail()) {
+        const orderSummaryObj = {
+          id: createdOrder?.id || 'ORD-' + Date.now().toString().slice(-6),
+          items: cart,
+          total: effectiveGrandTotal,
+          delivery_address: finalAddress,
+          payment_method: selectedPayment
+        };
+
+        // 1. Customer Email Invoice / Confirmation (if user has email)
+        const userEmail = (await supabase.auth.getUser())?.data?.user?.email;
+        if (userEmail) {
+          supabase.functions.invoke('send-email', {
+            body: {
+              to: userEmail,
+              subject: `Order Confirmed: Quickly #${orderSummaryObj.id.slice(0, 8).toUpperCase()}`,
+              html: buildCustomerOrderEmailHtml(orderSummaryObj)
+            }
+          }).then(() => recordEmailSent()).catch(() => {});
+        }
+
+        // 2. Store Hub / Admin Alert Email
+        if (canSendEmail()) {
+          supabase.functions.invoke('send-email', {
+            body: {
+              to: 'zipitrural@gmail.com',
+              subject: `🚨 New Order Alert: #${orderSummaryObj.id.slice(0, 8).toUpperCase()} (₹${effectiveGrandTotal})`,
+              html: buildAdminNewOrderAlertHtml(orderSummaryObj)
+            }
+          }).then(() => recordEmailSent()).catch(() => {});
+        }
+      }
+
       triggerConfetti();
       triggerHaptic('success');
       clearCart();
