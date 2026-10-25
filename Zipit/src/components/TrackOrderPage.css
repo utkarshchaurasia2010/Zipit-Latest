@@ -80,21 +80,41 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .track-status-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 5px 12px;
   border-radius: 100px;
   font-size: 12px;
   font-weight: 700;
+  max-width: 60%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.track-status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .track-date {
   font-size: 11px;
   color: var(--color-text-light);
+  white-space: nowrap;
 }
 
 .track-order-info {
@@ -104,10 +124,15 @@
 }
 
 .track-order-id {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 800;
   color: var(--color-text);
   letter-spacing: 0.5px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 .track-order-total {

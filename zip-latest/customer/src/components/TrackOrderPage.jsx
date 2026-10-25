@@ -487,9 +487,9 @@ const TrackOrderPage = ({ navigate }) => {
                 <div className="track-card-header">
                   <div className="track-status-pill" style={{ background: `${getStatusColor(order.status)}18`, color: getStatusColor(order.status) }}>
                     <span className="live-status-dot" style={{ background: getStatusColor(order.status) }} />
-                    <span>{order.status}</span>
+                    <span className="track-status-text">{order.status}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="track-header-meta">
                     <span className="track-order-id">#{order.id.split('-')[0].toUpperCase()}</span>
                     <span className="track-date">{new Date(order.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
                   </div>
