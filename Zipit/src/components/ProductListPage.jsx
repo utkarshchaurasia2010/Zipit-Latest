@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Search, Heart, Filter, X } from 'lucide-react';
+import { ChevronLeft, Search, Heart, Filter, X, SlidersHorizontal } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { getProductDeliveryTime } from '../utils/time';
 import { useWishlist } from '../context/WishlistContext';
@@ -165,88 +165,167 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
         </div>
       )}
       {isFilterOpen && (
-        <div className="filter-drawer-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={() => setIsFilterOpen(false)}>
-          <div className="filter-drawer" style={{ background: 'var(--color-background)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px', animation: 'slideUp 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>Filters & Sort</h3>
-              <button onClick={() => setIsFilterOpen(false)} style={{ background: 'var(--color-surface-muted)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+        <div 
+          className="filter-drawer-overlay" 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0,0,0,0.55)', 
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            zIndex: 10000, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'flex-end',
+            alignItems: 'center'
+          }} 
+          onClick={() => setIsFilterOpen(false)}
+        >
+          <div 
+            className="filter-drawer" 
+            style={{ 
+              background: 'var(--color-surface, #ffffff)', 
+              borderTopLeftRadius: '24px', 
+              borderTopRightRadius: '24px', 
+              width: '100%',
+              maxWidth: '540px',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.2)',
+              border: '1px solid var(--color-border)',
+              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+              overflow: 'hidden'
+            }} 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Drag Handle & Header */}
+            <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <SlidersHorizontal size={17} color="#10B981" />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: 'var(--color-text)' }}>Filters & Sort</h3>
+              </div>
+              <button 
+                onClick={() => setIsFilterOpen(false)} 
+                aria-label="Close filters"
+                style={{ background: 'var(--color-surface-muted)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text)' }}
+              >
                 <X size={18} />
               </button>
             </div>
             
-            <div style={{ marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Availability</h4>
-              <div
-                onClick={() => setFilterConfig({...filterConfig, inStockOnly: !filterConfig.inStockOnly})}
-                style={{
-                  padding: '16px',
-                  borderRadius: '16px',
-                  background: filterConfig.inStockOnly ? 'rgba(22, 163, 74, 0.1)' : 'var(--color-surface)',
-                  color: filterConfig.inStockOnly ? 'var(--color-success)' : 'var(--color-text)',
-                  fontWeight: filterConfig.inStockOnly ? '700' : '500',
-                  border: `1px solid ${filterConfig.inStockOnly ? 'rgba(22, 163, 74, 0.3)' : 'var(--color-border)'}`,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <span>In Stock Only</span>
-                <div style={{
-                  width: '44px', height: '26px', borderRadius: '13px',
-                  background: filterConfig.inStockOnly ? 'var(--color-success)' : 'var(--color-border)',
-                  position: 'relative', transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)'
-                }}>
+            {/* Scrollable Filter Content */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, overscrollBehavior: 'contain' }}>
+              {/* Availability Filter */}
+              <div style={{ marginBottom: '22px' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '10px', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Availability
+                </h4>
+                <div
+                  onClick={() => setFilterConfig({...filterConfig, inStockOnly: !filterConfig.inStockOnly})}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '16px',
+                    background: filterConfig.inStockOnly ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-surface-muted)',
+                    color: filterConfig.inStockOnly ? '#10B981' : 'var(--color-text)',
+                    fontWeight: filterConfig.inStockOnly ? '700' : '600',
+                    border: `1.5px solid ${filterConfig.inStockOnly ? '#10B981' : 'var(--color-border)'}`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s ease',
+                    boxShadow: filterConfig.inStockOnly ? '0 2px 8px rgba(16, 185, 129, 0.15)' : 'none'
+                  }}
+                >
+                  <span style={{ fontSize: '14px' }}>In Stock Only</span>
                   <div style={{
-                    width: '20px', height: '20px', borderRadius: '50%',
-                    background: 'white',
-                    position: 'absolute', top: '3px',
-                    left: filterConfig.inStockOnly ? '21px' : '3px',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }} />
+                    width: '44px', 
+                    height: '24px', 
+                    borderRadius: '12px',
+                    background: filterConfig.inStockOnly ? '#10B981' : 'var(--color-border)',
+                    position: 'relative', 
+                    transition: 'all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1)'
+                  }}>
+                    <div style={{
+                      width: '18px', 
+                      height: '18px', 
+                      borderRadius: '50%',
+                      background: '#FFFFFF',
+                      position: 'absolute', 
+                      top: '3px',
+                      left: filterConfig.inStockOnly ? '23px' : '3px',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.25)'
+                    }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sort By Filter */}
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '10px', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Sort By
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { id: 'default', label: 'Relevance' },
+                    { id: 'price_asc', label: 'Price: Low to High' },
+                    { id: 'price_desc', label: 'Price: High to Low' }
+                  ].map(sortOption => (
+                    <div
+                      key={sortOption.id}
+                      onClick={() => setFilterConfig({...filterConfig, sort: sortOption.id})}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '14px',
+                        background: filterConfig.sort === sortOption.id ? 'var(--color-text)' : 'var(--color-surface-muted)',
+                        color: filterConfig.sort === sortOption.id ? 'var(--color-background)' : 'var(--color-text)',
+                        fontWeight: filterConfig.sort === sortOption.id ? '700' : '500',
+                        border: `1px solid ${filterConfig.sort === sortOption.id ? 'transparent' : 'var(--color-border)'}`,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '13.5px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <span>{sortOption.label}</span>
+                      {filterConfig.sort === sortOption.id && (
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-background)' }} />
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div style={{ marginBottom: '32px' }}>
-              <h4 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sort By</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  { id: 'default', label: 'Relevance' },
-                  { id: 'price_asc', label: 'Price: Low to High' },
-                  { id: 'price_desc', label: 'Price: High to Low' }
-                ].map(sortOption => (
-                  <div
-                    key={sortOption.id}
-                    onClick={() => setFilterConfig({...filterConfig, sort: sortOption.id})}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '16px',
-                      background: filterConfig.sort === sortOption.id ? 'var(--color-text)' : 'var(--color-surface)',
-                      color: filterConfig.sort === sortOption.id ? 'var(--color-background)' : 'var(--color-text)',
-                      fontWeight: filterConfig.sort === sortOption.id ? '700' : '500',
-                      border: `1px solid ${filterConfig.sort === sortOption.id ? 'transparent' : 'var(--color-border)'}`,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <span>{sortOption.label}</span>
-                    {filterConfig.sort === sortOption.id && (
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-background)' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
+            {/* Footer with Apply Button */}
+            <div style={{ padding: '14px 20px 20px', borderTop: '1px solid var(--color-border)', flexShrink: 0, background: 'var(--color-surface)' }}>
+              <button 
+                onClick={() => setIsFilterOpen(false)} 
+                style={{ 
+                  width: '100%', 
+                  padding: '14px', 
+                  background: 'var(--color-primary, #0c831f)', 
+                  color: '#ffffff', 
+                  border: 'none', 
+                  borderRadius: '16px', 
+                  fontWeight: '800', 
+                  fontSize: '15px', 
+                  cursor: 'pointer', 
+                  boxShadow: '0 4px 14px rgba(12, 131, 31, 0.3)' 
+                }}
+              >
+                Apply Filters
+              </button>
             </div>
-
-            <button onClick={() => setIsFilterOpen(false)} style={{ width: '100%', padding: '16px', background: 'var(--color-text)', color: 'var(--color-background)', border: 'none', borderRadius: '16px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-              Apply Filters
-            </button>
           </div>
         </div>
       )}
