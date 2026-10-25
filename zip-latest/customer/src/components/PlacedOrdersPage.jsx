@@ -135,10 +135,36 @@ const PlacedOrdersPage = ({ navigate }) => {
                       <span style={{fontSize: 12, color: 'var(--color-text-light)', marginTop: 8}}>
                         Paid via {order.payment_method}
                       </span>
-                      {order.status === 'Preparing' && (
+                      {(order.status === 'Placed' || order.status === 'Payment Pending' || order.status === 'Preparing') && (
                         <button 
                           onClick={async () => {
-                            await db.orders.updateStatus(order.id, 'Cancellation Requested');
+                            const isEarlyStage = order.status === 'Placed' || order.status === 'Payment Pending';
+                            const confirmMsg = isEarlyStage 
+                              ? 'Are you sure you want to cancel this order?' 
+                              : 'Order is already being prepared. Request store cancellation?';
+                            if (!window.confirm(confirmMsg)) return;
+
+                            const target = isEarlyStage ? 'Cancelled' : 'Cancellation Requested';
+                            await db.orders.updateStatus(order.id, target);
+                            
+                            // Restore stock if cancelled before store preparation
+                            if (isEarlyStage && order.items && Array.isArray(order.items)) {
+                              for (const it of order.items) {
+                                const qty = Number(it.quantity || it.qty || 1);
+                                if (it.id && qty > 0) {
+                                  try {
+                                    const { data: p } = await supabase.from('products').select('stock_count').eq('id', it.id).single();
+                                    if (p && typeof p.stock_count === 'number') {
+                                      await supabase.from('products').update({
+                                        stock_count: p.stock_count + qty,
+                                        is_out_of_stock: false
+                                      }).eq('id', it.id);
+                                    }
+                                  } catch (_) {}
+                                }
+                              }
+                            }
+
                             const refreshed = await db.orders.getAll();
                             setOrders(refreshed);
                           }}
@@ -154,7 +180,7 @@ const PlacedOrdersPage = ({ navigate }) => {
                             marginTop: '8px'
                           }}
                         >
-                          Request Cancellation
+                          {order.status === 'Preparing' ? 'Request Cancellation' : 'Cancel Order'}
                         </button>
                       )}
                     </div>
