@@ -32,7 +32,7 @@ const SplashScreen = () => {
           decoding="async" 
         />
       </div>
-      <div className="splash-brand-text">quickly</div>
+      <div className="splash-brand-text">Quickly</div>
       <div className="splash-tagline">Rural India's Instant Delivery</div>
     </div>
   );

@@ -61,30 +61,31 @@ export const downloadInvoice = (order) => {
 
           .brand-logo-mark {
             font-family: 'Cinzel', serif;
-            font-size: 38px;
+            font-size: 24px;
             font-weight: 800;
             color: #111827;
-            letter-spacing: -1.5px;
-            line-height: 1;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
           }
 
           .brand-tagline {
-            font-size: 11px;
+            font-size: 10px;
             color: #6B7280;
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            margin-top: 4px;
+            margin-top: 3px;
             font-weight: 600;
           }
 
           .invoice-title {
             font-family: 'Cinzel', serif;
-            font-size: 32px;
+            font-size: 22px;
             font-weight: 700;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             color: #111827;
             text-align: right;
             margin: 0;
+            line-height: 1.1;
           }
 
           .billed-meta-row {
