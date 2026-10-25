@@ -100,11 +100,25 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           <div className="profile-info-centered">
             <div className="profile-pic-large-wrapper">
               <div className="profile-pic-large">
-                <SolidUserIcon size={48} color="#FFF" />
+                <SolidUserIcon size={46} color="#FFF" />
               </div>
             </div>
-            <h3>{userProfile?.name || 'Guest'}</h3>
-            <p className="profile-contact">
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '12px' }}>
+              <h3 style={{ margin: 0 }}>{userProfile?.name || 'Guest User'}</h3>
+              <span style={{ 
+                background: '#DCFCE7', 
+                color: '#15803D', 
+                fontSize: '11px', 
+                fontWeight: '800', 
+                padding: '2px 8px', 
+                borderRadius: '12px',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.15)'
+              }}>
+                ✓ Verified
+              </span>
+            </div>
+            <p className="profile-contact" style={{ marginTop: '4px' }}>
               {userProfile?.phone || 'No phone'} • {userProfile?.email || 'No email'}
             </p>
             <button className="edit-profile-btn-solid" onClick={() => setIsEditing(true)}>
