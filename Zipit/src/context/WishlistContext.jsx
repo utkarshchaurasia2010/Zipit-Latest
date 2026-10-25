@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../services/db';
 import { useToast } from './ToastContext';
+import { triggerHaptic } from '../utils/haptics';
 
 const WishlistContext = createContext();
 
@@ -34,10 +35,12 @@ export const WishlistProvider = ({ children }) => {
         ? prev.filter(id => id !== productId) 
         : [...prev, productId];
       
-      // 2. TOAST NOTIFICATION: Instant feedback
+      // 2. TOAST NOTIFICATION & HAPTIC: Instant feedback
       if (isRemoving) {
+        triggerHaptic('light');
         showToast('Removed from wishlist');
       } else {
+        triggerHaptic('medium');
         showToast('Added to wishlist', 'success');
       }
       

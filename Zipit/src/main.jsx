@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import './index.css'
 
 if ('serviceWorker' in navigator) {
@@ -27,10 +28,12 @@ window.addEventListener('contextmenu', (e) => {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   </React.StrictMode>,
 )

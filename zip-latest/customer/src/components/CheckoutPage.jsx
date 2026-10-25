@@ -4,6 +4,7 @@ import { ChevronLeft, Clock, MapPin, ChevronRight, Tag, X, Check, Trash2, Packag
 import { db, supabase } from '../services/db';
 import { getCartDeliveryTime, getProductDeliveryTime } from '../utils/time';
 import { triggerConfetti, triggerMoneyConfetti } from '../utils/confetti';
+import { triggerHaptic } from '../utils/haptics';
 import { useToast } from '../context/ToastContext';
 import { useWishlist } from '../context/WishlistContext';
 import './CheckoutPage.css';
@@ -289,6 +290,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         couponCode: appliedCoupon ? appliedCoupon.code : null
       });
       triggerConfetti();
+      triggerHaptic('success');
       clearCart();
       await db.carts.clear();
       if (setAppliedCoupon) setAppliedCoupon(null);
@@ -301,9 +303,26 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       navigate('/track');
     } catch (e) {
       console.error(e);
+      triggerHaptic('error');
       showToast('Something went wrong. Please try again.', 'Order Failed');
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleShareApp = async () => {
+    triggerHaptic('light');
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Quickly - 10-Minute Grocery Delivery',
+          text: 'Order groceries and daily essentials in minutes with Quickly!',
+          url: window.location.origin
+        });
+      } catch (_) {}
+    } else {
+      navigator.clipboard?.writeText(window.location.origin);
+      showToast('Link copied to clipboard!', 'Share Quickly');
     }
   };
 
@@ -317,7 +336,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
           <h1>Checkout</h1>
         </div>
         <div className="checkout-header-right">
-          <button className="share-btn">
+          <button className="share-btn" onClick={handleShareApp}>
             <Share2 size={16} /> Share
           </button>
         </div>
