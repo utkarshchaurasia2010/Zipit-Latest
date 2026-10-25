@@ -61,96 +61,111 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
             <p style={{ fontSize: 13, marginTop: 6 }}>Your delivered and cancelled orders will appear here.</p>
           </div>
         ) : (
-          orders.map(order => (
-            <div key={order.id} className="order-card past-order-card" style={{ opacity: 1 }}>
-              <div className="order-card-header">
-                <div className="order-status">
-                  <PackageCheck
-                    size={16}
-                    color={order.status === 'Cancelled' || order.status === 'Cancellation Rejected' ? '#E23744' : 'var(--color-text-light)'}
-                  />
-                  <span
-                    className="status-text"
-                    style={{ color: order.status === 'Cancelled' || order.status === 'Cancellation Rejected' ? '#E23744' : 'var(--color-text-light)' }}
-                  >
-                    {order.status}
+          orders.map(order => {
+            const isDelivered = order.status === 'Delivered';
+            const isCancelled = order.status === 'Cancelled' || order.status === 'Cancellation Rejected';
+            const statusColor = isDelivered ? '#10B981' : isCancelled ? '#EF4444' : '#F59E0B';
+
+            return (
+              <div key={order.id} className="order-card past-order-card" style={{ opacity: 1, padding: '16px 18px', borderRadius: '18px', border: '1px solid var(--color-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Header Row: Status badge & Date */}
+                <div className="order-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--color-border)', paddingBottom: '10px' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: `${statusColor}18`, color: statusColor, padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 800 }}>
+                    <PackageCheck size={14} color={statusColor} />
+                    <span>{order.status}</span>
+                  </div>
+                  <span className="order-date" style={{ fontSize: '11.5px', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                    {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
-                <span className="order-date">{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              </div>
-              <div className="order-details">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p className="order-items" style={{ fontWeight: 700 }}>Order #{order.id.split('-')[0].toUpperCase()}</p>
-                  <h4 className="order-amount">₹{order.total}</h4>
+
+                {/* Main Details: Order ID, Total, Item summary */}
+                <div className="order-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, fontSize: '14px', color: 'var(--color-text)', letterSpacing: '0.3px' }}>
+                      Order #{order.id.split('-')[0].toUpperCase()}
+                    </span>
+                    <span style={{ fontWeight: 900, fontSize: '16px', color: 'var(--color-text)' }}>
+                      ₹{order.total}
+                    </span>
+                  </div>
+
+                  {/* Items List Chips */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--color-surface-muted)', padding: '10px 12px', borderRadius: '12px' }}>
+                    {order.items.slice(0, 3).map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
+                        <span style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                          <strong style={{ color: '#10B981', marginRight: '4px' }}>{item.qty}×</strong> {item.name}
+                        </span>
+                        <span style={{ fontWeight: 600, color: 'var(--color-text-light)' }}>
+                          ₹{item.price ? item.price * item.qty : ''}
+                        </span>
+                      </div>
+                    ))}
+                    {order.items.length > 3 && (
+                      <span style={{ fontSize: '11px', color: 'var(--color-text-light)', fontWeight: 700, marginTop: '2px' }}>
+                        +{order.items.length - 3} more items
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ marginTop: 8 }}>
-                  {order.items.map(item => (
-                    <div key={item.id} style={{ fontSize: 13, color: 'var(--color-text-light)' }}>
-                      {item.qty}x {item.name}
-                    </div>
-                  ))}
+
+                {/* Footer Payment info */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--color-text-light)' }}>
+                  <span>Payment: <strong style={{ color: 'var(--color-text)' }}>{order.payment_method || 'Online'}</strong></span>
+                  <span>{order.delivery_address?.type ? `Delivered to ${order.delivery_address.type}` : ''}</span>
                 </div>
-              </div>
-              <div className="order-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--color-text-light)' }}>Paid via {order.payment_method}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
-                {order.items && order.items.length > 0 ? (
+
+                {/* Actions: Download Invoice & Reorder */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', paddingTop: '6px' }}>
+                  {order.items && order.items.length > 0 ? (
+                    <button 
+                      onClick={() => downloadInvoice(order)}
+                      style={{
+                        background: 'var(--color-surface-muted)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)',
+                        borderRadius: '12px',
+                        padding: '10px 0',
+                        fontSize: '12.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'transform 0.15s ease'
+                      }}
+                    >
+                      <Download size={15} /> Invoice
+                    </button>
+                  ) : null}
+                  
                   <button 
-                    onClick={() => downloadInvoice(order)}
+                    onClick={() => handleReorder(order)}
                     style={{
-                      background: 'rgba(150, 150, 150, 0.15)',
-                      backdropFilter: 'blur(12px)',
-                      WebkitBackdropFilter: 'blur(12px)',
-                      border: '1px solid rgba(150, 150, 150, 0.2)',
-                      color: 'var(--color-text)',
+                      background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                      border: 'none',
+                      color: '#FFFFFF',
                       borderRadius: '12px',
                       padding: '10px 0',
-                      fontSize: '13px',
-                      fontWeight: '700',
+                      fontSize: '12.5px',
+                      fontWeight: '800',
                       cursor: 'pointer',
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
                       gap: '6px',
-                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)'
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                      transition: 'transform 0.15s ease'
                     }}
                   >
-                    <Download size={16} /> Invoice
+                    <RotateCcw size={15} /> Reorder
                   </button>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(150, 150, 150, 0.05)', borderRadius: '12px', border: '1px dashed rgba(150,150,150,0.2)' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--color-text-light)', fontWeight: '500' }}>
-                      Unavailable
-                    </span>
-                  </div>
-                )}
-                
-                <button 
-                  onClick={() => handleReorder(order)}
-                  style={{
-                    background: 'rgba(248, 203, 70, 0.2)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(248, 203, 70, 0.4)',
-                    color: '#B47800', // Darker yellow/amber for contrast
-                    borderRadius: '12px',
-                    padding: '10px 0',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 4px 16px rgba(248, 203, 70, 0.1)'
-                  }}
-                >
-                  <RotateCcw size={16} /> Reorder
-                </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

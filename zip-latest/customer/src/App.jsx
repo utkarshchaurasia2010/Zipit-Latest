@@ -626,8 +626,8 @@ function AppContent() {
     );
   }
 
-  const showBottomNav = ['/', '/categories', '/track'].includes(viewName);
-  const activeTab = viewName === '/' ? 'home' : viewName === '/categories' ? 'categories' : viewName === '/track' ? 'track' : '';
+  const showBottomNav = ['/', '/categories'].includes(viewName);
+  const activeTab = viewName === '/' ? 'home' : viewName === '/categories' ? 'categories' : '';
   const showCartBar = totalItems > 0 && !viewName.includes('/checkout') && !viewName.includes('/payment') && !selectedProduct;
 
   const safeAddresses = Array.isArray(addresses) ? addresses : [];

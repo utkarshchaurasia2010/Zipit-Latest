@@ -509,30 +509,25 @@ const TrackOrderPage = ({ navigate }) => {
                   const { steps, currentIdx } = getTimelineSteps(order.status, order);
                   return (
                     <div className="modern-stepper-container">
-                      <div className="modern-stepper-bar">
+                      <div className="modern-stepper-progress-track">
                         {steps.map((label, i) => {
                           const isDone = i < currentIdx;
                           const isActive = i === currentIdx;
                           return (
-                            <React.Fragment key={i}>
-                              <div className="modern-step-node">
+                            <div key={i} className={`modern-step-node ${isDone ? 'is-done' : isActive ? 'is-active' : 'is-pending'}`}>
+                              <div className="modern-step-circle-wrapper">
                                 <div className={`modern-step-circle ${isDone ? 'done' : isActive ? 'active' : 'pending'}`}>
                                   {isDone ? (
-                                    <Check size={13} strokeWidth={3} />
+                                    <Check size={14} strokeWidth={3} />
                                   ) : (
                                     <span className="step-inner-dot" />
                                   )}
                                 </div>
-                                <span className={`modern-step-text ${isDone ? 'done' : isActive ? 'active' : ''}`}>
-                                  {label}
-                                </span>
                               </div>
-                              {i < steps.length - 1 && (
-                                <div className="modern-step-connector">
-                                  <div className={`modern-step-line ${i < currentIdx ? 'filled' : ''}`} />
-                                </div>
-                              )}
-                            </React.Fragment>
+                              <span className={`modern-step-text ${isDone ? 'done' : isActive ? 'active' : ''}`}>
+                                {label}
+                              </span>
+                            </div>
                           );
                         })}
                       </div>

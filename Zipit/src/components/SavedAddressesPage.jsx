@@ -181,7 +181,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
             <div className="address-card-content">
               <div className="address-icon-box" onClick={() => handleSetDefault(addr.id)}>
                 <div className={`icon-circle ${addr.is_default ? 'default-active' : ''}`}>
-                  <MapPin size={20} color={addr.is_default ? "#FFF" : "#333"} />
+                  <MapPin size={20} color={addr.is_default ? "#FFFFFF" : "var(--color-primary, #0c831f)"} />
                 </div>
               </div>
               <div className="address-info-box">
