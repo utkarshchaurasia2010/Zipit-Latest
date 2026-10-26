@@ -436,12 +436,10 @@ const TrackOrderPage = ({ navigate }) => {
       // Update local state immediately so user sees immediate feedback without blinking
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o).filter(o => ACTIVE_STATUSES.includes(o.status)));
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('orders')
         .update({ status: targetStatus })
-        .eq('id', orderId)
-        .select()
-        .single();
+        .eq('id', orderId);
 
       if (error) {
         console.error('Supabase update status failed:', error);
