@@ -31,7 +31,7 @@ const PaymentPage = ({ navigate, cart, total, deliveryCharge, smallCartCharge, a
       clearCart();
       await db.carts.clear();
       if (setAppliedCoupon) setAppliedCoupon(null);
-      showToast(`Order Placed! Your order via ${method} was placed successfully.`, 'Order Placed 🎉');
+      showToast(`Order Placed! Your order via ${method} was placed successfully.`, 'Order Placed');
       navigate('/track');   // Go directly to live order tracking
     } catch (e) {
       console.error(e);

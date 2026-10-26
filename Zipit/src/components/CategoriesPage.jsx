@@ -82,7 +82,7 @@ const CategoriesPage = ({ navigate, isEmbedded }) => {
           </div>
         ) : sections.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-light)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>🛒</div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#94a3b8', marginBottom: '8px' }}>No Products</div>
             <div style={{ fontWeight: '700', fontSize: '15px', color: 'var(--color-text)' }}>No Categories Available</div>
             <div style={{ fontSize: '13px', marginTop: '4px' }}>Check back soon as new products are being added!</div>
           </div>

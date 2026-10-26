@@ -71,12 +71,12 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                   <p className="address-details" style={{margin: '4px 0', cursor: 'pointer'}} onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>{stripAddressTags(addr.details)}</p>
                   {addr.landmark && (
                     <div style={{ fontSize: '11.5px', color: '#0c831f', fontWeight: 600, margin: '2px 0' }}>
-                      🚩 Landmark: {addr.landmark}
+                      Landmark: {addr.landmark}
                     </div>
                   )}
                   {addr.family_head && (
                     <div style={{ fontSize: '11.5px', color: 'var(--color-text)', fontWeight: 500, margin: '2px 0' }}>
-                      🏠 House: {addr.family_head}
+                      House: {addr.family_head}
                     </div>
                   )}
                   <p className="address-phone" style={{margin: 0}}>Phone number: <strong>{addr.phone || '9651568829'}</strong>{addr.alt_phone ? ` (Alt: ${addr.alt_phone})` : ''}</p>

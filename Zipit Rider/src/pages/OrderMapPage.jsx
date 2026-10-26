@@ -687,19 +687,19 @@ export default function OrderMapPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1', fontSize: '12.5px' }}>
                 {landmark && (
                   <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>🚩 Landmark:</span>
+                    <span>Landmark:</span>
                     <span>{landmark}</span>
                   </div>
                 )}
                 {village && (
                   <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>📍 Area / Village:</span>
+                    <span>Area / Village:</span>
                     <span>{village}</span>
                   </div>
                 )}
                 {familyHead && (
                   <div style={{ background: '#fef3c7', color: '#92400e', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>🏠 House / Family Head:</span>
+                    <span>House / Family Head:</span>
                     <span>{familyHead}</span>
                   </div>
                 )}

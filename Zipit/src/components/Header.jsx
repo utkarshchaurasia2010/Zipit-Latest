@@ -70,67 +70,120 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
       <div className="header-vector-bg" aria-hidden="true">
         <svg viewBox="0 0 400 160" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            {/* Light Mode Gradients - Rich 3D Amber, Gold & Frosted Glass Highlights */}
-            <linearGradient id="headerGrad1Light" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
-              <stop offset="40%" stopColor="#FEF08A" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.35" />
-            </linearGradient>
-            <linearGradient id="headerGrad2Light" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FEF9C3" stopOpacity="0.8" />
-              <stop offset="60%" stopColor="#FBBF24" stopOpacity="0.5" />
+            {/* 3D Filter for bevel specular lighting & deep volumetric shadow */}
+            <filter id="waveDepth3D" x="-20%" y="-20%" width="150%" height="160%" filterUnits="userSpaceOnUse">
+              <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor={theme === 'dark' ? '#000000' : '#b45309'} floodOpacity={theme === 'dark' ? '0.6' : '0.22'} />
+              <feDropShadow dx="0" dy="14" stdDeviation="16" floodColor={theme === 'dark' ? '#064e3b' : '#d97706'} floodOpacity={theme === 'dark' ? '0.4' : '0.15'} />
+            </filter>
+
+            <filter id="topEdgeGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#ffffff" floodOpacity={theme === 'dark' ? '0.35' : '0.8'} />
+            </filter>
+
+            {/* Light Mode Gradients - 3D Embossed Golden/Amber Curves */}
+            <linearGradient id="curve1Light" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFBEB" stopOpacity="0.95" />
+              <stop offset="35%" stopColor="#FDE68A" stopOpacity="0.75" />
+              <stop offset="70%" stopColor="#F59E0B" stopOpacity="0.45" />
               <stop offset="100%" stopColor="#D97706" stopOpacity="0.25" />
             </linearGradient>
-            <radialGradient id="headerGlowLight" cx="60%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#FDE047" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+
+            <linearGradient id="curve2Light" x1="10%" y1="0%" x2="90%" y2="100%">
+              <stop offset="0%" stopColor="#FEF3C7" stopOpacity="0.9" />
+              <stop offset="45%" stopColor="#FBBF24" stopOpacity="0.6" />
+              <stop offset="85%" stopColor="#EA580C" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#C2410C" stopOpacity="0.1" />
+            </linearGradient>
+
+            <linearGradient id="curveRidgeLight" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="#FEF08A" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.2" />
+            </linearGradient>
+
+            {/* Dark Mode Gradients - 3D Emerald / Neon Cyberpunk Curves */}
+            <linearGradient id="curve1Dark" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#34D399" stopOpacity="0.4" />
+              <stop offset="40%" stopColor="#10B981" stopOpacity="0.25" />
+              <stop offset="80%" stopColor="#047857" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#064E3B" stopOpacity="0.04" />
+            </linearGradient>
+
+            <linearGradient id="curve2Dark" x1="10%" y1="0%" x2="90%" y2="100%">
+              <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.35" />
+              <stop offset="50%" stopColor="#D97706" stopOpacity="0.2" />
+              <stop offset="90%" stopColor="#B45309" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#78350F" stopOpacity="0.02" />
+            </linearGradient>
+
+            <linearGradient id="curveRidgeDark" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#6EE7B7" stopOpacity="0.8" />
+              <stop offset="50%" stopColor="#34D399" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#10B981" stopOpacity="0.1" />
+            </linearGradient>
+
+            <radialGradient id="sphere3DLight" cx="35%" cy="30%" r="65%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="40%" stopColor="#FDE047" stopOpacity="0.6" />
+              <stop offset="75%" stopColor="#F59E0B" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#D97706" stopOpacity="0" />
             </radialGradient>
 
-            {/* Dark Mode Gradients - Emerald, Cyan & Gold Luster */}
-            <linearGradient id="headerGrad1Dark" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10B981" stopOpacity="0.32" />
-              <stop offset="70%" stopColor="#059669" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#047857" stopOpacity="0.05" />
-            </linearGradient>
-            <linearGradient id="headerGrad2Dark" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.30" />
-              <stop offset="60%" stopColor="#D97706" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#B45309" stopOpacity="0.02" />
-            </linearGradient>
-            <radialGradient id="headerGlowDark" cx="50%" cy="20%" r="80%">
-              <stop offset="0%" stopColor="#34D399" stopOpacity="0.35" />
-              <stop offset="60%" stopColor="#10B981" stopOpacity="0.15" />
+            <radialGradient id="sphere3DDark" cx="35%" cy="30%" r="65%">
+              <stop offset="0%" stopColor="#A7F3D0" stopOpacity="0.6" />
+              <stop offset="45%" stopColor="#10B981" stopOpacity="0.25" />
+              <stop offset="85%" stopColor="#065F46" stopOpacity="0.08" />
               <stop offset="100%" stopColor="#064E3B" stopOpacity="0" />
             </radialGradient>
           </defs>
 
-          {/* Primary Fluid Wave */}
+          {/* Deep Base Shadow Wave (Lends realistic physical lift) */}
           <path
-            d="M-20 -20 Q 80 130, 240 45 T 440 95 L 440 -40 Z"
-            fill={theme === 'dark' ? 'url(#headerGrad1Dark)' : 'url(#headerGrad1Light)'}
-            style={{ 
-              filter: theme === 'dark' 
-                ? 'drop-shadow(0 6px 12px rgba(16, 185, 129, 0.2))' 
-                : 'drop-shadow(0 4px 12px rgba(217, 119, 6, 0.25))' 
-            }}
+            d="M-30 -25 Q 75 142, 238 48 T 445 105 L 445 -45 Z"
+            fill={theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(180, 83, 9, 0.12)'}
+            transform="translate(0, 6)"
           />
-          {/* Secondary Intersecting Wave */}
+
+          {/* Primary Wave Body with 3D Bevel & Depth Filter */}
           <path
-            d="M90 -40 Q 220 150, 380 35 T 530 85 L 530 -40 Z"
-            fill={theme === 'dark' ? 'url(#headerGrad2Dark)' : 'url(#headerGrad2Light)'}
-            style={{ 
-              filter: theme === 'dark' 
-                ? 'drop-shadow(0 4px 10px rgba(245, 158, 11, 0.18))' 
-                : 'drop-shadow(0 4px 10px rgba(245, 158, 11, 0.3))' 
-            }}
+            d="M-30 -25 Q 75 142, 238 48 T 445 105 L 445 -45 Z"
+            fill={theme === 'dark' ? 'url(#curve1Dark)' : 'url(#curve1Light)'}
+            filter="url(#waveDepth3D)"
           />
-          {/* Glowing 3D Orb/Sphere Highlight */}
+
+          {/* 3D Specular Highlight Ridge (Creates the sharp embossed upper bevel edge) */}
+          <path
+            d="M-30 -25 Q 75 142, 238 48 T 445 105"
+            stroke={theme === 'dark' ? 'url(#curveRidgeDark)' : 'url(#curveRidgeLight)'}
+            strokeWidth="3"
+            strokeLinecap="round"
+            fill="none"
+            filter="url(#topEdgeGlow)"
+          />
+
+          {/* Secondary Intersecting Wave Body (Overlapping 3D tier) */}
+          <path
+            d="M80 -45 Q 215 160, 375 38 T 530 92 L 530 -45 Z"
+            fill={theme === 'dark' ? 'url(#curve2Dark)' : 'url(#curve2Light)'}
+            filter="url(#waveDepth3D)"
+          />
+
+          {/* Secondary 3D Specular Ridge */}
+          <path
+            d="M80 -45 Q 215 160, 375 38 T 530 92"
+            stroke={theme === 'dark' ? 'rgba(251, 191, 36, 0.6)' : 'rgba(255, 255, 255, 0.85)'}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+
+          {/* Raised 3D Spherical Ambient Luster */}
           <circle
             cx="355"
-            cy="24"
-            r="75"
-            fill={theme === 'dark' ? 'url(#headerGlowDark)' : 'url(#headerGlowLight)'}
+            cy="26"
+            r="80"
+            fill={theme === 'dark' ? 'url(#sphere3DDark)' : 'url(#sphere3DLight)'}
+            style={{ mixBlendMode: theme === 'dark' ? 'screen' : 'multiply' }}
           />
         </svg>
       </div>

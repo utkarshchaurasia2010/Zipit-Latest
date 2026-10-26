@@ -195,12 +195,12 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                 <p className="address-details" onClick={() => handleSetDefault(addr.id)}>{stripAddressTags(addr.details)}</p>
                 {addr.landmark && (
                   <div style={{ margin: '4px 0', fontSize: '12px', color: '#0c831f', fontWeight: 600 }}>
-                    🚩 Landmark: {addr.landmark}
+                    Landmark: {addr.landmark}
                   </div>
                 )}
                 {addr.family_head && (
                   <div style={{ margin: '2px 0', fontSize: '12px', color: 'var(--color-text)', fontWeight: 500 }}>
-                    🏠 House: {addr.family_head}
+                    House: {addr.family_head}
                   </div>
                 )}
                 <p className="address-phone">
@@ -328,7 +328,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                       gap: '8px'
                     }}
                   >
-                    <span>🌾 Living in a village? Skip Map & Enter Landmark Directly ➔</span>
+                    <span>Skip Map & Enter Village / Landmark Directly →</span>
                   </button>
                 </div>
                 <MapPinPicker 
@@ -361,7 +361,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                   <div className="gps-map-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: 20, background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', padding: '12px 14px', borderRadius: '14px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span style={{ color: '#10B981', fontWeight: 700, fontSize: '13px' }}>
-                        📍 Map Location: {mapPinData?.areaTitle || 'Selected Area'}
+                        Map Pin: {mapPinData?.areaTitle || 'Selected Area'}
                       </span>
                       <span style={{ color: 'var(--color-text-light)', fontSize: '12px' }}>
                         {mapPinData?.fullAddress || 'Coordinates confirmed from map'}
@@ -421,7 +421,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                 {/* Known Landmark (Most Critical for village) */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0c831f', marginBottom: 6 }}>
-                    🚩 Known Landmark (पहचान / लैंडमार्क - सबसे ज़रूरी) <span style={{ color: '#dc2626' }}>*</span>
+                    Known Landmark (पहचान / लैंडमार्क - सबसे ज़रूरी) <span style={{ color: '#dc2626' }}>*</span>
                   </label>
                   <input 
                     type="text" 

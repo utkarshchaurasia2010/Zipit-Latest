@@ -299,7 +299,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         isPickup 
           ? `Store Pickup Order Placed! Ready around ${formattedPickupTime}.` 
           : `Order Placed successfully via ${selectedPayment}!`, 
-        isPickup ? 'Store Pickup Confirmed 🛍️' : 'Order Placed 🎉'
+        isPickup ? 'Store Pickup Confirmed' : 'Order Placed'
       );
       navigate('/track');
     } catch (e) {

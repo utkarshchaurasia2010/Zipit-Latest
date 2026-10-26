@@ -434,7 +434,7 @@ export default function DashboardPage() {
                 fontSize: '12px'
               }}>
                 <span style={{ color: '#92400e', fontWeight: '700' }}>
-                  💵 Cash on Hand (COD Today):
+                  Cash on Hand (COD Today):
                 </span>
                 <span style={{ color: '#78350f', fontWeight: '900', fontSize: '13px' }}>
                   ₹{todayCodCash}
@@ -591,7 +591,7 @@ export default function DashboardPage() {
                         fontWeight: 800,
                         marginBottom: '10px'
                       }}>
-                        <span>📦 DUAL ORDER STOP #{dualIndex}</span>
+                        <span>DUAL ORDER STOP #{dualIndex}</span>
                       </div>
                     )}
                     {/* Clickable Card Header & Delivery Preview */}
@@ -662,7 +662,7 @@ export default function DashboardPage() {
                         fontWeight: '700',
                         color: remainingTimers[order.id] < 60 ? '#b91c1c' : '#92400e'
                       }}>
-                        <span>⏱️ Pick up & Start timer:</span>
+                        <span>️ Pick up & Start timer:</span>
                         <span style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: '800' }}>
                           {Math.floor(remainingTimers[order.id] / 60)}:{(remainingTimers[order.id] % 60).toString().padStart(2, '0')}
                         </span>
@@ -699,7 +699,7 @@ export default function DashboardPage() {
                             fontSize: '13px',
                             fontWeight: '700'
                           }}>
-                            ⌛ Shopkeeper is packing items... Waiting for status "Ready for Pickup"
+                            Storekeeper is packing items... Waiting for status: Ready for Pickup
                           </div>
                         )}
 
@@ -1308,7 +1308,7 @@ export default function DashboardPage() {
                   fontSize: '13px',
                   fontWeight: '700'
                 }}>
-                  ⌛ Waiting for Storekeeper: Ready for Pickup
+                  Waiting for Storekeeper: Ready for Pickup
                 </div>
               )}
             </div>

@@ -157,7 +157,7 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
                   ) : item.stock_count > 2 && item.stock_count < 10 ? (
                     <div style={{color: '#f79009', fontSize: '10px', fontWeight: 'bold', marginTop: '2px'}}>Only few left</div>
                   ) : null}
-                  <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                  <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                 </div>
               </div>
             );

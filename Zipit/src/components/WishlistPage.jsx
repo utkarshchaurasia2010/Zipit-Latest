@@ -84,7 +84,7 @@ const WishlistPage = ({ navigate, cart, updateCartQty }) => {
                     )}
                   </div>
                   <h3 className="item-name">{item.name}</h3>
-                  <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                  <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                 </div>
               </div>
             );

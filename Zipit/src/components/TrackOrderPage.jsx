@@ -585,7 +585,7 @@ const TrackOrderPage = ({ navigate }) => {
                   <div className="modern-partner-card">
                     <div className="partner-avatar-wrapper">
                       <div className="partner-avatar-circle">
-                        {order.accepted_by_rider ? order.accepted_by_rider.charAt(0).toUpperCase() : '🛵'}
+                        {order.accepted_by_rider ? order.accepted_by_rider.charAt(0).toUpperCase() : 'R'}
                       </div>
                     </div>
                     <div className="partner-details">
@@ -593,7 +593,7 @@ const TrackOrderPage = ({ navigate }) => {
                       <div className="partner-name-row">
                         <span className="partner-name">{order.accepted_by_rider || 'Assigning Rider...'}</span>
                         <span className="partner-rating-badge">
-                          <Star size={11} fill="#F59E0B" color="#F59E0B" /> 4.9 ★
+                          <Star size={11} fill="#F59E0B" color="#F59E0B" /> 4.9
                         </span>
                       </div>
                     </div>

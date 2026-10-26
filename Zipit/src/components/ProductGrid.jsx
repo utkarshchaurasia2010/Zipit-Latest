@@ -330,7 +330,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                       )}
                     </div>
                     <h3 className="item-name">{item.name}</h3>
-                    <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                    <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                   </div>
                 </div>
               );
@@ -423,7 +423,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                     <div className="bestseller-info">
                       <div className="item-price">₹{item.price}</div>
                       <h3 className="item-name">{item.name}</h3>
-                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                      <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                     </div>
                   </div>
                 );
@@ -507,7 +507,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                     <div className="bestseller-info">
                       <div className="item-price">₹{item.price}</div>
                       <h3 className="item-name">{item.name}</h3>
-                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                      <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                     </div>
                   </div>
                 );
@@ -551,7 +551,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
               </div>
               {sec.badge && (
                 <span style={{ fontSize: '11px', fontWeight: 800, background: 'linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%)', color: '#b45309', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '20px' }}>
-                  ✨ {sec.badge}
+                  {sec.badge}
                 </span>
               )}
             </div>
@@ -585,7 +585,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                     <div className="bestseller-info">
                       <div className="item-price">₹{item.price}</div>
                       <h3 className="item-name">{item.name}</h3>
-                      <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                      <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                     </div>
                   </div>
                 );
@@ -656,7 +656,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                   <div className="bestseller-info">
                     <div className="item-price">₹{item.price}</div>
                     <h3 className="item-name">{item.name}</h3>
-                    <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                    <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                   </div>
                 </div>
               );
@@ -771,7 +771,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
                           )}
                         </div>
                         <h3 className="item-name">{item.name}</h3>
-                        <div className="time-tag">⏱ {getProductDeliveryTime(item.name)} MINS</div>
+                        <div className="time-tag">{getProductDeliveryTime(item.name)} MINS</div>
                       </div>
                     </div>
                   );

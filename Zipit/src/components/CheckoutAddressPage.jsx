@@ -62,12 +62,12 @@ const CheckoutAddressPage = ({ navigate, addresses, cart, updateCartQty }) => {
                 <p className="address-details" style={{margin: '4px 0'}}>{stripAddressTags(addr.details)}</p>
                 {addr.landmark && (
                   <div style={{ fontSize: '12px', color: '#0c831f', fontWeight: 600, margin: '2px 0' }}>
-                    🚩 Landmark: {addr.landmark}
+                    Landmark: {addr.landmark}
                   </div>
                 )}
                 {addr.family_head && (
                   <div style={{ fontSize: '12px', color: 'var(--color-text)', fontWeight: 500, margin: '2px 0' }}>
-                    🏠 House: {addr.family_head}
+                    House: {addr.family_head}
                   </div>
                 )}
                 <p className="address-phone" style={{margin: 0}}>Phone number: <strong>{addr.phone || '9651568829'}</strong>{addr.alt_phone ? ` (Alt: ${addr.alt_phone})` : ''}</p>
