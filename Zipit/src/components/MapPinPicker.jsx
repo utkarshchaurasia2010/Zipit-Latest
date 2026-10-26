@@ -29,13 +29,37 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
 
-  // Google Maps API Sync state (checks localStorage or VITE_GOOGLE_MAPS_API_KEY in .env for global sync)
+  // Google Maps API Sync state: loads from DB system config, localStorage, or env
   const [googleMapsKey, setGoogleMapsKey] = useState(() => 
     localStorage.getItem('zipit_google_maps_key') || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
   );
   const [isGoogleLoaded, setIsGoogleLoaded] = useState(() => Boolean(window.google && window.google.maps && window.google.maps.places));
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [inputKey, setInputKey] = useState('');
+
+  // 1. Fetch persistent Google Maps Key from Supabase DB on load so user NEVER has to re-enter it
+  useEffect(() => {
+    const fetchRemoteKey = async () => {
+      try {
+        const { supabase } = await import('../services/db');
+        const { data } = await supabase
+          .from('addresses')
+          .select('details')
+          .eq('profile_id', '00000000-0000-0000-0000-000000000001')
+          .eq('type', 'GOOGLE_MAPS_KEY')
+          .maybeSingle();
+
+        if (data?.details && data.details.trim()) {
+          const remoteKey = data.details.trim();
+          localStorage.setItem('zipit_google_maps_key', remoteKey);
+          setGoogleMapsKey(remoteKey);
+        }
+      } catch (err) {
+        console.warn('Could not fetch remote Google Maps key:', err);
+      }
+    };
+    fetchRemoteKey();
+  }, []);
 
   // Dynamically load Official Google Maps JS SDK (Places + Geocoder) when a key is provided
   useEffect(() => {
@@ -781,10 +805,33 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
               </button>
               <button 
                 type="button"
-                onClick={() => {
-                  if (inputKey.trim()) {
-                    localStorage.setItem('zipit_google_maps_key', inputKey.trim());
-                    setGoogleMapsKey(inputKey.trim());
+                onClick={async () => {
+                  const val = inputKey.trim();
+                  if (val) {
+                    localStorage.setItem('zipit_google_maps_key', val);
+                    setGoogleMapsKey(val);
+                    try {
+                      const { supabase } = await import('../services/db');
+                      const { data: existing } = await supabase
+                        .from('addresses')
+                        .select('id')
+                        .eq('profile_id', '00000000-0000-0000-0000-000000000001')
+                        .eq('type', 'GOOGLE_MAPS_KEY')
+                        .maybeSingle();
+
+                      if (existing?.id) {
+                        await supabase.from('addresses').update({ details: val }).eq('id', existing.id);
+                      } else {
+                        await supabase.from('addresses').insert([{
+                          profile_id: '00000000-0000-0000-0000-000000000001',
+                          type: 'GOOGLE_MAPS_KEY',
+                          details: val,
+                          is_default: false
+                        }]);
+                      }
+                    } catch (e) {
+                      console.warn('Failed to sync GMaps key to DB:', e);
+                    }
                   } else {
                     localStorage.removeItem('zipit_google_maps_key');
                     setGoogleMapsKey('');

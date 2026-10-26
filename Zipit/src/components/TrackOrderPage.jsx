@@ -300,8 +300,9 @@ const TrackOrderPage = ({ navigate }) => {
   useEffect(() => {
     fetchOrders(false);
 
+    // 1. Supabase Realtime channel
     const channel = supabase
-      .channel(`track-orders-${Math.random()}`)
+      .channel(`track-orders-realtime`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
         playBellSound();
         fetchOrders(true);
@@ -313,8 +314,14 @@ const TrackOrderPage = ({ navigate }) => {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => fetchOrders(true))
       .subscribe();
 
+    // 2. High-speed resilient polling fallback (every 2.5s) to guarantee instant status updates even if WebSocket drops or DB replication lags
+    const pollInterval = setInterval(() => {
+      fetchOrders(true);
+    }, 2500);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, []);
 
@@ -389,9 +396,47 @@ const TrackOrderPage = ({ navigate }) => {
     }
   };
 
-  const handleCancelRequest = async (orderId) => {
-    await db.orders.updateStatus(orderId, 'Cancellation Requested');
-    await fetchOrders();
+  const handleCancelRequest = async (orderOrId) => {
+    const orderObj = typeof orderOrId === 'object' ? orderOrId : orders.find(o => o.id === orderOrId);
+    const orderId = typeof orderOrId === 'object' ? orderOrId.id : orderOrId;
+    if (!orderId) return;
+
+    const isEarlyStage = orderObj && (orderObj.status === 'Placed' || orderObj.status === 'Payment Pending');
+    const confirmMsg = isEarlyStage 
+      ? 'Are you sure you want to cancel this order?' 
+      : 'Order is already being prepared. Would you like to request store cancellation?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const targetStatus = isEarlyStage ? 'Cancelled' : 'Cancellation Requested';
+      await db.orders.updateStatus(orderId, targetStatus);
+      
+      // If cancelled directly at early stage, restore product stock
+      if (isEarlyStage && orderObj?.items && Array.isArray(orderObj.items)) {
+        for (const it of orderObj.items) {
+          const qty = Number(it.quantity || it.qty || 1);
+          if (it.id && qty > 0) {
+            try {
+              const { data: p } = await supabase.from('products').select('stock_count').eq('id', it.id).single();
+              if (p && typeof p.stock_count === 'number') {
+                await supabase.from('products').update({
+                  stock_count: p.stock_count + qty,
+                  is_out_of_stock: false
+                }).eq('id', it.id);
+              }
+            } catch (stockErr) {
+              console.warn('Stock restoral skipped on cancel:', stockErr);
+            }
+          }
+        }
+      }
+
+      await fetchOrders();
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      alert('Could not update order status. Please check your connection.');
+    }
   };
 
   const getStatusColor = (status) => {
@@ -664,9 +709,13 @@ const TrackOrderPage = ({ navigate }) => {
                 {/* Footer */}
                 <div className="track-footer">
                   <span className="track-payment">Paid via {order.payment_method}</span>
-                  {order.status === 'Preparing' && (
-                    <button className="track-cancel-btn" onClick={() => handleCancelRequest(order.id)}>
-                      Cancel Order
+                  {/* Cancel Button logic: Available before order is packed or dispatched */}
+                  {(order.status === 'Placed' || order.status === 'Payment Pending' || order.status === 'Preparing') && (
+                    <button 
+                      className="track-cancel-btn" 
+                      onClick={() => handleCancelRequest(order)}
+                    >
+                      {order.status === 'Preparing' ? 'Request Cancellation' : 'Cancel Order'}
                     </button>
                   )}
                 </div>

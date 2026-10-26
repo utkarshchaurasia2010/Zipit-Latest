@@ -9,19 +9,39 @@
 
 const RESEND_DAILY_QUOTA = 85; 
 const QUOTA_STORAGE_KEY = 'quickly_resend_support_daily_tracker';
+const SYSTEM_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
 
-export const canSendEmail = () => {
+/**
+ * Check if the total emails sent today across all users is under the 85 quota.
+ * Checks Supabase centrally, with localStorage fast fallback.
+ */
+export const canSendEmail = async () => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const raw = localStorage.getItem(QUOTA_STORAGE_KEY);
-    let tracker = raw ? JSON.parse(raw) : { date: today, count: 0 };
+    
+    // 1. Central Check in Supabase System Profile (shared across all devices & users)
+    const { supabase } = await import('./db');
+    const { data } = await supabase
+      .from('addresses')
+      .select('id, details')
+      .eq('profile_id', SYSTEM_PROFILE_ID)
+      .eq('type', 'RESEND_QUOTA')
+      .maybeSingle();
 
-    if (tracker.date !== today) {
-      tracker = { date: today, count: 0 };
+    if (data?.details) {
+      try {
+        const remoteTracker = JSON.parse(data.details);
+        if (remoteTracker.date === today && remoteTracker.count >= RESEND_DAILY_QUOTA) {
+          console.warn(`[Resend Guard] Global daily free support quota (${RESEND_DAILY_QUOTA}) reached for ${today}.`);
+          return false;
+        }
+      } catch (_) {}
     }
 
-    if (tracker.count >= RESEND_DAILY_QUOTA) {
-      console.warn(`[Resend Guard] Daily free support quota (${RESEND_DAILY_QUOTA}) reached for ${today}.`);
+    // 2. Local Fallback Check
+    const raw = localStorage.getItem(QUOTA_STORAGE_KEY);
+    let localTracker = raw ? JSON.parse(raw) : { date: today, count: 0 };
+    if (localTracker.date === today && localTracker.count >= RESEND_DAILY_QUOTA) {
       return false;
     }
 
@@ -31,19 +51,54 @@ export const canSendEmail = () => {
   }
 };
 
-export const recordEmailSent = () => {
+/**
+ * Increment the global daily sent counter in Supabase so no device can bypass it.
+ */
+export const recordEmailSent = async () => {
   try {
     const today = new Date().toISOString().split('T')[0];
+    
+    // 1. Update localStorage
     const raw = localStorage.getItem(QUOTA_STORAGE_KEY);
     let tracker = raw ? JSON.parse(raw) : { date: today, count: 0 };
-
     if (tracker.date !== today) {
       tracker = { date: today, count: 0 };
     }
-
     tracker.count += 1;
     localStorage.setItem(QUOTA_STORAGE_KEY, JSON.stringify(tracker));
-  } catch (_) {}
+
+    // 2. Update Supabase Centrally
+    const { supabase } = await import('./db');
+    const { data: existing } = await supabase
+      .from('addresses')
+      .select('id, details')
+      .eq('profile_id', SYSTEM_PROFILE_ID)
+      .eq('type', 'RESEND_QUOTA')
+      .maybeSingle();
+
+    let remoteCount = 1;
+    if (existing?.details) {
+      try {
+        const parsed = JSON.parse(existing.details);
+        remoteCount = parsed.date === today ? (parsed.count + 1) : 1;
+      } catch (_) {}
+    }
+
+    const payload = JSON.stringify({ date: today, count: remoteCount, updated_at: new Date().toISOString() });
+
+    if (existing?.id) {
+      await supabase.from('addresses').update({ details: payload }).eq('id', existing.id);
+    } else {
+      await supabase.from('addresses').insert([{
+        profile_id: SYSTEM_PROFILE_ID,
+        type: 'RESEND_QUOTA',
+        details: payload,
+        is_default: false
+      }]);
+    }
+  } catch (err) {
+    console.warn("Could not sync email quota to Supabase:", err);
+  }
 };
 
 /**

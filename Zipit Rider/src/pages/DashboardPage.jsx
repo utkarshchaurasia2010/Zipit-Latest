@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase, db } from '../services/db';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff, KeyRound, Navigation, IndianRupee, Wallet } from 'lucide-react';
+import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff, KeyRound, Navigation, IndianRupee, Wallet, TrendingUp, Calendar, Clock, ChevronRight } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
 import { auth } from '../services/auth';
 
@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [isNetworkOnline, setIsNetworkOnline] = useState(navigator.onLine);
   const [qrModalOrder, setQrModalOrder] = useState(null); // Order to show dynamic UPI QR for
   const [otpModalOrder, setOtpModalOrder] = useState(null); // Order requiring customer OTP to mark delivered
+  const [deliveryDetailModalOrder, setDeliveryDetailModalOrder] = useState(null); // Click to view delivery details modal
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [sliderResetKey, setSliderResetKey] = useState(0);
@@ -153,14 +154,12 @@ export default function DashboardPage() {
     });
     setActiveOrders(activeDeliveryOnly);
 
-    // 2. Fetch history orders delivered by this rider in last 30 days
+    // 2. Fetch all delivered history orders by this rider for all-time, month, and daily metrics
     if (riderCode) {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { data: historyData } = await supabase.from('orders')
         .select('*')
         .ilike('accepted_by_rider', riderCode)
         .eq('status', 'Delivered')
-        .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false });
 
       setHistoryOrders(historyData || []);
@@ -307,12 +306,27 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Daily Shift Earnings & Metrics Cards (Quick Eats partner layout) */}
+      {/* 1. Rider Earnings Dashboard: Day, Month, All-Time */}
       {(() => {
-        const todayStr = new Date().toDateString();
+        const now = new Date();
+        const todayStr = now.toDateString();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        // Calculations
         const todayDelivered = historyOrders.filter(o => new Date(o.created_at).toDateString() === todayStr);
-        const todayCount = todayDelivered.length;
-        const todayEarnings = todayCount * 30; // ₹30 payout per order
+        const monthDelivered = historyOrders.filter(o => {
+          const d = new Date(o.created_at);
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+        const allTimeDelivered = historyOrders;
+
+        const PAYOUT_PER_DROP = 30; // ₹30 delivery partner fee per drop
+
+        const todayEarnings = todayDelivered.length * PAYOUT_PER_DROP;
+        const monthEarnings = monthDelivered.length * PAYOUT_PER_DROP;
+        const allTimeEarnings = allTimeDelivered.length * PAYOUT_PER_DROP;
+
         const todayCodCash = todayDelivered
           .filter(o => (o.payment_method || 'COD').toUpperCase() === 'COD')
           .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
@@ -320,66 +334,113 @@ export default function DashboardPage() {
         return (
           <div style={{
             background: 'var(--color-surface)',
-            padding: '16px 20px',
+            padding: '16px 18px',
             borderBottom: '1px solid var(--color-border)',
             boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.2px' }}>
-                Shift Summary · Today
-              </span>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#16a34a', background: '#dcfce7', padding: '3px 9px', borderRadius: '12px' }}>
-                ₹30 / drop
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wallet size={16} color="var(--color-primary-dark, #2563eb)" />
+                <span style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.2px' }}>
+                  Earnings Dashboard
+                </span>
+              </div>
+              <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#16a34a', background: '#dcfce7', padding: '3px 9px', borderRadius: '12px' }}>
+                ₹{PAYOUT_PER_DROP} / order
               </span>
             </div>
 
+            {/* 3 Core Metric Cards: Today, This Month, All-Time */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '12px'
+              gap: '10px'
             }}>
+              {/* TODAY */}
               <div style={{ 
-                background: '#f8fafc', 
-                padding: '12px', 
-                borderRadius: '16px', 
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Orders</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', marginTop: '4px' }}>{todayCount}</div>
-                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600', marginTop: '2px' }}>Completed</div>
-              </div>
-
-              <div style={{ 
-                background: '#f0fdf4', 
-                padding: '12px', 
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', 
+                padding: '12px 10px', 
                 borderRadius: '16px', 
                 border: '1px solid #bbf7d0',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between'
               }}>
-                <div style={{ fontSize: '11px', color: '#15803d', fontWeight: '700', textTransform: 'uppercase' }}>Earnings</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#15803d', marginTop: '4px' }}>₹{todayEarnings}</div>
-                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600', marginTop: '2px' }}>Payout</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#15803d', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <Clock size={12} /> Today
+                </div>
+                <div style={{ fontSize: '21px', fontWeight: '900', color: '#14532d', marginTop: '6px', letterSpacing: '-0.5px' }}>
+                  ₹{todayEarnings}
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#166534', fontWeight: '700', marginTop: '2px' }}>
+                  {todayDelivered.length} {todayDelivered.length === 1 ? 'order' : 'orders'}
+                </div>
               </div>
 
+              {/* THIS MONTH */}
               <div style={{ 
-                background: '#fffbeb', 
-                padding: '12px', 
+                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+                padding: '12px 10px', 
                 borderRadius: '16px', 
-                border: '1px solid #fde68a',
+                border: '1px solid #bfdbfe',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between'
               }}>
-                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', textTransform: 'uppercase' }}>COD Cash</div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: '#b45309', marginTop: '4px' }}>₹{todayCodCash}</div>
-                <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '600', marginTop: '2px' }}>To settle</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#1d4ed8', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <Calendar size={12} /> This Month
+                </div>
+                <div style={{ fontSize: '21px', fontWeight: '900', color: '#1e3a8a', marginTop: '6px', letterSpacing: '-0.5px' }}>
+                  ₹{monthEarnings}
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#1e40af', fontWeight: '700', marginTop: '2px' }}>
+                  {monthDelivered.length} {monthDelivered.length === 1 ? 'order' : 'orders'}
+                </div>
+              </div>
+
+              {/* ALL TIME */}
+              <div style={{ 
+                background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)', 
+                padding: '12px 10px', 
+                borderRadius: '16px', 
+                border: '1px solid #fde047',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#a16207', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <TrendingUp size={12} /> All Time
+                </div>
+                <div style={{ fontSize: '21px', fontWeight: '900', color: '#713f12', marginTop: '6px', letterSpacing: '-0.5px' }}>
+                  ₹{allTimeEarnings}
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#854d0e', fontWeight: '700', marginTop: '2px' }}>
+                  {allTimeDelivered.length} {allTimeDelivered.length === 1 ? 'order' : 'orders'}
+                </div>
               </div>
             </div>
+
+            {/* Extra Sub-info: Today's COD Cash to Deposit */}
+            {todayCodCash > 0 && (
+              <div style={{
+                marginTop: '10px',
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '12px',
+                padding: '8px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '12px'
+              }}>
+                <span style={{ color: '#92400e', fontWeight: '700' }}>
+                  💵 Cash on Hand (COD Today):
+                </span>
+                <span style={{ color: '#78350f', fontWeight: '900', fontSize: '13px' }}>
+                  ₹{todayCodCash}
+                </span>
+              </div>
+            )}
           </div>
         );
       })()}
@@ -533,29 +594,56 @@ export default function DashboardPage() {
                         <span>📦 DUAL ORDER STOP #{dualIndex}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                      <div>
-                        <div style={{ fontWeight: '800', color: 'var(--color-text)', fontSize: '16px' }}>Order #{order.id.slice(0,6).toUpperCase()}</div>
-                        <div style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '4px' }}>
-                          {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {/* Clickable Card Header & Delivery Preview */}
+                    <div 
+                      onClick={() => setDeliveryDetailModalOrder(order)}
+                      style={{ cursor: 'pointer' }}
+                      title="Click to view delivery details"
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ fontWeight: '800', color: 'var(--color-text)', fontSize: '16px' }}>
+                              Order #{order.id.slice(0, 6).toUpperCase()}
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800', background: '#eff6ff', padding: '2px 8px', borderRadius: '10px' }}>
+                              View Details ↗
+                            </span>
+                          </div>
+                          <div style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '4px' }}>
+                            {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ₹{order.total} • {order.payment_method}
+                          </div>
+                        </div>
+                        <div style={{ 
+                          background: order.status === 'Out for Delivery' ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
+                          color: order.status === 'Out for Delivery' ? 'var(--color-success)' : 'var(--color-warning)',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '700'
+                        }}>
+                          {order.status}
                         </div>
                       </div>
+                      
                       <div style={{ 
-                        background: order.status === 'Out for Delivery' ? 'var(--color-success-bg)' : 'var(--color-warning-bg)',
-                        color: order.status === 'Out for Delivery' ? 'var(--color-success)' : 'var(--color-warning)',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: '700'
+                        background: '#f8fafc', 
+                        padding: '12px 14px', 
+                        borderRadius: '12px', 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        justifyContent: 'space-between',
+                        gap: '12px', 
+                        marginBottom: '16px',
+                        border: '1px solid #f1f5f9'
                       }}>
-                        {order.status}
-                      </div>
-                    </div>
-                    
-                    <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '20px' }}>
-                      <MapPin size={18} color="var(--color-primary-dark)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                      <div style={{ fontSize: '14px', color: 'var(--color-text)', lineHeight: '1.5', fontWeight: '500' }}>
-                        {cleanAddress(order.delivery_address)}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                          <MapPin size={18} color="var(--color-primary-dark)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                          <div style={{ fontSize: '13.5px', color: 'var(--color-text)', lineHeight: '1.4', fontWeight: '600' }}>
+                            {cleanAddress(order.delivery_address)}
+                          </div>
+                        </div>
+                        <ChevronRight size={18} color="#94a3b8" style={{ marginTop: '2px', flexShrink: 0 }} />
                       </div>
                     </div>
                     
@@ -984,6 +1072,246 @@ export default function DashboardPage() {
                 Verify PIN & Complete Delivery
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delivery Details Modal (Triggered by clicking any incoming/active order) */}
+      {deliveryDetailModalOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--color-surface, #ffffff)',
+            width: '100%',
+            maxWidth: '480px',
+            maxHeight: '88vh',
+            borderTopLeftRadius: '28px',
+            borderTopRightRadius: '28px',
+            padding: '24px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
+            overflowY: 'auto'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '900', color: 'var(--color-text)', margin: 0 }}>
+                    Order #{deliveryDetailModalOrder.id.slice(0, 6).toUpperCase()}
+                  </h3>
+                  <span style={{
+                    background: deliveryDetailModalOrder.status === 'Out for Delivery' ? '#dcfce7' : '#fef3c7',
+                    color: deliveryDetailModalOrder.status === 'Out for Delivery' ? '#15803d' : '#b45309',
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    padding: '3px 8px',
+                    borderRadius: '8px'
+                  }}>
+                    {deliveryDetailModalOrder.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                  Placed on {new Date(deliveryDetailModalOrder.created_at).toLocaleString()}
+                </div>
+              </div>
+              <button
+                onClick={() => setDeliveryDetailModalOrder(null)}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={18} color="#475569" />
+              </button>
+            </div>
+
+            {/* Quick Summary Pill Banner */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '8px',
+              background: '#f8fafc',
+              padding: '12px',
+              borderRadius: '16px',
+              marginBottom: '16px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Payout</div>
+                <div style={{ fontSize: '16px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>₹30</div>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Bill Total</div>
+                <div style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', marginTop: '2px' }}>₹{deliveryDetailModalOrder.total}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Payment</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#2563eb', marginTop: '3px' }}>
+                  {deliveryDetailModalOrder.payment_method || 'COD'}
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Location & Contact */}
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '16px',
+              padding: '14px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+                <MapPin size={18} color="#15803d" style={{ marginTop: '2px', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: '11px', color: '#166534', fontWeight: '800', textTransform: 'uppercase' }}>
+                    Delivery Destination
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#0f172a', fontWeight: '600', marginTop: '2px', lineHeight: 1.4 }}>
+                    {cleanAddress(deliveryDetailModalOrder.delivery_address)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Action Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${deliveryDetailModalOrder.delivery_address?.lat || 25.5900},${deliveryDetailModalOrder.delivery_address?.lng || 83.5850}&travelmode=two-wheeler`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    padding: '10px',
+                    borderRadius: '10px',
+                    fontWeight: '800',
+                    fontSize: '12.5px',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Navigation size={15} /> Google Maps
+                </a>
+                <button
+                  onClick={() => {
+                    setDeliveryDetailModalOrder(null);
+                    navigate(`/map/${deliveryDetailModalOrder.id}`);
+                  }}
+                  style={{
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    border: '1px solid #cbd5e1',
+                    padding: '10px',
+                    borderRadius: '10px',
+                    fontWeight: '700',
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <MapPin size={15} /> In-App Map
+                </button>
+              </div>
+            </div>
+
+            {/* Ordered Items List */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Package size={15} /> Items in this Order ({Array.isArray(deliveryDetailModalOrder.items) ? deliveryDetailModalOrder.items.length : 0})
+              </div>
+              <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {Array.isArray(deliveryDetailModalOrder.items) && deliveryDetailModalOrder.items.map((item, idx) => (
+                  <div key={idx} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#f8fafc',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    fontSize: '12.5px'
+                  }}>
+                    <span style={{ fontWeight: '600', color: '#0f172a' }}>
+                      {item.name} × {item.quantity || item.qty || 1}
+                    </span>
+                    <span style={{ fontWeight: '800', color: '#16a34a' }}>
+                      ₹{((item.quantity || item.qty || 1) * (item.price || 0))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Footer Slider / Status Action */}
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px' }}>
+              {deliveryDetailModalOrder.status === 'Out for Delivery' ? (
+                <SlideToAccept
+                  onAccept={() => {
+                    const target = deliveryDetailModalOrder;
+                    setDeliveryDetailModalOrder(null);
+                    handleMarkDelivered(target);
+                  }}
+                  label="Slide to Mark Delivered"
+                  resetTrigger={sliderResetKey}
+                />
+              ) : (deliveryDetailModalOrder.status || '').toLowerCase().startsWith('ready for pickup') ? (
+                <SlideToAccept
+                  onAccept={() => {
+                    const id = deliveryDetailModalOrder.id;
+                    setDeliveryDetailModalOrder(null);
+                    handleMarkOutForDelivery(id);
+                  }}
+                  label="Slide to Mark Out for Delivery"
+                  resetTrigger={sliderResetKey}
+                />
+              ) : !deliveryDetailModalOrder.accepted_by_rider ? (
+                <SlideToAccept
+                  onAccept={() => {
+                    const id = deliveryDetailModalOrder.id;
+                    setDeliveryDetailModalOrder(null);
+                    handleClaimOrder(id);
+                  }}
+                  label="Slide to Accept Order"
+                />
+              ) : (
+                <div style={{
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  border: '1px solid #fde68a',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '700'
+                }}>
+                  ⌛ Waiting for Storekeeper: Ready for Pickup
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
