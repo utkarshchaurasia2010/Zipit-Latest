@@ -373,12 +373,12 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
                 width: 42, 
                 height: 42, 
                 borderRadius: '50%', 
-                backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.92)', 
+                backgroundColor: theme === 'dark' ? '#1E1E1E' : 'rgba(255, 255, 255, 0.92)', 
                 backdropFilter: 'blur(8px)',
                 boxShadow: theme === 'dark' 
-                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.6), inset 0 -1px 2px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)' 
+                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.7), inset 0 -1px 2px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.4)' 
                   : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
-                border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.07)',
+                border: theme === 'dark' ? '1px solid #333333' : '1px solid rgba(0, 0, 0, 0.07)',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
@@ -403,12 +403,12 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
                 width: 42,
                 height: 42,
                 borderRadius: '50%',
-                backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.92)', 
+                backgroundColor: theme === 'dark' ? '#1E1E1E' : 'rgba(255, 255, 255, 0.92)', 
                 backdropFilter: 'blur(8px)',
                 boxShadow: theme === 'dark' 
-                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.6), inset 0 -1px 2px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)' 
+                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.7), inset 0 -1px 2px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.4)' 
                   : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
-                border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.07)',
+                border: theme === 'dark' ? '1px solid #333333' : '1px solid rgba(0, 0, 0, 0.07)',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
