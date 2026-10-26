@@ -52,7 +52,8 @@ const CustomerSupportPage = ({ navigate }) => {
 
     try {
       // 1. Dispatch auto-confirmation to customer if under free-tier quota
-      if (canSendEmail()) {
+      const underQuotaCustomer = await canSendEmail();
+      if (underQuotaCustomer) {
         await supabase.functions.invoke('send-email', {
           body: {
             to: ticketEmail,
@@ -65,10 +66,11 @@ const CustomerSupportPage = ({ navigate }) => {
             })
           }
         });
-        recordEmailSent();
+        await recordEmailSent();
 
         // 2. Also forward to store hub desk if under quota
-        if (canSendEmail()) {
+        const underQuotaStore = await canSendEmail();
+        if (underQuotaStore) {
           supabase.functions.invoke('send-email', {
             body: {
               to: 'zipitrural@gmail.com',
