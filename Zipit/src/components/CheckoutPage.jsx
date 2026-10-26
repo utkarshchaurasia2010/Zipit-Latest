@@ -287,6 +287,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         status: 'Preparing',
         paymentMethod: selectedPayment,
         discountAmount: discountAmount || 0,
+        appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
         couponCode: appliedCoupon ? appliedCoupon.code : null
       });
 

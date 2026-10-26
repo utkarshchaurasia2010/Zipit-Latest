@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [qrModalOrder, setQrModalOrder] = useState(null); // Order to show dynamic UPI QR for
   const [otpModalOrder, setOtpModalOrder] = useState(null); // Order requiring customer OTP to mark delivered
   const [deliveryDetailModalOrder, setDeliveryDetailModalOrder] = useState(null); // Click to view delivery details modal
+  const [historyModalFilter, setHistoryModalFilter] = useState(null); // 'today' | 'month' | 'all' | null
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [sliderResetKey, setSliderResetKey] = useState(0);
@@ -345,29 +346,39 @@ export default function DashboardPage() {
                   Earnings Dashboard
                 </span>
               </div>
-              <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#16a34a', background: '#dcfce7', padding: '3px 9px', borderRadius: '12px' }}>
-                ₹{PAYOUT_PER_DROP} / order
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>
+                Tap card to view history ➔
               </span>
             </div>
 
-            {/* 3 Core Metric Cards: Today, This Month, All-Time */}
+            {/* 3 Core Metric Cards: Today, This Month, All-Time (Clickable to view filtered delivery history) */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '10px'
             }}>
               {/* TODAY */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', 
-                padding: '12px 10px', 
-                borderRadius: '16px', 
-                border: '1px solid #bbf7d0',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#15803d', fontWeight: '800', textTransform: 'uppercase' }}>
-                  <Clock size={12} /> Today
+              <div 
+                onClick={() => setHistoryModalFilter('today')}
+                style={{ 
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', 
+                  padding: '12px 10px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #bbf7d0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  boxShadow: '0 2px 8px rgba(22, 163, 74, 0.08)'
+                }}
+                title="Click to view Today's delivery history"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10.5px', color: '#15803d', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Clock size={12} /> Today
+                  </span>
+                  <ChevronRight size={12} />
                 </div>
                 <div style={{ fontSize: '21px', fontWeight: '900', color: '#14532d', marginTop: '6px', letterSpacing: '-0.5px' }}>
                   ₹{todayEarnings}
@@ -378,17 +389,27 @@ export default function DashboardPage() {
               </div>
 
               {/* THIS MONTH */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
-                padding: '12px 10px', 
-                borderRadius: '16px', 
-                border: '1px solid #bfdbfe',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#1d4ed8', fontWeight: '800', textTransform: 'uppercase' }}>
-                  <Calendar size={12} /> This Month
+              <div 
+                onClick={() => setHistoryModalFilter('month')}
+                style={{ 
+                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+                  padding: '12px 10px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #bfdbfe',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)'
+                }}
+                title="Click to view This Month's delivery history"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10.5px', color: '#1d4ed8', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Calendar size={12} /> This Month
+                  </span>
+                  <ChevronRight size={12} />
                 </div>
                 <div style={{ fontSize: '21px', fontWeight: '900', color: '#1e3a8a', marginTop: '6px', letterSpacing: '-0.5px' }}>
                   ₹{monthEarnings}
@@ -399,17 +420,27 @@ export default function DashboardPage() {
               </div>
 
               {/* ALL TIME */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)', 
-                padding: '12px 10px', 
-                borderRadius: '16px', 
-                border: '1px solid #fde047',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#a16207', fontWeight: '800', textTransform: 'uppercase' }}>
-                  <TrendingUp size={12} /> All Time
+              <div 
+                onClick={() => setHistoryModalFilter('all')}
+                style={{ 
+                  background: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)', 
+                  padding: '12px 10px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #fde047',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  boxShadow: '0 2px 8px rgba(202, 138, 4, 0.08)'
+                }}
+                title="Click to view All Time delivery history"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10.5px', color: '#a16207', fontWeight: '800', textTransform: 'uppercase' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <TrendingUp size={12} /> All Time
+                  </span>
+                  <ChevronRight size={12} />
                 </div>
                 <div style={{ fontSize: '21px', fontWeight: '900', color: '#713f12', marginTop: '6px', letterSpacing: '-0.5px' }}>
                   ₹{allTimeEarnings}
@@ -445,43 +476,17 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Navigation Tabs Bar */}
-      <div style={{ display: 'flex', background: 'var(--color-surface)', padding: '10px 16px', borderBottom: '1px solid var(--color-border)', gap: '10px' }}>
-        <button 
-          onClick={() => setActiveTab('active')}
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '12px',
-            border: activeTab === 'active' ? '2px solid #2563eb' : '1px solid var(--color-border)',
-            background: activeTab === 'active' ? '#eff6ff' : '#f8fafc',
-            color: activeTab === 'active' ? '#1e40af' : '#64748b',
-            fontWeight: '700',
-            fontSize: '13px',
-            cursor: 'pointer'
-          }}
-        >
-          <Zap size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
-          Active Tasks ({activeOrders.length})
-        </button>
-
-        <button 
-          onClick={() => setActiveTab('history')}
-          style={{
-            flex: 1,
-            padding: '10px',
-            borderRadius: '12px',
-            border: activeTab === 'history' ? '2px solid #16a34a' : '1px solid var(--color-border)',
-            background: activeTab === 'history' ? '#f0fdf4' : '#f8fafc',
-            color: activeTab === 'history' ? '#15803d' : '#64748b',
-            fontWeight: '700',
-            fontSize: '13px',
-            cursor: 'pointer'
-          }}
-        >
-          <CheckCircle2 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
-          History ({historyOrders.length})
-        </button>
+      {/* Active Tasks Header Banner */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '12px 18px', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Zap size={16} color="#2563eb" />
+          <span style={{ fontWeight: '800', fontSize: '14px', color: 'var(--color-text)' }}>
+            Active Tasks ({activeOrders.length})
+          </span>
+        </div>
+        <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: '600' }}>
+          Real-time Orders
+        </span>
       </div>
 
       {/* Main Content Area */}
@@ -503,8 +508,8 @@ export default function DashboardPage() {
               Toggle your status to "Online" to start receiving delivery assignments.
             </p>
           </div>
-        ) : activeTab === 'active' ? (
-          /* ACTIVE TASKS TAB */
+        ) : (
+          /* ACTIVE TASKS */
           activeOrders.length === 0 ? (
             <div style={{ 
               background: 'var(--color-surface)', 
@@ -703,74 +708,28 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {/* Turn-by-Turn External Google Maps Button */}
-                        {order.delivery_address && (
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${order.delivery_address?.lat || 25.5900},${order.delivery_address?.lng || 83.5850}&travelmode=two-wheeler`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              width: '100%',
-                              background: '#2563eb',
-                              color: '#ffffff',
-                              padding: '12px',
-                              borderRadius: '12px',
-                              fontWeight: '800',
-                              fontSize: '13px',
-                              textDecoration: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '8px',
-                              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-                              boxSizing: 'border-box'
-                            }}
-                          >
-                            <Navigation size={17} /> Start Google Maps Navigation (Bike)
-                          </a>
-                        )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                          <button 
-                            onClick={() => navigate(`/map/${order.id}`)}
-                            style={{ 
-                              background: '#f1f5f9', 
-                              color: '#0f172a', 
-                              border: '1px solid #cbd5e1', 
-                              padding: '11px', 
-                              borderRadius: '12px', 
-                              fontWeight: '700',
-                              fontSize: '12.5px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            <MapPin size={15} /> Map Route
-                          </button>
-
-                          <button 
-                            onClick={() => setQrModalOrder(order)}
-                            style={{ 
-                              background: '#ecfdf5', 
-                              color: '#047857', 
-                              border: '1px solid #a7f3d0', 
-                              padding: '11px', 
-                              borderRadius: '12px', 
-                              fontWeight: '700',
-                              fontSize: '12.5px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            <QrCode size={16} /> Show UPI QR
-                          </button>
-                        </div>
+                        {/* Streamlined Doorstep UPI QR Button */}
+                        <button 
+                          onClick={() => setQrModalOrder(order)}
+                          style={{ 
+                            background: '#ecfdf5', 
+                            color: '#047857', 
+                            border: '1px solid #a7f3d0', 
+                            padding: '12px 14px', 
+                            borderRadius: '12px', 
+                            fontWeight: '800', 
+                            fontSize: '13px', 
+                            cursor: 'pointer', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '6px',
+                            width: '100%',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <QrCode size={16} /> Show UPI QR
+                        </button>
                       </div>
                     )}
                   </div>
@@ -778,72 +737,7 @@ export default function DashboardPage() {
               })}
             </div>
           )
-        ) : (
-          /* DELIVERED HISTORY TAB */
-          historyOrders.length === 0 ? (
-            <div style={{ 
-              background: 'var(--color-surface)', 
-              padding: '40px 20px', 
-              borderRadius: '24px', 
-              textAlign: 'center', 
-              border: '1px solid var(--color-border)',
-              marginTop: '20px'
-            }}>
-              <div style={{ width: '64px', height: '64px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <History size={28} color="var(--color-text-light)" />
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>No delivered orders yet</h3>
-              <p style={{ color: 'var(--color-text-light)', fontSize: '14px' }}>
-                Orders completed by you will be listed here.
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h2 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>
-                {historyOrders.length} Delivered Order{historyOrders.length > 1 ? 's' : ''}
-              </h2>
-
-              {historyOrders.map(order => (
-                <div key={order.id} style={{ 
-                  background: 'var(--color-surface)', 
-                  borderRadius: '20px', 
-                  padding: '20px', 
-                  border: '1px solid var(--color-border)',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                      <div style={{ fontWeight: '800', color: 'var(--color-text)', fontSize: '16px' }}>
-                        Order #{order.id.slice(0, 6).toUpperCase()}
-                      </div>
-                      <div style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '4px' }}>
-                        Delivered on {new Date(order.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={13} /> Delivered
-                    </span>
-                  </div>
-
-                  <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '12px', marginBottom: '14px' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: '600', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={15} color="#2563eb" /> {cleanAddress(order.delivery_address)}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
-                    <span style={{ fontSize: '13px', color: 'var(--color-text-light)', fontWeight: '600' }}>
-                      <Package size={14} style={{ display: 'inline', marginRight: 4 }} />
-                      {Array.isArray(order.items) ? order.items.length : 1} item(s)
-                    </span>
-                    <span style={{ fontSize: '16px', fontWeight: '800', color: '#15803d' }}>
-                      ₹{order.total} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>({order.payment_method || 'COD'})</span>
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+        
         )}
       </main>
 
@@ -1237,6 +1131,33 @@ export default function DashboardPage() {
                   <MapPin size={15} /> In-App Map
                 </button>
               </div>
+
+              {/* Doorstep UPI QR Button inside Modal */}
+              <button
+                onClick={() => {
+                  const target = deliveryDetailModalOrder;
+                  setDeliveryDetailModalOrder(null);
+                  setQrModalOrder(target);
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: '10px',
+                  background: '#ecfdf5',
+                  color: '#047857',
+                  border: '1px solid #a7f3d0',
+                  padding: '11px',
+                  borderRadius: '10px',
+                  fontWeight: '800',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <QrCode size={16} /> Show Doorstep UPI QR
+              </button>
             </div>
 
             {/* Ordered Items List */}
@@ -1244,7 +1165,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Package size={15} /> Items in this Order ({Array.isArray(deliveryDetailModalOrder.items) ? deliveryDetailModalOrder.items.length : 0})
               </div>
-              <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {Array.isArray(deliveryDetailModalOrder.items) && deliveryDetailModalOrder.items.map((item, idx) => (
                   <div key={idx} style={{
                     display: 'flex',
@@ -1265,6 +1186,70 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
+
+            {/* Comprehensive Customer Bill Breakdown for Rider */}
+            {(() => {
+              const itemsTotal = Array.isArray(deliveryDetailModalOrder.items)
+                ? deliveryDetailModalOrder.items.reduce((sum, it) => sum + ((Number(it.price) || 0) * (it.qty || it.quantity || 1)), 0)
+                : 0;
+              const discount = Number(deliveryDetailModalOrder.discount_amount) || Number(deliveryDetailModalOrder.discountAmount) || 0;
+              const coupon = deliveryDetailModalOrder.applied_coupon || deliveryDetailModalOrder.appliedCoupon || deliveryDetailModalOrder.coupon_code || deliveryDetailModalOrder.couponCode;
+              const deliveryFee = Number(deliveryDetailModalOrder.delivery_charge) || Number(deliveryDetailModalOrder.deliveryCharge) || 0;
+              const smallCartFee = Number(deliveryDetailModalOrder.small_cart_charge) || Number(deliveryDetailModalOrder.smallCartCharge) || 0;
+              const grandTotal = Number(deliveryDetailModalOrder.total) || 0;
+
+              return (
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '12px 14px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '7px',
+                  fontSize: '12.5px'
+                }}>
+                  <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '13px', marginBottom: '2px' }}>
+                    Customer Bill Breakdown
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>Items Total</span>
+                    <span style={{ fontWeight: '700', color: '#0f172a' }}>₹{itemsTotal || grandTotal}</span>
+                  </div>
+                  {(discount > 0 || coupon) && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '700' }}>
+                      <span>Discount / Coupon {coupon ? `(${coupon})` : ''}</span>
+                      <span>-₹{discount > 0 ? discount : 'Applied'}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>Delivery Partner Fee</span>
+                    <span style={{ fontWeight: '700', color: deliveryFee === 0 ? '#16a34a' : '#0f172a' }}>
+                      {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
+                    </span>
+                  </div>
+                  {smallCartFee > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                      <span>Small Cart Fee</span>
+                      <span style={{ fontWeight: '700', color: '#0f172a' }}>₹{smallCartFee}</span>
+                    </div>
+                  )}
+                  <div style={{
+                    borderTop: '1px solid #cbd5e1',
+                    paddingTop: '8px',
+                    marginTop: '2px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '14px'
+                  }}>
+                    <span style={{ fontWeight: '900', color: '#0f172a' }}>To Collect / Grand Total</span>
+                    <span style={{ fontWeight: '900', color: '#16a34a', fontSize: '16px' }}>₹{grandTotal}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Modal Footer Slider / Status Action */}
             <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px' }}>
@@ -1312,6 +1297,172 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date-wise Delivery History Modal (Triggered by Clicking Earnings Dashboard Cards) */}
+      {historyModalFilter && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--color-surface, #ffffff)',
+            width: '100%',
+            maxWidth: '480px',
+            maxHeight: '88vh',
+            borderTopLeftRadius: '28px',
+            borderTopRightRadius: '28px',
+            padding: '24px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
+            overflowY: 'auto'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '900', color: 'var(--color-text)', margin: 0 }}>
+                  {historyModalFilter === 'today' ? "Today's Delivery History" : historyModalFilter === 'month' ? "This Month's Delivery History" : "All-Time Delivery History"}
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                  Date-wise delivered drops and payouts
+                </div>
+              </div>
+              <button
+                onClick={() => setHistoryModalFilter(null)}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={18} color="#475569" />
+              </button>
+            </div>
+
+            {/* Filtered History Content grouped by Date */}
+            {(() => {
+              const now = new Date();
+              const currentMonth = now.getMonth();
+              const currentYear = now.getFullYear();
+              const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+              const filtered = historyOrders.filter(o => {
+                const d = new Date(o.created_at);
+                if (historyModalFilter === 'today') {
+                  return d.getTime() >= todayStart;
+                } else if (historyModalFilter === 'month') {
+                  return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                }
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div style={{ padding: '36px 20px', textAlign: 'center', color: '#64748b' }}>
+                    <div style={{ fontSize: '36px', marginBottom: '10px' }}>📦</div>
+                    <div style={{ fontWeight: '800', fontSize: '15px', color: '#0f172a' }}>No completed orders in this period</div>
+                    <div style={{ fontSize: '12.5px', marginTop: '4px' }}>Completed deliveries will appear here automatically.</div>
+                  </div>
+                );
+              }
+
+              // Group orders by localized date
+              const groups = {};
+              filtered.forEach(o => {
+                const dateKey = new Date(o.created_at).toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                });
+                if (!groups[dateKey]) groups[dateKey] = [];
+                groups[dateKey].push(o);
+              });
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {Object.entries(groups).map(([dateLabel, dateOrders]) => {
+                    const dayPayout = dateOrders.length * 30;
+                    return (
+                      <div key={dateLabel} style={{ background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '10px' }}>
+                          <span style={{ fontWeight: '800', fontSize: '13px', color: '#0f172a' }}>
+                            {dateLabel}
+                          </span>
+                          <span style={{ fontWeight: '900', fontSize: '13px', color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '8px' }}>
+                            {dateOrders.length} drops • ₹{dayPayout}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {dateOrders.map(o => (
+                            <div 
+                              key={o.id}
+                              onClick={() => {
+                                setHistoryModalFilter(null);
+                                setDeliveryDetailModalOrder(o);
+                              }}
+                              style={{
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                padding: '10px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer'
+                              }}
+                              title="Click to view full order and bill info"
+                            >
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontWeight: '800', fontSize: '13px', color: '#0f172a' }}>
+                                    #{o.id.slice(0, 6).toUpperCase()}
+                                  </span>
+                                  <span style={{ fontSize: '11px', color: '#64748b' }}>
+                                    {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#475569', marginTop: '3px' }}>
+                                  {cleanAddress(o.delivery_address)}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: '900', fontSize: '13.5px', color: '#16a34a' }}>
+                                  ₹30
+                                </div>
+                                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                                  ₹{o.total} ({o.payment_method || 'COD'})
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

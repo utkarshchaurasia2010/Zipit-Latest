@@ -140,8 +140,8 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
           {/* Deep Base Shadow Wave (Lends realistic physical lift) */}
           <path
             d="M-30 -25 Q 75 142, 238 48 T 445 105 L 445 -45 Z"
-            fill={theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(180, 83, 9, 0.12)'}
-            transform="translate(0, 6)"
+            fill={theme === 'dark' ? 'rgba(0, 0, 0, 0.35)' : 'rgba(180, 83, 9, 0.08)'}
+            transform="translate(0, 3)"
           />
 
           {/* Primary Wave Body with 3D Bevel & Depth Filter */}
@@ -151,11 +151,11 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             filter="url(#waveDepth3D)"
           />
 
-          {/* 3D Specular Highlight Ridge (Creates the sharp embossed upper bevel edge) */}
+          {/* Sleek, Crisp 3D Specular Highlight Ridge (Ultra-fine 1.2px embossed edge) */}
           <path
             d="M-30 -25 Q 75 142, 238 48 T 445 105"
             stroke={theme === 'dark' ? 'url(#curveRidgeDark)' : 'url(#curveRidgeLight)'}
-            strokeWidth="3"
+            strokeWidth="1.2"
             strokeLinecap="round"
             fill="none"
             filter="url(#topEdgeGlow)"
@@ -168,11 +168,11 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             filter="url(#waveDepth3D)"
           />
 
-          {/* Secondary 3D Specular Ridge */}
+          {/* Secondary Fine Specular Ridge (1px edge) */}
           <path
             d="M80 -45 Q 215 160, 375 38 T 530 92"
-            stroke={theme === 'dark' ? 'rgba(251, 191, 36, 0.6)' : 'rgba(255, 255, 255, 0.85)'}
-            strokeWidth="2.5"
+            stroke={theme === 'dark' ? 'rgba(251, 191, 36, 0.7)' : 'rgba(255, 255, 255, 0.9)'}
+            strokeWidth="1.0"
             strokeLinecap="round"
             fill="none"
           />
@@ -362,7 +362,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div 
               className="notification-icon" 
               onClick={handleEnableNotifications} 
@@ -372,21 +372,25 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               tabIndex={0}
               style={{ 
                 position: 'relative', 
-                width: 44, 
-                height: 44, 
+                width: 42, 
+                height: 42, 
                 borderRadius: '50%', 
-                backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.15)' : '#FFFFFF', 
-                boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.12)',
-                border: theme === 'dark' ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.08)',
+                backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.92)', 
+                backdropFilter: 'blur(8px)',
+                boxShadow: theme === 'dark' 
+                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.6), inset 0 -1px 2px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)' 
+                  : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
+                border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.07)',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                cursor: hasNotificationsEnabled ? 'default' : 'pointer'
+                cursor: hasNotificationsEnabled ? 'default' : 'pointer',
+                transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease'
               }}
             >
-              <Bell size={20} color={hasNotificationsEnabled ? (theme === 'dark' ? '#34c759' : '#0c831f') : (theme === 'dark' ? '#ff3b30' : '#d93025')} strokeWidth={2.6} />
+              <Bell size={19} color={hasNotificationsEnabled ? (theme === 'dark' ? '#34c759' : '#0c831f') : (theme === 'dark' ? '#ff3b30' : '#d93025')} strokeWidth={2.4} />
               {hasNotificationsEnabled && (
-                 <div style={{ position: 'absolute', bottom: 6, right: 6, width: 12, height: 12, backgroundColor: '#0c831f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <div style={{ position: 'absolute', bottom: 5, right: 5, width: 11, height: 11, backgroundColor: '#0c831f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                    <Check size={8} color="#fff" strokeWidth={3} />
                  </div>
               )}
@@ -398,15 +402,22 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               role="button"
               tabIndex={0}
               style={{ 
-                backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.15)' : '#FFFFFF', 
-                boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.12)',
-                border: theme === 'dark' ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.08)',
+                width: 42,
+                height: 42,
+                borderRadius: '50%',
+                backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.92)', 
+                backdropFilter: 'blur(8px)',
+                boxShadow: theme === 'dark' 
+                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.6), inset 0 -1px 2px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.25)' 
+                  : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
+                border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.07)',
                 display: 'flex', 
                 alignItems: 'center', 
-                justifyContent: 'center' 
+                justifyContent: 'center',
+                transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease'
               }}
             >
-              <SolidUserIcon size={22} color={textColor} />
+              <SolidUserIcon size={21} color={textColor} />
             </div>
           </div>
         </div>

@@ -396,20 +396,27 @@ const TrackOrderPage = ({ navigate }) => {
     }
   };
 
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
+
   const handleCancelRequest = async (orderOrId) => {
     const orderObj = typeof orderOrId === 'object' ? orderOrId : orders.find(o => o.id === orderOrId);
     const orderId = typeof orderOrId === 'object' ? orderOrId.id : orderOrId;
-    if (!orderId) return;
+    if (!orderId || cancellingOrderId) return;
 
     const isEarlyStage = orderObj && (orderObj.status === 'Placed' || orderObj.status === 'Payment Pending');
     const confirmMsg = isEarlyStage 
       ? 'Are you sure you want to cancel this order?' 
-      : 'Order is already being prepared. Would you like to request store cancellation?';
+      : 'Order is being prepared. Request cancellation from the store?';
 
     if (!window.confirm(confirmMsg)) return;
 
+    setCancellingOrderId(orderId);
     try {
       const targetStatus = isEarlyStage ? 'Cancelled' : 'Cancellation Requested';
+      
+      // Update local state immediately so user sees immediate feedback without blinking
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o).filter(o => ACTIVE_STATUSES.includes(o.status)));
+
       await db.orders.updateStatus(orderId, targetStatus);
       
       // If cancelled directly at early stage, restore product stock
@@ -432,10 +439,13 @@ const TrackOrderPage = ({ navigate }) => {
         }
       }
 
-      await fetchOrders();
+      await fetchOrders(true);
     } catch (err) {
       console.error('Failed to cancel order:', err);
       alert('Could not update order status. Please check your connection.');
+      await fetchOrders(true);
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -612,26 +622,130 @@ const TrackOrderPage = ({ navigate }) => {
                   </div>
                 )}
 
-                {/* 5. Collapsible Order Summary & Item Chips */}
-                <div className="modern-order-summary-box">
-                  <div className="summary-box-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <ShoppingBag size={16} color="var(--color-primary)" />
-                      <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--color-text)' }}>Order Summary</span>
-                      <span style={{ fontSize: '12px', color: 'var(--color-text-light)' }}>({order.items.length} items)</span>
+                {/* 5. Comprehensive Bill Info & Item Summary */}
+                <div className="modern-order-summary-box" style={{
+                  background: 'var(--color-surface, #ffffff)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  margin: '16px 0',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.04)'
+                }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ShoppingBag size={18} color="var(--color-primary-dark, #16a34a)" />
+                      <span style={{ fontWeight: '800', fontSize: '14.5px', color: 'var(--color-text)' }}>
+                        Bill & Order Details
+                      </span>
                     </div>
-                    <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text)' }}>₹{order.total}</span>
+                    <span style={{
+                      background: 'var(--color-surface-muted, #f1f5f9)',
+                      color: 'var(--color-text-light, #64748b)',
+                      padding: '3px 9px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: '700'
+                    }}>
+                      {Array.isArray(order.items) ? order.items.length : 0} items
+                    </span>
                   </div>
-                  <div className="summary-items-list">
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="summary-item-row">
-                        <span className="item-name-qty">
-                          <strong>{item.qty}×</strong> {item.name}
-                        </span>
-                        <span className="item-price">₹{item.price ? item.price * item.qty : ''}</span>
+
+                  {/* Items List */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    borderBottom: '1px dashed var(--color-border)',
+                    paddingBottom: '12px',
+                    marginBottom: '12px'
+                  }}>
+                    {Array.isArray(order.items) && order.items.map((item, idx) => {
+                      const qty = item.qty || item.quantity || 1;
+                      const price = Number(item.price) || 0;
+                      return (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                          <span style={{ color: 'var(--color-text)', fontWeight: '600' }}>
+                            <strong style={{ color: 'var(--color-primary-dark, #16a34a)', marginRight: '4px' }}>{qty}×</strong> {item.name}
+                          </span>
+                          <span style={{ fontWeight: '700', color: 'var(--color-text)' }}>
+                            ₹{price * qty}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bill Calculation Breakdown */}
+                  {(() => {
+                    const itemsTotal = Array.isArray(order.items)
+                      ? order.items.reduce((sum, it) => sum + ((Number(it.price) || 0) * (it.qty || it.quantity || 1)), 0)
+                      : 0;
+                    const discount = Number(order.discount_amount) || Number(order.discountAmount) || 0;
+                    const coupon = order.applied_coupon || order.appliedCoupon || order.coupon_code || order.couponCode;
+                    const deliveryFee = Number(order.delivery_charge) || Number(order.deliveryCharge) || 0;
+                    const smallCartFee = Number(order.small_cart_charge) || Number(order.smallCartCharge) || 0;
+                    const grandTotal = Number(order.total) || 0;
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-light, #64748b)' }}>
+                          <span>Items Total</span>
+                          <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>₹{itemsTotal || grandTotal}</span>
+                        </div>
+
+                        {/* Applied Coupon / Discount Row */}
+                        {(discount > 0 || coupon) && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            padding: '6px 10px',
+                            borderRadius: '10px',
+                            color: '#15803d',
+                            fontWeight: '700'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>Coupon Discount {coupon ? `(${coupon})` : ''}</span>
+                            </div>
+                            <span>-₹{discount > 0 ? discount : 'Applied'}</span>
+                          </div>
+                        )}
+
+                        {/* Delivery Partner Fee */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-light, #64748b)' }}>
+                          <span>Delivery Fee</span>
+                          <span style={{ fontWeight: '600', color: deliveryFee === 0 ? '#16a34a' : 'var(--color-text)' }}>
+                            {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
+                          </span>
+                        </div>
+
+                        {/* Small Cart Fee */}
+                        {smallCartFee > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-light, #64748b)' }}>
+                            <span>Small Cart Convenience</span>
+                            <span style={{ fontWeight: '600', color: 'var(--color-text)' }}>₹{smallCartFee}</span>
+                          </div>
+                        )}
+
+                        {/* Grand Total Divider & Row */}
+                        <div style={{
+                          borderTop: '1.5px solid var(--color-border)',
+                          paddingTop: '10px',
+                          marginTop: '4px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '15px'
+                        }}>
+                          <span style={{ fontWeight: '900', color: 'var(--color-text)' }}>Grand Total</span>
+                          <span style={{ fontWeight: '900', color: '#16a34a', fontSize: '17px' }}>₹{grandTotal}</span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Substitution Alert Banner */}
@@ -714,8 +828,12 @@ const TrackOrderPage = ({ navigate }) => {
                     <button 
                       className="track-cancel-btn" 
                       onClick={() => handleCancelRequest(order)}
+                      disabled={cancellingOrderId === order.id}
+                      style={{ opacity: cancellingOrderId === order.id ? 0.6 : 1 }}
                     >
-                      {order.status === 'Preparing' ? 'Request Cancellation' : 'Cancel Order'}
+                      {cancellingOrderId === order.id 
+                        ? 'Processing...' 
+                        : (order.status === 'Preparing' ? 'Request Cancellation' : 'Cancel Order')}
                     </button>
                   )}
                 </div>
