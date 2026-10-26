@@ -43,25 +43,33 @@ export const downloadInvoice = (order) => {
           * { box-sizing: border-box; }
           body { 
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
-            padding: 40px 48px; 
+            padding: 32px 24px; 
             color: #111827; 
-            max-width: 620px; 
+            max-width: 640px; 
             margin: 0 auto; 
-            background: #FDFCF7;
+            background: #F8F9FA;
             font-size: 13px;
             line-height: 1.5;
+          }
+
+          .invoice-card-frame {
+            background: #FFFFFF;
+            border: 1.5px solid #1E293B;
+            border-radius: 10px;
+            padding: 36px 40px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
           }
           
           .invoice-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 40px;
+            margin-bottom: 32px;
           }
 
           .brand-logo-mark {
             font-family: 'Cinzel', serif;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
             color: #111827;
             letter-spacing: -0.5px;
@@ -69,7 +77,7 @@ export const downloadInvoice = (order) => {
           }
 
           .brand-tagline {
-            font-size: 10px;
+            font-size: 9.5px;
             color: #6B7280;
             letter-spacing: 0.5px;
             text-transform: uppercase;
@@ -79,7 +87,7 @@ export const downloadInvoice = (order) => {
 
           .invoice-title {
             font-family: 'Cinzel', serif;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
             letter-spacing: 2px;
             color: #111827;
@@ -92,7 +100,7 @@ export const downloadInvoice = (order) => {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 36px;
+            margin-bottom: 30px;
           }
 
           .meta-block {
@@ -100,21 +108,21 @@ export const downloadInvoice = (order) => {
           }
 
           .meta-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.8px;
             color: #111827;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
           }
 
           .meta-text {
-            color: #4B5563;
-            font-size: 13px;
+            color: #1F2937;
+            font-size: 12.5px;
           }
 
           .meta-subtext {
-            font-size: 12px;
+            font-size: 11.5px;
             color: #6B7280;
             margin-top: 2px;
           }
@@ -126,25 +134,26 @@ export const downloadInvoice = (order) => {
           .invoice-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
           }
 
           .invoice-table th {
             text-align: left;
-            padding: 10px 0;
-            border-top: 1.5px solid #111827;
-            border-bottom: 1.5px solid #111827;
-            font-size: 11.5px;
+            padding: 8px 0;
+            border-top: 1.2px solid #111827;
+            border-bottom: 1.2px solid #111827;
+            font-size: 11px;
             font-weight: 700;
-            text-transform: capitalize;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             color: #111827;
           }
 
           .invoice-table td {
-            padding: 14px 0;
-            border-bottom: 1px solid #E5E7EB;
-            color: #111827;
-            font-size: 13px;
+            padding: 10px 0;
+            border-bottom: 1px solid #F1F5F9;
+            color: #1E293B;
+            font-size: 12px;
             vertical-align: top;
           }
 
@@ -155,60 +164,60 @@ export const downloadInvoice = (order) => {
           .totals-container {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 40px;
+            margin-bottom: 28px;
           }
 
           .totals-table {
-            width: 240px;
+            width: 210px;
           }
 
           .totals-row {
             display: flex;
             justify-content: space-between;
-            padding: 6px 0;
-            font-size: 13px;
+            padding: 4px 0;
+            font-size: 11.5px;
             color: #4B5563;
           }
 
           .totals-row.grand-total {
-            border-top: 2px solid #111827;
-            border-bottom: 2px solid #111827;
-            margin-top: 8px;
-            padding: 10px 0;
-            font-size: 16px;
+            border-top: 1.5px solid #111827;
+            border-bottom: 1.5px solid #111827;
+            margin-top: 6px;
+            padding: 7px 0;
+            font-size: 13.5px;
             font-weight: 800;
             color: #111827;
           }
 
           .thank-you-note {
             font-family: 'Cinzel', serif;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
             letter-spacing: 1px;
             color: #374151;
-            margin-bottom: 28px;
+            margin-bottom: 22px;
           }
 
           .payment-info-box {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            padding-top: 20px;
-            border-top: 1px dashed #D1D5DB;
+            padding-top: 16px;
+            border-top: 1px dashed #CBD5E1;
           }
 
           .payment-info-title {
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.8px;
             color: #111827;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
           }
 
           .signature-mark {
             font-family: 'Cinzel', serif;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             color: #111827;
             text-align: right;
@@ -219,10 +228,17 @@ export const downloadInvoice = (order) => {
               padding: 0; 
               background: #fff; 
             }
+            .invoice-card-frame {
+              border: 1.5px solid #111827;
+              border-radius: 8px;
+              padding: 28px 32px;
+              box-shadow: none;
+            }
           }
         </style>
       </head>
       <body>
+        <div class="invoice-card-frame">
         <div class="invoice-top">
           <div>
             <div class="brand-logo-mark">QUICKLY & CO.</div>
@@ -338,6 +354,7 @@ export const downloadInvoice = (order) => {
               zipitrural@gmail.com
             </div>
           </div>
+        </div>
         </div>
 
         <script>
