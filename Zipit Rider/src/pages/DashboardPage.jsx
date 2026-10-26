@@ -605,15 +605,10 @@ export default function DashboardPage() {
                       style={{ cursor: 'pointer' }}
                       title="Click to view delivery details"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ fontWeight: '800', color: 'var(--color-text)', fontSize: '16px' }}>
-                              Order #{order.id.slice(0, 6).toUpperCase()}
-                            </div>
-                            <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800', background: '#eff6ff', padding: '2px 8px', borderRadius: '10px' }}>
-                              View Details ↗
-                            </span>
+                          <div style={{ fontWeight: '800', color: 'var(--color-text)', fontSize: '16px' }}>
+                            Order #{order.id.slice(0, 6).toUpperCase()}
                           </div>
                           <div style={{ color: 'var(--color-text-light)', fontSize: '12px', marginTop: '4px' }}>
                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ₹{order.total} • {order.payment_method}
@@ -636,19 +631,33 @@ export default function DashboardPage() {
                         padding: '12px 14px', 
                         borderRadius: '12px', 
                         display: 'flex', 
-                        alignItems: 'flex-start', 
+                        alignItems: 'center', 
                         justifyContent: 'space-between',
                         gap: '12px', 
-                        marginBottom: '16px',
+                        marginBottom: '14px',
                         border: '1px solid #f1f5f9'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1, minWidth: 0 }}>
                           <MapPin size={18} color="var(--color-primary-dark)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                          <div style={{ fontSize: '13.5px', color: 'var(--color-text)', lineHeight: '1.4', fontWeight: '600' }}>
+                          <div style={{ fontSize: '13.5px', color: 'var(--color-text)', lineHeight: '1.4', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {cleanAddress(order.delivery_address)}
                           </div>
                         </div>
-                        <ChevronRight size={18} color="#94a3b8" style={{ marginTop: '2px', flexShrink: 0 }} />
+                        <div style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '4px', 
+                          background: '#eff6ff', 
+                          color: '#2563eb', 
+                          padding: '4px 10px', 
+                          borderRadius: '12px', 
+                          fontSize: '11.5px', 
+                          fontWeight: '800',
+                          flexShrink: 0 
+                        }}>
+                          <span>Details</span>
+                          <ChevronRight size={14} strokeWidth={2.5} />
+                        </div>
                       </div>
                     </div>
                     
@@ -1007,8 +1016,8 @@ export default function DashboardPage() {
                     Order #{deliveryDetailModalOrder.id.slice(0, 6).toUpperCase()}
                   </h3>
                   <span style={{
-                    background: deliveryDetailModalOrder.status === 'Out for Delivery' ? '#dcfce7' : '#fef3c7',
-                    color: deliveryDetailModalOrder.status === 'Out for Delivery' ? '#15803d' : '#b45309',
+                    background: deliveryDetailModalOrder.status === 'Delivered' ? '#dcfce7' : deliveryDetailModalOrder.status === 'Out for Delivery' ? '#e0f2fe' : '#fef3c7',
+                    color: deliveryDetailModalOrder.status === 'Delivered' ? '#15803d' : deliveryDetailModalOrder.status === 'Out for Delivery' ? '#0369a1' : '#b45309',
                     fontSize: '11px',
                     fontWeight: '800',
                     padding: '3px 8px',
@@ -1086,41 +1095,72 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Navigation Action Buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${deliveryDetailModalOrder.delivery_address?.lat || 25.5900},${deliveryDetailModalOrder.delivery_address?.lng || 83.5850}&travelmode=two-wheeler`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    padding: '10px',
-                    borderRadius: '10px',
-                    fontWeight: '800',
-                    fontSize: '12.5px',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Navigation size={15} /> Google Maps
-                </a>
+              {/* Navigation Action Buttons (Only for active deliveries) */}
+              {deliveryDetailModalOrder.status !== 'Delivered' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${deliveryDetailModalOrder.delivery_address?.lat || 25.5900},${deliveryDetailModalOrder.delivery_address?.lng || 83.5850}&travelmode=two-wheeler`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      padding: '10px',
+                      borderRadius: '10px',
+                      fontWeight: '800',
+                      fontSize: '12.5px',
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Navigation size={15} /> Google Maps
+                  </a>
+                  <button
+                    onClick={() => {
+                      setDeliveryDetailModalOrder(null);
+                      navigate(`/map/${deliveryDetailModalOrder.id}`);
+                    }}
+                    style={{
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      border: '1px solid #cbd5e1',
+                      padding: '10px',
+                      borderRadius: '10px',
+                      fontWeight: '700',
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <MapPin size={15} /> In-App Map
+                  </button>
+                </div>
+              )}
+
+              {/* Doorstep UPI QR Button inside Modal (Only for Active Orders) */}
+              {deliveryDetailModalOrder.status !== 'Delivered' && (
                 <button
                   onClick={() => {
+                    const target = deliveryDetailModalOrder;
                     setDeliveryDetailModalOrder(null);
-                    navigate(`/map/${deliveryDetailModalOrder.id}`);
+                    setQrModalOrder(target);
                   }}
                   style={{
-                    background: '#ffffff',
-                    color: '#0f172a',
-                    border: '1px solid #cbd5e1',
-                    padding: '10px',
+                    width: '100%',
+                    marginTop: '10px',
+                    background: '#ecfdf5',
+                    color: '#047857',
+                    border: '1px solid #a7f3d0',
+                    padding: '11px',
                     borderRadius: '10px',
-                    fontWeight: '700',
-                    fontSize: '12.5px',
+                    fontWeight: '800',
+                    fontSize: '13px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1128,36 +1168,9 @@ export default function DashboardPage() {
                     gap: '6px'
                   }}
                 >
-                  <MapPin size={15} /> In-App Map
+                  <QrCode size={16} /> Show Doorstep UPI QR
                 </button>
-              </div>
-
-              {/* Doorstep UPI QR Button inside Modal */}
-              <button
-                onClick={() => {
-                  const target = deliveryDetailModalOrder;
-                  setDeliveryDetailModalOrder(null);
-                  setQrModalOrder(target);
-                }}
-                style={{
-                  width: '100%',
-                  marginTop: '10px',
-                  background: '#ecfdf5',
-                  color: '#047857',
-                  border: '1px solid #a7f3d0',
-                  padding: '11px',
-                  borderRadius: '10px',
-                  fontWeight: '800',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <QrCode size={16} /> Show Doorstep UPI QR
-              </button>
+              )}
             </div>
 
             {/* Ordered Items List */}
@@ -1251,52 +1264,74 @@ export default function DashboardPage() {
               );
             })()}
 
-            {/* Modal Footer Slider / Status Action */}
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px' }}>
-              {deliveryDetailModalOrder.status === 'Out for Delivery' ? (
-                <SlideToAccept
-                  onAccept={() => {
-                    const target = deliveryDetailModalOrder;
-                    setDeliveryDetailModalOrder(null);
-                    handleMarkDelivered(target);
-                  }}
-                  label="Slide to Mark Delivered"
-                  resetTrigger={sliderResetKey}
-                />
-              ) : (deliveryDetailModalOrder.status || '').toLowerCase().startsWith('ready for pickup') ? (
-                <SlideToAccept
-                  onAccept={() => {
-                    const id = deliveryDetailModalOrder.id;
-                    setDeliveryDetailModalOrder(null);
-                    handleMarkOutForDelivery(id);
-                  }}
-                  label="Slide to Mark Out for Delivery"
-                  resetTrigger={sliderResetKey}
-                />
-              ) : !deliveryDetailModalOrder.accepted_by_rider ? (
-                <SlideToAccept
-                  onAccept={() => {
-                    const id = deliveryDetailModalOrder.id;
-                    setDeliveryDetailModalOrder(null);
-                    handleClaimOrder(id);
-                  }}
-                  label="Slide to Accept Order"
-                />
-              ) : (
+            {/* Modal Footer Slider / Status Action (Only for active deliveries) */}
+            {deliveryDetailModalOrder.status === 'Delivered' ? (
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px' }}>
                 <div style={{
-                  background: '#fef3c7',
-                  color: '#92400e',
-                  border: '1px solid #fde68a',
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  border: '1px solid #86efac',
                   borderRadius: '12px',
                   padding: '12px',
                   textAlign: 'center',
-                  fontSize: '13px',
-                  fontWeight: '700'
+                  fontSize: '13.5px',
+                  fontWeight: '800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}>
-                  Waiting for Storekeeper: Ready for Pickup
+                  <PackageCheck size={18} />
+                  <span>Order Delivered Successfully</span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '14px' }}>
+                {deliveryDetailModalOrder.status === 'Out for Delivery' ? (
+                  <SlideToAccept
+                    onAccept={() => {
+                      const target = deliveryDetailModalOrder;
+                      setDeliveryDetailModalOrder(null);
+                      handleMarkDelivered(target);
+                    }}
+                    label="Slide to Mark Delivered"
+                    resetTrigger={sliderResetKey}
+                  />
+                ) : (deliveryDetailModalOrder.status || '').toLowerCase().startsWith('ready for pickup') ? (
+                  <SlideToAccept
+                    onAccept={() => {
+                      const id = deliveryDetailModalOrder.id;
+                      setDeliveryDetailModalOrder(null);
+                      handleMarkOutForDelivery(id);
+                    }}
+                    label="Slide to Mark Out for Delivery"
+                    resetTrigger={sliderResetKey}
+                  />
+                ) : !deliveryDetailModalOrder.accepted_by_rider ? (
+                  <SlideToAccept
+                    onAccept={() => {
+                      const id = deliveryDetailModalOrder.id;
+                      setDeliveryDetailModalOrder(null);
+                      handleClaimOrder(id);
+                    }}
+                    label="Slide to Accept Order"
+                  />
+                ) : (
+                  <div style={{
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    border: '1px solid #fde68a',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    textAlign: 'center',
+                    fontSize: '13px',
+                    fontWeight: '700'
+                  }}>
+                    Waiting for Storekeeper: Ready for Pickup
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

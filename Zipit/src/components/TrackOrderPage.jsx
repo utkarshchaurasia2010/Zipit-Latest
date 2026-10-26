@@ -300,24 +300,43 @@ const TrackOrderPage = ({ navigate }) => {
   useEffect(() => {
     fetchOrders(false);
 
-    // 1. Supabase Realtime channel
+    // 1. Supabase Realtime channel with immediate payload application
     const channel = supabase
-      .channel(`track-orders-realtime`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+      .channel(`track-orders-realtime-${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        playBellSound();
+        if (payload?.new && ACTIVE_STATUSES.includes(payload.new.status)) {
+          setOrders(prev => {
+            if (prev.some(o => o.id === payload.new.id)) return prev;
+            return [payload.new, ...prev];
+          });
+        }
+        fetchOrders(true);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload?.new) {
+          setOrders(prev => {
+            if (!ACTIVE_STATUSES.includes(payload.new.status)) {
+              return prev.filter(o => o.id !== payload.new.id);
+            }
+            return prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o);
+          });
+        }
         playBellSound();
         fetchOrders(true);
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
-        playBellSound();
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload?.old?.id) {
+          setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        }
         fetchOrders(true);
       })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => fetchOrders(true))
       .subscribe();
 
-    // 2. High-speed resilient polling fallback (every 2.5s) to guarantee instant status updates even if WebSocket drops or DB replication lags
+    // 2. High-speed resilient polling fallback (every 2.0s) to guarantee instant status updates even if WebSocket drops or DB replication lags
     const pollInterval = setInterval(() => {
       fetchOrders(true);
-    }, 2500);
+    }, 2000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -417,7 +436,17 @@ const TrackOrderPage = ({ navigate }) => {
       // Update local state immediately so user sees immediate feedback without blinking
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o).filter(o => ACTIVE_STATUSES.includes(o.status)));
 
-      await db.orders.updateStatus(orderId, targetStatus);
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status: targetStatus })
+        .eq('id', orderId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase update status failed:', error);
+        throw error;
+      }
       
       // If cancelled directly at early stage, restore product stock
       if (isEarlyStage && orderObj?.items && Array.isArray(orderObj.items)) {
@@ -696,20 +725,8 @@ const TrackOrderPage = ({ navigate }) => {
 
                         {/* Applied Coupon / Discount Row */}
                         {(discount > 0 || coupon) && (
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            background: '#f0fdf4',
-                            border: '1px solid #bbf7d0',
-                            padding: '6px 10px',
-                            borderRadius: '10px',
-                            color: '#15803d',
-                            fontWeight: '700'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>Coupon Discount {coupon ? `(${coupon})` : ''}</span>
-                            </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '700' }}>
+                            <span>Discount / Coupon {coupon ? `(${coupon})` : ''}</span>
                             <span>-₹{discount > 0 ? discount : 'Applied'}</span>
                           </div>
                         )}

@@ -62,10 +62,8 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
   const textColor = theme === 'dark' ? '#FFFFFF' : '#000000';
   const iconColor = textColor;
 
-  const topOffset = isNavHidden ? '-89px' : '0px';
-
   return (
-    <header className="app-header" style={{ background: bgColor, top: topOffset }}>
+    <header className={`app-header ${isNavHidden ? 'nav-hidden' : ''}`} style={{ background: bgColor }}>
       {/* ── 3D Glowing Vector Curved Backdrop (High Contrast & Visible in Light Mode) ── */}
       <div className="header-vector-bg" aria-hidden="true">
         <svg viewBox="0 0 400 160" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">

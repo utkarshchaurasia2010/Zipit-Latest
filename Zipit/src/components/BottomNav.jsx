@@ -12,7 +12,9 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         tabIndex={0}
         aria-label="Home"
       >
-        <Home size={22} strokeWidth={activeTab === 'home' ? 2.2 : 1.5} />
+        <div className="nav-icon-box">
+          <Home size={20} strokeWidth={activeTab === 'home' ? 2.4 : 1.8} />
+        </div>
         <span className="nav-label">Home</span>
       </div>
       <div 
@@ -22,7 +24,9 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         tabIndex={0}
         aria-label="Categories"
       >
-        <LayoutGrid size={22} strokeWidth={activeTab === 'categories' ? 2.2 : 1.5} />
+        <div className="nav-icon-box">
+          <LayoutGrid size={20} strokeWidth={activeTab === 'categories' ? 2.4 : 1.8} />
+        </div>
         <span className="nav-label">Categories</span>
       </div>
       <div 
@@ -32,7 +36,9 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         tabIndex={0}
         aria-label="Track Order"
       >
-        <Navigation size={22} strokeWidth={activeTab === 'track' ? 2.2 : 1.5} />
+        <div className="nav-icon-box">
+          <Navigation size={20} strokeWidth={activeTab === 'track' ? 2.4 : 1.8} />
+        </div>
         <span className="nav-label">Track</span>
       </div>
       <div 
@@ -42,7 +48,9 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
         tabIndex={0}
         aria-label="Cart"
       >
-        <ShoppingCart size={22} strokeWidth={1.5} />
+        <div className="nav-icon-box">
+          <ShoppingCart size={20} strokeWidth={1.8} />
+        </div>
         <span className="nav-label">Cart</span>
       </div>
     </nav>
