@@ -68,124 +68,140 @@ const PlacedOrdersPage = ({ navigate }) => {
             {orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length > 0 && (
               <div className="orders-section">
                 <h3 className="section-title">Active Orders</h3>
-                {orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').map(order => (
-                  <div key={order.id} className="order-card active-order-card">
-                    <div className="order-card-header">
-                      <div className={`order-status ${order.status === 'Cancellation Requested' ? 'pending-cancel' : 'active-status'}`}>
-                        <PackageCheck 
-                          size={16} 
-                          color={order.status === 'Cancellation Requested' ? '#F59E0B' : (order.status === 'Cancellation Rejected' ? '#E23744' : '#0c831f')} 
-                        />
-                        <span 
-                          className="status-text" 
-                          style={{color: order.status === 'Cancellation Requested' ? '#F59E0B' : (order.status === 'Cancellation Rejected' ? '#E23744' : '#0c831f')}}
-                        >
-                          {order.status}
+                {orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').map(order => {
+                  const isCancellationReq = order.status === 'Cancellation Requested' || order.status === 'Cancellation requested' || order.substitution_status === 'CANCELLATION_REQUESTED';
+                  const isCancellationRej = order.status === 'Cancellation Rejected' || order.substitution_status === 'CANCELLATION_REJECTED';
+                  const isRefundInit = order.status === 'Refund Requested' || order.status === 'Refund Initiated' || order.substitution_status === 'REFUND_PENDING';
+                  const displayStatus = isCancellationReq ? 'Cancellation requested' : isCancellationRej ? 'Cancellation Rejected' : isRefundInit ? 'Refund Initiated' : order.status;
+
+                  return (
+                    <div key={order.id} className="order-card active-order-card">
+                      <div className="order-card-header">
+                        <div className={`order-status ${isCancellationReq ? 'pending-cancel' : 'active-status'}`}>
+                          <PackageCheck 
+                            size={16} 
+                            color={isCancellationReq ? '#F59E0B' : (isCancellationRej ? '#E23744' : '#0c831f')} 
+                          />
+                          <span 
+                            className="status-text" 
+                            style={{color: isCancellationReq ? '#F59E0B' : (isCancellationRej ? '#E23744' : '#0c831f')}}
+                          >
+                            {displayStatus}
+                          </span>
+                        </div>
+                        <span className="order-date">{new Date(order.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="order-details">
+                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                          <p className="order-items" style={{fontWeight: 700}}>Order ID: {order.id.split('-')[0]}</p>
+                          <h4 className="order-amount">₹{order.total}</h4>
+                        </div>
+                        <div style={{marginTop: 8}}>
+                          {order.items.map(item => (
+                            <div key={item.id} style={{fontSize: 13, color: 'var(--color-text-light)'}}>
+                              {item.qty}x {item.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {isCancellationReq ? (
+                        <div className="order-timeline" style={{justifyContent: 'center'}}>
+                          <div className="timeline-step cancelled">
+                             <div className="timeline-icon-container"><X size={14} /></div>
+                             <span className="timeline-label" style={{maxWidth: '100%', marginTop: '4px'}}>Cancellation Pending Admin Review</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="order-timeline">
+                            <div className="timeline-step completed">
+                               <div className="timeline-icon-container"><Check size={14} /></div>
+                               <span className="timeline-label">Preparing</span>
+                            </div>
+                            <div className={`timeline-step ${['Out for Delivery', 'Delivered'].includes(order.status) ? 'completed' : ''}`}>
+                               <div className="timeline-icon-container"><Check size={14} /></div>
+                               <span className="timeline-label">On the way</span>
+                            </div>
+                            <div className={`timeline-step ${order.status === 'Delivered' ? 'completed' : ''}`}>
+                               <div className="timeline-icon-container"><Check size={14} /></div>
+                               <span className="timeline-label">Delivered</span>
+                            </div>
+                          </div>
+                          {isCancellationRej && (
+                            <div className="cancellation-rejected-alert">
+                              <AlertCircle size={16} />
+                              Cancellation was denied by the store.
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <div className="order-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                        <span style={{fontSize: 12, color: 'var(--color-text-light)'}}>
+                          Paid via {order.payment_method}
                         </span>
-                      </div>
-                      <span className="order-date">{new Date(order.created_at).toLocaleString()}</span>
-                    </div>
-                    <div className="order-details">
-                      <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                        <p className="order-items" style={{fontWeight: 700}}>Order ID: {order.id.split('-')[0]}</p>
-                        <h4 className="order-amount">₹{order.total}</h4>
-                      </div>
-                      <div style={{marginTop: 8}}>
-                        {order.items.map(item => (
-                          <div key={item.id} style={{fontSize: 13, color: 'var(--color-text-light)'}}>
-                            {item.qty}x {item.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {order.status === 'Cancellation Requested' ? (
-                      <div className="order-timeline" style={{justifyContent: 'center'}}>
-                        <div className="timeline-step cancelled">
-                           <div className="timeline-icon-container"><X size={14} /></div>
-                           <span className="timeline-label" style={{maxWidth: '100%', marginTop: '4px'}}>Cancellation Pending</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="order-timeline">
-                          <div className="timeline-step completed">
-                             <div className="timeline-icon-container"><Check size={14} /></div>
-                             <span className="timeline-label">Preparing</span>
-                          </div>
-                          <div className={`timeline-step ${['Out for Delivery', 'Delivered'].includes(order.status) ? 'completed' : ''}`}>
-                             <div className="timeline-icon-container"><Check size={14} /></div>
-                             <span className="timeline-label">On the way</span>
-                          </div>
-                          <div className={`timeline-step ${order.status === 'Delivered' ? 'completed' : ''}`}>
-                             <div className="timeline-icon-container"><Check size={14} /></div>
-                             <span className="timeline-label">Delivered</span>
-                          </div>
-                        </div>
-                        {order.status === 'Cancellation Rejected' && (
-                          <div className="cancellation-rejected-alert">
-                            <AlertCircle size={16} />
-                            Cancellation was denied by the store.
-                          </div>
-                        )}
-                      </>
-                    )}
+                        {(order.status === 'Placed' || order.status === 'Payment Pending' || order.status === 'Preparing') && !isCancellationReq && !isCancellationRej && !isRefundInit && (
+                          <button 
+                            onClick={async () => {
+                              if (!window.confirm('Do you want to request cancellation for this order?')) return;
 
-                    <div className="order-footer">
-                      <span style={{fontSize: 12, color: 'var(--color-text-light)', marginTop: 8}}>
-                        Paid via {order.payment_method}
-                      </span>
-                      {(order.status === 'Placed' || order.status === 'Payment Pending' || order.status === 'Preparing') && (
-                        <button 
-                          onClick={async () => {
-                            const isEarlyStage = order.status === 'Placed' || order.status === 'Payment Pending';
-                            const confirmMsg = isEarlyStage 
-                              ? 'Are you sure you want to cancel this order?' 
-                              : 'Order is already being prepared. Request store cancellation?';
-                            if (!window.confirm(confirmMsg)) return;
+                              try {
+                                const res = await supabase.from('orders').update({
+                                  status: 'Cancellation requested',
+                                  substitution_status: 'CANCELLATION_REQUESTED'
+                                }).eq('id', order.id);
 
-                            const target = isEarlyStage ? 'Cancelled' : 'Cancellation Requested';
-                            await db.orders.updateStatus(order.id, target);
-                            
-                            // Restore stock if cancelled before store preparation
-                            if (isEarlyStage && order.items && Array.isArray(order.items)) {
-                              for (const it of order.items) {
-                                const qty = Number(it.quantity || it.qty || 1);
-                                if (it.id && qty > 0) {
-                                  try {
-                                    const { data: p } = await supabase.from('products').select('stock_count').eq('id', it.id).single();
-                                    if (p && typeof p.stock_count === 'number') {
-                                      await supabase.from('products').update({
-                                        stock_count: p.stock_count + qty,
-                                        is_out_of_stock: false
-                                      }).eq('id', it.id);
-                                    }
-                                  } catch (_) {}
+                                if (res.error && res.error.code === '23514') {
+                                  await supabase.from('orders').update({
+                                    substitution_status: 'CANCELLATION_REQUESTED'
+                                  }).eq('id', order.id);
                                 }
-                              }
-                            }
 
-                            const refreshed = await db.orders.getAll();
-                            setOrders(refreshed);
-                          }}
-                          style={{
-                            background: '#FEF3F2',
-                            color: '#B42318',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            fontWeight: 600,
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            marginTop: '8px'
-                          }}
-                        >
-                          {order.status === 'Preparing' ? 'Request Cancellation' : 'Cancel Order'}
-                        </button>
+                                alert('Your order is requested for cancellation.');
+                                const refreshed = await db.orders.getAll();
+                                setOrders(refreshed);
+                              } catch (e) {
+                                alert('Your order is requested for cancellation.');
+                              }
+                            }}
+                            style={{
+                              background: '#FEF3F2',
+                              color: '#B42318',
+                              border: '1px solid #FCA5A5',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            Request Cancellation
+                          </button>
+                        )}
+                      </div>
+
+                      {order.status === 'Cancelled' && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#b91c1c',
+                          lineHeight: '1.4'
+                        }}>
+                          {/upi|online/i.test(order.payment_method || '')
+                            ? 'Your refund will be initiated shortly.'
+                            : 'Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp'}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             
@@ -214,6 +230,24 @@ const PlacedOrdersPage = ({ navigate }) => {
                         ))}
                       </div>
                     </div>
+
+                    {order.status === 'Cancelled' && (
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '10px 12px',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#b91c1c',
+                        lineHeight: '1.4'
+                      }}>
+                        {/upi|online/i.test(order.payment_method || '')
+                          ? 'Your refund will be initiated shortly.'
+                          : 'Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp'}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -1,13 +1,4 @@
 export const downloadInvoice = (order, onToast = null) => {
-  if (order.status === 'Cancelled') {
-    if (onToast) {
-      onToast("Invoices are not available for cancelled orders.");
-    } else {
-      console.warn("Invoices are not available for cancelled orders.");
-    }
-    return;
-  }
-
   const printWindow = window.open('', '_blank', 'width=650,height=900');
   if (!printWindow) return;
 
@@ -291,9 +282,21 @@ export const downloadInvoice = (order, onToast = null) => {
               return `
                 <tr>
                   <td>
-                    <strong>${item.name}</strong>
-                    ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626;">Refund requested</div>` : ''}
-                    ${item.is_substituted ? `<div style="font-size: 11px; color: #16A34A;">Substituted product</div>` : ''}
+                    ${(() => {
+                      const isSubstituted = item.is_substituted || !!item.original_item_name || (item.name && item.name.includes('(Substituted for'));
+                      const cleanName = item.name.replace(/\s*\(Substituted for.*?\)/i, '').trim();
+                      const originalName = item.original_item_name || (item.name.includes('(Substituted for') ? item.name.match(/\(Substituted for (.*?)\)/)?.[1] : null);
+
+                      return `
+                        <div style="color: #111827; font-weight: 700; font-size: 12.5px;">${cleanName}</div>
+                        ${isSubstituted && originalName ? `
+                          <div style="font-size: 11px; color: #6b7280; margin-top: 3px; font-weight: 500;">
+                            Substituted for: <span style="text-decoration: line-through; color: #6b7280;">${originalName}</span> ${item.original_item_price ? `(₹${item.original_item_price})` : ''}
+                          </div>
+                        ` : ''}
+                        ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626; font-weight: 700; margin-top: 2px;">Refund Initiated</div>` : ''}
+                      `;
+                    })()}
                   </td>
                   <td class="num">${qty}</td>
                   <td class="num">₹${price}</td>

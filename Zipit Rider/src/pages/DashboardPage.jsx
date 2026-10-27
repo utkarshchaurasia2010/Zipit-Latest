@@ -362,11 +362,31 @@ export default function DashboardPage() {
         });
         const allTimeDelivered = historyOrders;
 
-        const PAYOUT_PER_DROP = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 30;
+        const getOrderDistanceKm = (ord) => {
+          const destLat = Number(ord?.delivery_address?.lat);
+          const destLng = Number(ord?.delivery_address?.lng);
+          const storeLat = Number(brandingConfig?.store_lat) || 25.5788;
+          const storeLng = Number(brandingConfig?.store_lng) || 83.5780;
+          if (!destLat || !destLng) return 1.5;
 
-        const todayEarnings = todayDelivered.length * PAYOUT_PER_DROP;
-        const monthEarnings = monthDelivered.length * PAYOUT_PER_DROP;
-        const allTimeEarnings = allTimeDelivered.length * PAYOUT_PER_DROP;
+          const dLat = (destLat - storeLat) * Math.PI / 180;
+          const dLng = (destLng - storeLng) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(storeLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+          return Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10);
+        };
+
+        const getOrderPayout = (ord) => {
+          const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 25;
+          const perKmRate = Number(brandingConfig?.rider_per_km_bonus) >= 0 ? Number(brandingConfig.rider_per_km_bonus) : 5;
+          const distKm = getOrderDistanceKm(ord);
+          return Math.round(basePayout + (distKm * perKmRate));
+        };
+
+        const todayEarnings = todayDelivered.reduce((sum, o) => sum + getOrderPayout(o), 0);
+        const monthEarnings = monthDelivered.reduce((sum, o) => sum + getOrderPayout(o), 0);
+        const allTimeEarnings = allTimeDelivered.reduce((sum, o) => sum + getOrderPayout(o), 0);
 
         const todayCodCash = todayDelivered
           .filter(o => (o.payment_method || 'COD').toUpperCase() === 'COD')
@@ -856,7 +876,7 @@ export default function DashboardPage() {
               marginBottom: '16px'
             }}>
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(`upi://pay?pa=7290886111@ptyes&pn=Zipit%20Store&am=${qrModalOrder.total}&cu=INR&tn=Order%20${qrModalOrder.id.slice(0,6)}`)}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(`upi://pay?pa=9651568829@upi&pn=Zipit%20Store&am=${qrModalOrder.total}&cu=INR&tn=Order%20${qrModalOrder.id.slice(0,6)}`)}`}
                 alt="UPI QR Code"
                 style={{ width: '180px', height: '180px', display: 'block' }}
               />
@@ -1102,7 +1122,22 @@ export default function DashboardPage() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Payout</div>
                 <div style={{ fontSize: '16px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                  ₹{Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 30}
+                  ₹{(() => {
+                    const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 25;
+                    const perKmRate = Number(brandingConfig?.rider_per_km_bonus) >= 0 ? Number(brandingConfig.rider_per_km_bonus) : 5;
+                    const destLat = Number(deliveryDetailModalOrder.delivery_address?.lat);
+                    const destLng = Number(deliveryDetailModalOrder.delivery_address?.lng);
+                    const sLat = Number(brandingConfig?.store_lat) || 25.5788;
+                    const sLng = Number(brandingConfig?.store_lng) || 83.5780;
+                    let km = 1.5;
+                    if (destLat && destLng) {
+                      const dLat = (destLat - sLat) * Math.PI / 180;
+                      const dLng = (destLng - sLng) * Math.PI / 180;
+                      const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(sLat*Math.PI/180)*Math.cos(destLat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+                      km = Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 10) / 10);
+                    }
+                    return Math.round(basePayout + (km * perKmRate));
+                  })()}
                 </div>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
@@ -1478,8 +1513,23 @@ export default function DashboardPage() {
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {Object.entries(groups).map(([dateLabel, dateOrders]) => {
-                    const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 30;
-                    const dayPayout = dateOrders.length * basePayout;
+                    const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 25;
+                    const perKmRate = Number(brandingConfig?.rider_per_km_bonus) >= 0 ? Number(brandingConfig.rider_per_km_bonus) : 5;
+                    const sLat = Number(brandingConfig?.store_lat) || 25.5788;
+                    const sLng = Number(brandingConfig?.store_lng) || 83.5780;
+
+                    const dayPayout = dateOrders.reduce((sum, ord) => {
+                      const destLat = Number(ord.delivery_address?.lat);
+                      const destLng = Number(ord.delivery_address?.lng);
+                      let km = 1.5;
+                      if (destLat && destLng) {
+                        const dLat = (destLat - sLat) * Math.PI / 180;
+                        const dLng = (destLng - sLng) * Math.PI / 180;
+                        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(sLat*Math.PI/180)*Math.cos(destLat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+                        km = Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 10) / 10);
+                      }
+                      return sum + Math.round(basePayout + (km * perKmRate));
+                    }, 0);
                     return (
                       <div key={dateLabel} style={{ background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '10px' }}>

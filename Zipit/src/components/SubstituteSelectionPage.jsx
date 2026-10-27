@@ -48,8 +48,32 @@ const SubstituteSelectionPage = ({ navigate }) => {
     loadData();
   }, []);
 
-  const handleConfirmSubstitutions = async () => {
+  const [extraPaymentModal, setExtraPaymentModal] = useState(null);
+
+  const handleConfirmSubstitutions = async (bypassExtraChargeModal = false) => {
     if (!activeOrder) return;
+
+    // Check price differences across all replaced items
+    let totalExtraCharge = 0;
+    let totalRefundDue = 0;
+
+    activeOrder.items.forEach((item, idx) => {
+      if (!item.is_unavailable) return;
+      const choice = selectedSubstitutes[idx];
+      if (choice?.action === 'replace' && choice.replacementProduct) {
+        const diff = (choice.replacementProduct.price - item.price) * item.qty;
+        if (diff > 0) totalExtraCharge += diff;
+        if (diff < 0) totalRefundDue += Math.abs(diff);
+      } else if (choice?.action === 'refund' || !choice) {
+        totalRefundDue += (item.price * item.qty);
+      }
+    });
+
+    if (totalExtraCharge > 0 && !bypassExtraChargeModal) {
+      setExtraPaymentModal({ amount: totalExtraCharge });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -90,20 +114,27 @@ const SubstituteSelectionPage = ({ navigate }) => {
       const updatePayload = {
         items: finalItems,
         total: Math.round(newTotal),
-        substitution_status: 'RESOLVED'
+        substitution_status: totalRefundDue > 0 ? 'REFUND_PENDING' : 'RESOLVED'
       };
 
-      if (isRefundChosenForOrder) {
-        updatePayload.status = 'Refund Requested';
+      if (totalRefundDue > 0 || isRefundChosenForOrder) {
+        updatePayload.refund_amount = (activeOrder.refund_amount || 0) + totalRefundDue;
+        updatePayload.refund_reason = `Substitution refund report: ₹${totalRefundDue} to be refunded to customer.`;
+        updatePayload.status = 'Refund Initiated';
+      }
+
+      if (totalExtraCharge > 0) {
+        updatePayload.extra_charges = totalExtraCharge;
       }
 
       await supabase.from('orders').update(updatePayload).eq('id', activeOrder.id);
 
-      navigate('/track');
+      navigate('/track', { replace: true });
     } catch (err) {
       console.error('Failed to update substitutions:', err);
     } finally {
       setSubmitting(false);
+      setExtraPaymentModal(null);
     }
   };
 
@@ -115,14 +146,14 @@ const SubstituteSelectionPage = ({ navigate }) => {
     return (
       <div className="substitute-page">
         <header className="substitute-page-header">
-          <button className="back-btn" onClick={() => navigate(-1)}>
+          <button className="back-btn" onClick={() => navigate('/track', { replace: true })}>
             <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
           </button>
           <h2>Substitute Selection</h2>
         </header>
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-light)' }}>
           <p>No active items require substitution right now.</p>
-          <button className="substitute-confirm-bar-btn" style={{ maxWidth: '240px', margin: '20px auto 0' }} onClick={() => navigate(-1)}>
+          <button className="substitute-confirm-bar-btn" style={{ maxWidth: '240px', margin: '20px auto 0' }} onClick={() => navigate('/track', { replace: true })}>
             Back to Orders
           </button>
         </div>
@@ -137,7 +168,7 @@ const SubstituteSelectionPage = ({ navigate }) => {
     <div className="substitute-page">
       {/* Top Header */}
       <header className="substitute-page-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>
+        <button className="back-btn" onClick={() => navigate('/track', { replace: true })}>
           <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
         </button>
         <div>
@@ -289,12 +320,96 @@ const SubstituteSelectionPage = ({ navigate }) => {
 
         <button
           className={`substitute-bottom-btn replace-btn ${selectedSubstitutes[activeItemIndex]?.action === 'replace' && selectedSubstitutes[activeItemIndex]?.replacementProduct ? 'active' : 'inactive'}`}
-          onClick={handleConfirmSubstitutions}
+          onClick={() => handleConfirmSubstitutions(false)}
           disabled={submitting || !(selectedSubstitutes[activeItemIndex]?.action === 'replace' && selectedSubstitutes[activeItemIndex]?.replacementProduct)}
         >
           <RefreshCw size={16} /> Substitute Product
         </button>
       </div>
+
+      {/* Extra Charges Confirmation Modal */}
+      {extraPaymentModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--color-surface, #ffffff)',
+            borderRadius: '20px',
+            padding: '24px 20px',
+            maxWidth: '360px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{
+              width: '54px',
+              height: '54px',
+              background: '#fef3c7',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              color: '#d97706'
+            }}>
+              <RefreshCw size={26} />
+            </div>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 8px' }}>
+              Extra Charges Required
+            </h3>
+            <p style={{ fontSize: '13.5px', color: 'var(--color-text-light)', lineHeight: '1.5', margin: '0 0 18px' }}>
+              The selected substitute product costs <strong style={{ color: '#0c831f' }}>₹{extraPaymentModal.amount} more</strong> than the original item. Would you like to proceed and pay the difference?
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => handleConfirmSubstitutions(true)}
+                disabled={submitting}
+                style={{
+                  background: 'linear-gradient(135deg, #0c831f 0%, #065f15 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(12, 131, 31, 0.3)'
+                }}
+              >
+                Pay Extra ₹{extraPaymentModal.amount} & Confirm
+              </button>
+
+              <button
+                onClick={() => setExtraPaymentModal(null)}
+                disabled={submitting}
+                style={{
+                  background: 'var(--color-surface-muted, #f1f5f9)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '11px',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Choose Another Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

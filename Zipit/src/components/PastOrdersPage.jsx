@@ -116,6 +116,23 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
                   <span>{order.delivery_address?.type ? `Delivered to ${order.delivery_address.type}` : ''}</span>
                 </div>
 
+                {order.status === 'Cancelled' && (
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#b91c1c',
+                    lineHeight: '1.4'
+                  }}>
+                    {/upi|online/i.test(order.payment_method || '')
+                      ? 'Your refund will be initiated shortly.'
+                      : 'Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp'}
+                  </div>
+                )}
+
                 {/* Actions: Download Invoice & Reorder */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', paddingTop: '6px' }}>
                   {order.items && order.items.length > 0 ? (

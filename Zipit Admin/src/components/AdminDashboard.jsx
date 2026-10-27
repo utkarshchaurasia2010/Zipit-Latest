@@ -138,11 +138,15 @@ const AdminDashboard = ({ initialTab }) => {
         if (initialTab === 'refunds') {
           setData(allOrders.filter(o => 
             o.status === 'Cancellation Requested' || 
+            o.status === 'Cancellation requested' || 
             o.status === 'Refund Requested' || 
+            o.status === 'Refund Initiated' || 
             o.status === 'Cancelled' || 
             o.status === 'Cancellation Rejected' ||
             o.substitution_status === 'CANCELLATION_REQUESTED' ||
-            o.substitution_status === 'CANCELLATION_REJECTED'
+            o.substitution_status === 'CANCELLATION_REJECTED' ||
+            o.substitution_status === 'REFUND_PENDING' ||
+            (Number(o.refund_amount) > 0)
           ));
         } else {
           setData(allOrders);
@@ -326,11 +330,29 @@ const AdminDashboard = ({ initialTab }) => {
   };
 
   const toggleAvailability = async (order, itemIndex) => {
+    if (['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(order.status)) {
+      showToast('Cannot mark items Out of Stock after order is Ready for Pickup or Delivered.', 'warning');
+      return;
+    }
+
     const updatedItems = [...order.items];
     const currentStatus = updatedItems[itemIndex].is_unavailable;
     const nextStatus = !currentStatus;
+    const itemObj = updatedItems[itemIndex];
 
     updatedItems[itemIndex].is_unavailable = nextStatus;
+
+    // Immediately update product stock_count to 0 if marking OOS
+    if (nextStatus && itemObj?.id) {
+      try {
+        await supabase.from('products').update({
+          stock_count: 0,
+          is_out_of_stock: true
+        }).eq('id', itemObj.id);
+      } catch (prodErr) {
+        console.warn('Failed to zero product stock in products table:', prodErr);
+      }
+    }
 
     const remainingUnavailable = updatedItems.some(i => i.is_unavailable && !i.is_substituted && !i.is_refund_chosen);
     const substitutionStatus = remainingUnavailable ? 'PENDING_CUSTOMER_ACTION' : 'RESOLVED';
@@ -342,7 +364,7 @@ const AdminDashboard = ({ initialTab }) => {
 
     loadData(true);
     showToast(
-      nextStatus ? 'Marked item as unavailable.' : 'Restored item back to available stock!',
+      nextStatus ? 'Marked item as Out of Stock (inventory zeroed).' : 'Restored item back to available stock!',
       nextStatus ? 'warning' : 'success'
     );
   };
@@ -524,9 +546,21 @@ const AdminDashboard = ({ initialTab }) => {
                   return `
                     <tr>
                       <td>
-                        <strong>${item.name}</strong>
-                        ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626;">Refund requested</div>` : ''}
-                        ${item.is_substituted ? `<div style="font-size: 11px; color: #16A34A;">Substituted product</div>` : ''}
+                        ${(() => {
+                          const isSubstituted = item.is_substituted || !!item.original_item_name || (item.name && item.name.includes('(Substituted for'));
+                          const cleanName = item.name.replace(/\s*\(Substituted for.*?\)/i, '').trim();
+                          const originalName = item.original_item_name || (item.name.includes('(Substituted for') ? item.name.match(/\(Substituted for (.*?)\)/)?.[1] : null);
+
+                          return `
+                            <div style="color: #111827; font-weight: 700; font-size: 12.5px;">${cleanName}</div>
+                            ${isSubstituted && originalName ? `
+                              <div style="font-size: 11px; color: #6b7280; margin-top: 3px; font-weight: 500;">
+                                Substituted for: <span style="text-decoration: line-through; color: #6b7280;">${originalName}</span> ${item.original_item_price ? `(₹${item.original_item_price})` : ''}
+                              </div>
+                            ` : ''}
+                            ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626; font-weight: 700; margin-top: 2px;">Refund Initiated</div>` : ''}
+                          `;
+                        })()}
                       </td>
                       ${isOfficial ? `<td style="font-size: 11px; color: #64748b;">${item.barcode || item.shopkeeper_codes || item.id?.slice(0,6) || '-'}</td>` : ''}
                       <td class="num">${qty}</td>
@@ -1020,8 +1054,8 @@ const AdminDashboard = ({ initialTab }) => {
                       <Printer size={14} /> Official Invoice
                     </button>
                     <select 
-                      className={`status-select ${(o.substitution_status === 'CANCELLATION_REQUESTED' ? 'cancellation-requested' : o.status).toLowerCase().replace(/ /g, '-')}`} 
-                      value={o.substitution_status === 'CANCELLATION_REQUESTED' ? 'Cancellation Requested' : o.status} 
+                      className={`status-select ${(o.substitution_status === 'CANCELLATION_REQUESTED' ? 'cancellation-requested' : (o.status === 'Refund Requested' ? 'refund-initiated' : o.status)).toLowerCase().replace(/ /g, '-')}`} 
+                      value={o.substitution_status === 'CANCELLATION_REQUESTED' ? 'Cancellation Requested' : (o.status === 'Refund Requested' ? 'Refund Initiated' : o.status)} 
                       onChange={async (e) => {
                         const newSelection = e.target.value;
                         const updatePayload = {};
@@ -1033,6 +1067,8 @@ const AdminDashboard = ({ initialTab }) => {
                           updatePayload.substitution_status = 'CANCELLATION_REJECTED';
                         } else if (newSelection === 'Cancellation Requested') {
                           updatePayload.substitution_status = 'CANCELLATION_REQUESTED';
+                        } else if (newSelection === 'Refund Initiated') {
+                          updatePayload.status = 'Refund Initiated';
                         } else {
                           updatePayload.status = newSelection;
                         }
@@ -1044,7 +1080,7 @@ const AdminDashboard = ({ initialTab }) => {
                     >
                       {initialTab === 'refunds' ? (
                         <>
-                          <option value="Refund Requested">Refund Requested</option>
+                          <option value="Refund Initiated">Refund Initiated</option>
                           <option value="Refunded">Refunded</option>
                           <option value="Cancellation Requested">Cancellation Requested</option>
                           <option value="Cancellation Rejected">Cancellation Rejected</option>
@@ -1060,7 +1096,7 @@ const AdminDashboard = ({ initialTab }) => {
                           <option value="Delivered">Delivered</option>
                           <option value="Cancellation Requested">Cancellation Requested</option>
                           <option value="Cancellation Rejected">Cancellation Rejected</option>
-                          <option value="Refund Requested">Refund Requested</option>
+                          <option value="Refund Initiated">Refund Initiated</option>
                           <option value="Refunded">Refunded</option>
                           <option value="Cancelled">Cancelled</option>
                         </>
@@ -1177,6 +1213,35 @@ const AdminDashboard = ({ initialTab }) => {
                     <span style={{ margin: '0 8px', color: 'var(--color-border)' }}>|</span>
                     Payment: <span style={{ color: '#0c831f', fontWeight: '600' }}>{o.payment_method || 'COD / UPI'}</span>
                   </div>
+
+                  {/* Refund Due / Difference Report */}
+                  {(Number(o.refund_amount) > 0 || o.substitution_status === 'REFUND_PENDING' || o.status === 'Refund Initiated' || o.status === 'Refund Requested') && (
+                    <div style={{
+                      background: '#fff1f2',
+                      border: '1.5px solid #fecdd3',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      margin: '6px 0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: '#e11d48' }}>
+                          REFUND REPORT: ₹{o.refund_amount || 0} still to be refunded to customer
+                        </span>
+                        <span style={{ fontSize: '11px', background: '#ffe4e6', color: '#be123c', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                          REFUND PENDING
+                        </span>
+                      </div>
+                      {o.refund_reason && (
+                        <div style={{ fontSize: '12px', color: '#9f1239', fontWeight: 500 }}>
+                          {o.refund_reason}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ fontSize: '14.5px', color: 'var(--color-text-light)', marginBottom: '4px' }}>
                     Items: <span style={{ color: 'var(--color-text)', fontWeight: '500' }}>{o.items?.length || 0} items</span>
                   </div>
@@ -1317,7 +1382,7 @@ const AdminDashboard = ({ initialTab }) => {
                               Customer Chose Refund
                             </span>
                           )}
-                          {!isSubbed && !isRefundChosen && (o.status === 'Preparing' || o.status === 'Payment Pending') && (
+                          {!isSubbed && !isRefundChosen && !['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(o.status) && (
                             isOosOnly ? (
                               <button 
                                 onClick={() => toggleAvailability(o, i)} 

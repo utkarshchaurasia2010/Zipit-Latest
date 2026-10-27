@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase, db } from '../services/db';
-import { ShoppingBag, Clock, CheckCircle2, MapPin, Phone, User, Package, Bike, ArrowLeft, Calendar, ChevronRight, Barcode } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, MapPin, Phone, User, Package, Bike, ArrowLeft, Calendar, ChevronRight, Barcode, Ban, IndianRupee } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
 import BarcodePackingModal from '../components/BarcodePackingModal';
 import { auth } from '../services/auth';
@@ -18,6 +18,14 @@ export default function ShopkeeperDashboard() {
   const [viewingDetailOrder, setViewingDetailOrder] = useState(null);
   const [packingModalOrder, setPackingModalOrder] = useState(null);
   const [ordersTab, setOrdersTab] = useState('completed'); // 'completed' | 'all'
+  const [brandingConfig, setBrandingConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  });
   const { showToast } = useToast();
 
   const shopkeeperCode = auth.getCode() || 'SHOPKEEPER';
@@ -40,6 +48,7 @@ export default function ShopkeeperDashboard() {
 
   useEffect(() => {
     fetchOrders(false);
+    db.branding.get().then(b => { if (b) setBrandingConfig(b); }).catch(() => {});
 
     const channel = supabase
       .channel('shopkeeper-live-dashboard')
@@ -139,6 +148,62 @@ export default function ShopkeeperDashboard() {
       fetchOrders(true);
     } catch (err) {
       showToast(err.message || 'Failed to update status', 'error');
+    }
+  };
+
+  const handleMarkItemOOS = async (orderId, itemIndex) => {
+    try {
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (!targetOrder) return;
+
+      // Allow marking OOS until the status is set to Ready for Pickup
+      if (['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(targetOrder.status)) {
+        showToast('Items cannot be marked OOS once the order is Ready for Pickup or later.', 'error');
+        return;
+      }
+
+      if (!window.confirm('Mark this item as Out of Stock (OOS)? The customer will be prompted to choose a replacement or refund.')) {
+        return;
+      }
+
+      const updatedItems = [...targetOrder.items];
+      const targetItem = updatedItems[itemIndex];
+      if (!targetItem) return;
+
+      targetItem.is_unavailable = true;
+
+      // Update order with updated items and flag substitution_status = 'PENDING_CUSTOMER_ACTION'
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          items: updatedItems,
+          substitution_status: 'PENDING_CUSTOMER_ACTION'
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Also set the product itself to OOS in products table immediately
+      if (targetItem.id) {
+        try {
+          const { data: pData } = await supabase.from('products').select('name').eq('id', targetItem.id).single();
+          let newName = pData?.name || targetItem.name;
+          if (!newName.includes('---TAG:OOS---')) {
+            newName = `${newName}---TAG:OOS---`;
+          }
+          await supabase.from('products').update({
+            name: newName,
+            is_out_of_stock: true,
+            stock_count: 0,
+            stock: 0
+          }).eq('id', targetItem.id);
+        } catch (_) {}
+      }
+
+      showToast(`Marked "${targetItem.name}" as Out of Stock. Customer notified for substitution.`, 'success');
+      fetchOrders(true);
+    } catch (err) {
+      showToast(err.message || 'Failed to mark item OOS', 'error');
     }
   };
 
@@ -350,38 +415,76 @@ export default function ShopkeeperDashboard() {
 
           {/* Ordered Products List */}
           <div>
-            <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-              Ordered Items ({Array.isArray(order.items) ? order.items.length : 1})
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                Ordered Items ({Array.isArray(order.items) ? order.items.length : 1})
+              </h3>
+              {!['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(order.status) && (
+                <span style={{ fontSize: '12px', color: '#64748b' }}>Click OOS to trigger customer substitution</span>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {Array.isArray(order.items) && order.items.map((item, idx) => (
-                <div 
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    background: '#f8fafc',
-                    borderRadius: '12px',
-                    border: '1px solid #e2e8f0'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Package size={20} color="#64748b" />
+              {Array.isArray(order.items) && order.items.map((item, idx) => {
+                const canMarkOOS = !['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(order.status) && !item.is_unavailable;
+
+                return (
+                  <div 
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: item.is_unavailable ? '#fff5f5' : '#f8fafc',
+                      borderRadius: '12px',
+                      border: item.is_unavailable ? '1px solid #fecaca' : '1px solid #e2e8f0'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: item.is_unavailable ? '#fee2e2' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Package size={20} color={item.is_unavailable ? '#ef4444' : '#64748b'} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', textDecoration: item.is_unavailable ? 'line-through' : 'none' }}>
+                          {item.name}
+                        </div>
+                        {item.amount && <div style={{ fontSize: '12px', color: '#64748b' }}>{item.amount}</div>}
+                        {item.is_unavailable && (
+                          <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 800, background: '#fee2e2', padding: '1px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '2px' }}>
+                            Out of Stock (Substitution Requested)
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{item.name}</div>
-                      {item.amount && <div style={{ fontSize: '12px', color: '#64748b' }}>{item.amount}</div>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '13px', color: '#64748b' }}>Qty: <strong>{item.quantity || item.qty || 1}</strong></span>
+                      <strong style={{ fontSize: '15px', color: '#0f172a' }}>₹{(item.quantity || item.qty || 1) * item.price}</strong>
+                      {canMarkOOS && (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkItemOOS(order.id, idx)}
+                          title="Mark Out of Stock"
+                          style={{
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                            border: '1px solid #fca5a5',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Ban size={13} /> Mark OOS
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '13px', color: '#64748b', marginRight: '14px' }}>Qty: <strong>{item.quantity || item.qty || 1}</strong></span>
-                    <strong style={{ fontSize: '15px', color: '#0f172a' }}>₹{(item.quantity || item.qty || 1) * item.price}</strong>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -483,6 +586,20 @@ export default function ShopkeeperDashboard() {
             <div>
               <span className="metric-num">{completedOrders.length}</span>
               <span className="metric-label">Completed Today</span>
+            </div>
+          </div>
+
+          <div className="metric-card done-card" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+            <div className="metric-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
+              <IndianRupee size={22} />
+            </div>
+            <div>
+              <span className="metric-num" style={{ color: '#15803d' }}>
+                ₹{completedOrders.length * (Number(brandingConfig?.shopkeeper_commission_fixed) >= 0 ? Number(brandingConfig.shopkeeper_commission_fixed) : 10)}
+              </span>
+              <span className="metric-label">
+                Packing Payout (₹{Number(brandingConfig?.shopkeeper_commission_fixed) >= 0 ? Number(brandingConfig.shopkeeper_commission_fixed) : 10}/order · SLA {brandingConfig?.shopkeeper_sla_mins ?? 3}m)
+              </span>
             </div>
           </div>
         </div>
@@ -692,15 +809,59 @@ export default function ShopkeeperDashboard() {
 
                 {/* Items List */}
                 <div className="details-section">
-                  <h3>Ordered Products</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h3 style={{ margin: 0 }}>Ordered Products</h3>
+                    {!['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(selectedOrder.status) && (
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>Can mark item OOS before ready</span>
+                    )}
+                  </div>
                   <div className="items-table">
-                    {Array.isArray(selectedOrder.items) && selectedOrder.items.map((item, i) => (
-                      <div key={i} className="item-row">
-                        <span className="item-name">{item.name}</span>
-                        <span className="item-qty">Qty: {item.quantity || item.qty || 1}</span>
-                        <span className="item-price">₹{(item.quantity || item.qty || 1) * item.price}</span>
-                      </div>
-                    ))}
+                    {Array.isArray(selectedOrder.items) && selectedOrder.items.map((item, i) => {
+                      const canMarkOOS = !['Ready for Pickup', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(selectedOrder.status) && !item.is_unavailable;
+
+                      return (
+                        <div key={i} className="item-row" style={{ opacity: item.is_unavailable ? 0.6 : 1, padding: '8px 0' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="item-name" style={{ textDecoration: item.is_unavailable ? 'line-through' : 'none' }}>
+                              {item.name}
+                            </div>
+                            {item.is_unavailable && (
+                              <span style={{ fontSize: '10.5px', color: '#dc2626', fontWeight: 800, background: '#fee2e2', padding: '1px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '2px' }}>
+                                Out of Stock (Substitution Requested)
+                              </span>
+                            )}
+                          </div>
+                          <span className="item-qty">Qty: {item.quantity || item.qty || 1}</span>
+                          <span className="item-price">₹{(item.quantity || item.qty || 1) * item.price}</span>
+                          {canMarkOOS && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMarkItemOOS(selectedOrder.id, i);
+                              }}
+                              title="Mark this item Out of Stock"
+                              style={{
+                                marginLeft: '10px',
+                                background: '#fee2e2',
+                                color: '#b91c1c',
+                                border: '1px solid #fca5a5',
+                                borderRadius: '8px',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Ban size={12} /> OOS
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -431,7 +431,14 @@ const Settings = ({ profile, setProfile }) => {
               <input 
                 type="checkbox" 
                 checked={branding.cod_enabled !== false} 
-                onChange={e => setBranding(prev => ({ ...prev, cod_enabled: e.target.checked }))} 
+                onChange={e => {
+                  const nextVal = e.target.checked;
+                  if (!nextVal && branding.upi_enabled === false) {
+                    showToast('At least one payment method (COD or UPI) must remain active.', 'warning');
+                    return;
+                  }
+                  setBranding(prev => ({ ...prev, cod_enabled: nextVal }));
+                }} 
               />
               <span className="slider round"></span>
             </label>
@@ -446,7 +453,14 @@ const Settings = ({ profile, setProfile }) => {
               <input 
                 type="checkbox" 
                 checked={branding.upi_enabled !== false} 
-                onChange={e => setBranding(prev => ({ ...prev, upi_enabled: e.target.checked }))} 
+                onChange={e => {
+                  const nextVal = e.target.checked;
+                  if (!nextVal && branding.cod_enabled === false) {
+                    showToast('At least one payment method (COD or UPI) must remain active.', 'warning');
+                    return;
+                  }
+                  setBranding(prev => ({ ...prev, upi_enabled: nextVal }));
+                }} 
               />
               <span className="slider round"></span>
             </label>

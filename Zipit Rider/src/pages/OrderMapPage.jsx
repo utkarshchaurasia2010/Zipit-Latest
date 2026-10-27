@@ -861,7 +861,7 @@ export default function OrderMapPage() {
               marginBottom: '16px'
             }}>
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(`upi://pay?pa=7290886111@ptyes&pn=Zipit%20Store&am=${order.total}&cu=INR&tn=Order%20${order.id.slice(0,6)}`)}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(`upi://pay?pa=9651568829@upi&pn=Zipit%20Store&am=${order.total}&cu=INR&tn=Order%20${order.id.slice(0,6)}`)}`}
                 alt="UPI QR Code"
                 style={{ width: '180px', height: '180px', display: 'block' }}
               />

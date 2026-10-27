@@ -30,7 +30,17 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   const [isApplying, setIsApplying] = useState(false);
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState('UPI');
+  const [selectedPayment, setSelectedPayment] = useState(() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      if (stored) {
+        const b = JSON.parse(stored);
+        if (b.upi_enabled !== false && b.cod_enabled === false) return 'UPI';
+        if (b.cod_enabled !== false && b.upi_enabled === false) return 'Cash on Delivery';
+      }
+    } catch (_) {}
+    return 'UPI';
+  });
   const [processing, setProcessing] = useState(false);
   const [pickupPhone, setPickupPhone] = useState(address?.phone || '');
   
@@ -102,9 +112,11 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
           setPaymentConfig({ cod_enabled: cod, upi_enabled: upi });
           
           setSelectedPayment(prev => {
-            if (prev === 'Cash on Delivery' && !cod) return upi ? 'UPI' : 'UPI';
-            if (prev === 'UPI' && !upi) return cod ? 'Cash on Delivery' : 'Cash on Delivery';
-            return prev;
+            if (!cod && (prev === 'Cash on Delivery' || prev === 'COD')) return 'UPI';
+            if (!upi && prev === 'UPI') return 'Cash on Delivery';
+            if (upi && !cod) return 'UPI';
+            if (cod && !upi) return 'Cash on Delivery';
+            return prev || (upi ? 'UPI' : 'Cash on Delivery');
           });
         }
       }).catch(() => {});
@@ -274,7 +286,17 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         } catch (_) {}
       }
 
-      if (selectedPayment === 'UPI') {
+      // Enforce active payment method
+      let activeMethod = selectedPayment;
+      if (!paymentConfig.cod_enabled && (activeMethod === 'Cash on Delivery' || activeMethod === 'COD')) {
+        activeMethod = 'UPI';
+        setSelectedPayment('UPI');
+      } else if (!paymentConfig.upi_enabled && activeMethod === 'UPI') {
+        activeMethod = 'Cash on Delivery';
+        setSelectedPayment('Cash on Delivery');
+      }
+
+      if (activeMethod === 'UPI') {
         // Option to trigger intent if needed, otherwise just assume flow
         window.location.href = `upi://pay?pa=9651568829@upi&pn=Quickly%20Store&am=${effectiveGrandTotal}&cu=INR&tn=Order%20Payment`;
         // We'll pause briefly to let intent fire
@@ -307,8 +329,8 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         deliveryCharge: effectiveDeliveryCharge,
         smallCartCharge: effectiveSmallCartCharge,
         address: finalAddress,
-        status: 'Preparing',
-        paymentMethod: selectedPayment,
+        status: activeMethod === 'UPI' ? 'Payment Pending' : 'Placed',
+        paymentMethod: activeMethod,
         discountAmount: discountAmount || 0,
         appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
         couponCode: appliedCoupon ? appliedCoupon.code : null

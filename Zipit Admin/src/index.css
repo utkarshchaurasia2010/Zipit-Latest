@@ -353,3 +353,17 @@ select:focus {
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
+
+/* Hide number input spinner buttons completely */
+input[type="number"]::-webkit-inner-spin-button, 
+input[type="number"]::-webkit-outer-spin-button { 
+  -webkit-appearance: none !important; 
+  -moz-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important; 
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
