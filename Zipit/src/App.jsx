@@ -233,9 +233,14 @@ function AppContent() {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const { latitude, longitude } = position.coords;
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`);
+            const { latitude, longitude } = position.coords;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`, {
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
             const data = await res.json();
             if (data && data.address) {
               const area = data.address.suburb || data.address.neighbourhood || data.address.road || data.address.city_district || 'Sector 14, MG Road';
@@ -245,7 +250,7 @@ function AppContent() {
               localStorage.setItem('zipit_gps_area', combinedGps);
             }
           } catch (e) {
-            console.log('GPS reverse geocode fallback');
+            console.log('GPS reverse geocode fallback or timeout');
           }
         },
         (err) => {

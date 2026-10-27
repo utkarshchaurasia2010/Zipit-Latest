@@ -33,7 +33,7 @@ export default defineConfig({
               cacheName: 'quickly-supabase-api',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 24 * 60 * 60 // 1 day
+                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days (prevents cold 10s wait after 24h)
               },
               cacheableResponse: {
                 statuses: [0, 200]
