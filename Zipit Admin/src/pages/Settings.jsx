@@ -591,6 +591,261 @@ const Settings = ({ profile, setProfile }) => {
           </button>
         </div>
       </div>
+
+      {/* Global Multi-App Controls (Customer, Rider & Shopkeeper) */}
+      <div className="settings-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+          <div>
+            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>⚡ Multi-App Ecosystem Controls</h3>
+            <p style={{ color: 'var(--color-text-light)', fontSize: '13px', margin: '4px 0 0 0' }}>
+              Control order dispatch rules, rider payouts, shopkeeper SLAs, and customer app operational settings live.
+            </p>
+          </div>
+        </div>
+
+        {/* 1. Customer App Controls */}
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#10b981', margin: '0 0 12px 0' }}>
+            🛒 Customer App Live Controls
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '14px' }}>
+            <div className="form-group">
+              <label>Default Delivery ETA (Minutes)</label>
+              <input 
+                type="number" 
+                min="5" 
+                max="60"
+                value={branding.default_eta_mins ?? 16}
+                onChange={(e) => setBranding(prev => ({ ...prev, default_eta_mins: parseInt(e.target.value) || 16 }))}
+                placeholder="e.g. 16"
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Store Opening Time</label>
+              <input 
+                type="time" 
+                value={branding.store_open_time ?? '07:00'}
+                onChange={(e) => setBranding(prev => ({ ...prev, store_open_time: e.target.value }))}
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Store Closing Time</label>
+              <input 
+                type="time" 
+                value={branding.store_close_time ?? '23:00'}
+                onChange={(e) => setBranding(prev => ({ ...prev, store_close_time: e.target.value }))}
+                className="form-input"
+              />
+            </div>
+          </div>
+
+          {/* Customer Toggles */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface-muted, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '13px' }}>Cash On Delivery (COD)</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--color-text-light)' }}>
+                  {branding.cod_enabled !== false ? 'Enabled for customers' : 'Disabled (Prepaid Only)'}
+                </div>
+              </div>
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={branding.cod_enabled !== false}
+                  onChange={(e) => setBranding(prev => ({ ...prev, cod_enabled: e.target.checked }))}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: branding.cod_enabled !== false ? '#10b981' : '#cbd5e1',
+                  borderRadius: '34px', transition: '.3s'
+                }}>
+                  <span style={{
+                    position: 'absolute', height: '16px', width: '16px', left: branding.cod_enabled !== false ? '24px' : '3px', bottom: '3px',
+                    backgroundColor: 'white', borderRadius: '50%', transition: '.3s'
+                  }} />
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface-muted, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '13px' }}>Online UPI Payments</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--color-text-light)' }}>
+                  {branding.upi_enabled !== false ? 'Enabled (Instant QR/UPI)' : 'Disabled'}
+                </div>
+              </div>
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={branding.upi_enabled !== false}
+                  onChange={(e) => setBranding(prev => ({ ...prev, upi_enabled: e.target.checked }))}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: branding.upi_enabled !== false ? '#10b981' : '#cbd5e1',
+                  borderRadius: '34px', transition: '.3s'
+                }}>
+                  <span style={{
+                    position: 'absolute', height: '16px', width: '16px', left: branding.upi_enabled !== false ? '24px' : '3px', bottom: '3px',
+                    backgroundColor: 'white', borderRadius: '50%', transition: '.3s'
+                  }} />
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Shopkeeper & Store SLA Controls */}
+        <div style={{ marginBottom: '24px', borderTop: '1px dashed var(--color-border)', paddingTop: '18px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#f59e0b', margin: '0 0 12px 0' }}>
+            🏪 Shopkeeper & Store SLA Controls
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <div className="form-group">
+              <label>Order Acceptance Timeout (Minutes)</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="15"
+                value={branding.shopkeeper_sla_mins ?? 3}
+                onChange={(e) => setBranding(prev => ({ ...prev, shopkeeper_sla_mins: parseInt(e.target.value) || 3 }))}
+                placeholder="e.g. 3"
+                className="form-input"
+              />
+              <small style={{ color: 'var(--color-text-light)', fontSize: '11px' }}>Auto-alarms or reassigns if unclaimed after this time</small>
+            </div>
+
+            <div className="form-group">
+              <label>Store Packing Commission / Order (₹)</label>
+              <input 
+                type="number" 
+                min="0"
+                value={branding.shopkeeper_commission_fixed ?? 10}
+                onChange={(e) => setBranding(prev => ({ ...prev, shopkeeper_commission_fixed: parseFloat(e.target.value) || 0 }))}
+                placeholder="e.g. 10"
+                className="form-input"
+              />
+              <small style={{ color: 'var(--color-text-light)', fontSize: '11px' }}>Standard store packing fee per fulfilled order</small>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Rider & Delivery Fleet Controls */}
+        <div style={{ marginBottom: '20px', borderTop: '1px dashed var(--color-border)', paddingTop: '18px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#0284c7', margin: '0 0 12px 0' }}>
+            🛵 Rider & Fleet Partner Controls
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '14px' }}>
+            <div className="form-group">
+              <label>Rider Base Payout per Order (₹)</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={branding.rider_base_payout ?? 25}
+                onChange={(e) => setBranding(prev => ({ ...prev, rider_base_payout: parseFloat(e.target.value) || 0 }))}
+                placeholder="e.g. 25"
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Rider Distance Bonus (₹ / KM)</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={branding.rider_per_km_bonus ?? 5}
+                onChange={(e) => setBranding(prev => ({ ...prev, rider_per_km_bonus: parseFloat(e.target.value) || 0 }))}
+                placeholder="e.g. 5"
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Rider Max Cash-in-Hand Limit (₹)</label>
+              <input 
+                type="number" 
+                min="500" 
+                step="500"
+                value={branding.rider_max_cash_limit ?? 2000}
+                onChange={(e) => setBranding(prev => ({ ...prev, rider_max_cash_limit: parseFloat(e.target.value) || 2000 }))}
+                placeholder="e.g. 2000"
+                className="form-input"
+              />
+              <small style={{ color: 'var(--color-text-light)', fontSize: '11px' }}>Blocks new COD claims once rider reaches this cash limit</small>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface-muted, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+            <div>
+              <div style={{ fontWeight: '700', fontSize: '13px' }}>Mandatory Delivery Handover PIN (OTP)</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--color-text-light)' }}>
+                {branding.require_delivery_otp !== false ? 'Rider must verify 4-digit customer OTP' : 'Direct Handover Allowed'}
+              </div>
+            </div>
+            <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '44px', height: '22px' }}>
+              <input 
+                type="checkbox" 
+                checked={branding.require_delivery_otp !== false}
+                onChange={(e) => setBranding(prev => ({ ...prev, require_delivery_otp: e.target.checked }))}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: branding.require_delivery_otp !== false ? '#0284c7' : '#cbd5e1',
+                borderRadius: '34px', transition: '.3s'
+              }}>
+                <span style={{
+                  position: 'absolute', height: '16px', width: '16px', left: branding.require_delivery_otp !== false ? '24px' : '3px', bottom: '3px',
+                  backgroundColor: 'white', borderRadius: '50%', transition: '.3s'
+                }} />
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Save Ecosystem Controls Button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '18px' }}>
+          <button 
+            type="button" 
+            onClick={async () => {
+              try {
+                setSaving(true);
+                await db.branding.update(branding);
+                showToast('Multi-App ecosystem controls updated and synced live!', 'success');
+              } catch (err) {
+                showToast('Failed to save controls: ' + err.message, 'error');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="save-settings-btn"
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '11px 26px',
+              background: '#0c831f',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <Save size={16} color="#ffffff" strokeWidth={2.2} />
+            <span>{saving ? 'Saving...' : 'Save Ecosystem Controls'}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

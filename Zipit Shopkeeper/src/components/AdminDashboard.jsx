@@ -544,7 +544,23 @@ const AdminDashboard = ({ initialTab }) => {
                   </div>
                 </div>
 
-                <div className="admin-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px', flexShrink: 0 }}>
+                <div className="admin-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '12px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '4px' }} title="Toggle In-Stock / Out-of-Stock">
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: p.is_out_of_stock ? '#dc2626' : '#16a34a' }}>
+                      {p.is_out_of_stock ? 'OOS' : 'IN STOCK'}
+                    </span>
+                    {renderToggleSwitch(!p.is_out_of_stock, async () => {
+                      const nextOos = !p.is_out_of_stock;
+                      setData(prev => prev.map(item => item.id === p.id ? { ...item, is_out_of_stock: nextOos } : item));
+                      setAllProductsList(prev => prev.map(item => item.id === p.id ? { ...item, is_out_of_stock: nextOos } : item));
+                      try {
+                        await db.products.update(p.id, { ...p, is_out_of_stock: nextOos });
+                        showToast(`${p.name} marked ${nextOos ? 'Out of Stock' : 'In Stock'}`, nextOos ? 'warning' : 'success');
+                      } catch (err) {
+                        showToast('Failed to update stock status: ' + err.message, 'error');
+                      }
+                    })}
+                  </div>
                   <button 
                     onClick={() => openModal(p)} 
                     title="Edit Product"
