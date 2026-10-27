@@ -428,19 +428,14 @@ const TrackOrderPage = ({ navigate }) => {
       return;
     }
 
-    const isEarlyStage = orderObj && (orderObj.status === 'Placed' || orderObj.status === 'Payment Pending');
-    const confirmMsg = isEarlyStage 
-      ? 'Are you sure you want to cancel this order?' 
-      : 'Order is being processed by the store. Send cancellation request?';
-
-    if (!window.confirm(confirmMsg)) return;
+    if (!window.confirm('Do you want to request cancellation for this order? Our team will review and process your request.')) return;
 
     setCancellingOrderId(orderId);
     try {
-      const targetStatus = isEarlyStage ? 'Cancelled' : 'Cancellation Requested';
+      const targetStatus = 'Cancellation Requested';
       
       // Update local state immediately so user sees immediate feedback without blinking
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o).filter(o => ACTIVE_STATUSES.includes(o.status)));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o));
 
       const { data: updatedData, error } = await supabase
         .from('orders')
@@ -453,26 +448,7 @@ const TrackOrderPage = ({ navigate }) => {
         throw error;
       }
       
-      // If cancelled directly at early stage, restore product stock
-      if (isEarlyStage && orderObj?.items && Array.isArray(orderObj.items)) {
-        for (const it of orderObj.items) {
-          const qty = Number(it.quantity || it.qty || 1);
-          if (it.id && qty > 0) {
-            try {
-              const { data: p } = await supabase.from('products').select('stock_count').eq('id', it.id).single();
-              if (p && typeof p.stock_count === 'number') {
-                await supabase.from('products').update({
-                  stock_count: p.stock_count + qty,
-                  is_out_of_stock: false
-                }).eq('id', it.id);
-              }
-            } catch (stockErr) {
-              console.warn('Stock restoral skipped on cancel:', stockErr);
-            }
-          }
-        }
-      }
-
+      alert('Cancellation request submitted. It will be reviewed by our team and updated shortly.');
       await fetchOrders(true);
     } catch (err) {
       console.error('Failed to cancel order:', err);

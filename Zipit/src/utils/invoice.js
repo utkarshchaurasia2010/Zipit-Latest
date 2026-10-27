@@ -1,6 +1,10 @@
-export const downloadInvoice = (order) => {
+export const downloadInvoice = (order, onToast = null) => {
   if (order.status === 'Cancelled') {
-    alert("Invoices are not available for cancelled orders.");
+    if (onToast) {
+      onToast("Invoices are not available for cancelled orders.");
+    } else {
+      console.warn("Invoices are not available for cancelled orders.");
+    }
     return;
   }
 

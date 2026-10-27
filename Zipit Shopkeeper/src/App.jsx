@@ -13,12 +13,51 @@ function App() {
   const [role, setRole] = useState(auth.getRole());
 
   useEffect(() => {
-    const currentRole = auth.getRole();
-    if (!currentRole) {
+    const code = auth.getCode();
+    if (!code) {
       setRole(null);
-    } else {
-      setRole(currentRole);
+      return;
     }
+
+    // 1. Immediate validation against database
+    const verifyCodeActive = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('access_codes')
+          .select('is_active, role')
+          .eq('code', code.toUpperCase())
+          .single();
+
+        if (error || !data || data.is_active === false) {
+          auth.logout();
+        }
+      } catch (e) {
+        console.warn('Access code verification check skipped:', e);
+      }
+    };
+    verifyCodeActive();
+
+    // 2. Realtime listener: if Admin deactivates/deletes this code, immediately log out
+    const channel = supabase
+      .channel(`shopkeeper-access-guard-${code}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'access_codes' 
+      }, (payload) => {
+        const changedCode = (payload.new?.code || payload.old?.code || '').toUpperCase();
+        if (changedCode === code.toUpperCase()) {
+          if (payload.eventType === 'DELETE' || payload.new?.is_active === false) {
+            alert('Your Shopkeeper access has been deactivated by Admin.');
+            auth.logout();
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   if (!role) {

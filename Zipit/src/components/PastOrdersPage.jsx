@@ -120,7 +120,7 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', paddingTop: '6px' }}>
                   {order.items && order.items.length > 0 ? (
                     <button 
-                      onClick={() => downloadInvoice(order)}
+                      onClick={() => downloadInvoice(order, showToast)}
                       style={{
                         background: 'var(--color-surface-muted)',
                         border: '1px solid var(--color-border)',
