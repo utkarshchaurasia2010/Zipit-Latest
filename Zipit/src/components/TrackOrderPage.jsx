@@ -422,10 +422,16 @@ const TrackOrderPage = ({ navigate }) => {
     const orderId = typeof orderOrId === 'object' ? orderOrId.id : orderOrId;
     if (!orderId || cancellingOrderId) return;
 
+    // Check if cancellation is allowed (before Out for Delivery)
+    if (orderObj && (orderObj.status === 'Out for Delivery' || orderObj.status === 'Delivered' || orderObj.status === 'Cancelled')) {
+      alert(`Order cannot be cancelled once it is ${orderObj.status}.`);
+      return;
+    }
+
     const isEarlyStage = orderObj && (orderObj.status === 'Placed' || orderObj.status === 'Payment Pending');
     const confirmMsg = isEarlyStage 
       ? 'Are you sure you want to cancel this order?' 
-      : 'Order is being prepared. Request cancellation from the store?';
+      : 'Order is being processed by the store. Send cancellation request?';
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -436,10 +442,11 @@ const TrackOrderPage = ({ navigate }) => {
       // Update local state immediately so user sees immediate feedback without blinking
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o).filter(o => ACTIVE_STATUSES.includes(o.status)));
 
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from('orders')
         .update({ status: targetStatus })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select();
 
       if (error) {
         console.error('Supabase update status failed:', error);
@@ -838,8 +845,8 @@ const TrackOrderPage = ({ navigate }) => {
                 {/* Footer */}
                 <div className="track-footer">
                   <span className="track-payment">Paid via {order.payment_method}</span>
-                  {/* Cancel Button logic: Available before order is packed or dispatched */}
-                  {(order.status === 'Placed' || order.status === 'Payment Pending' || order.status === 'Preparing') && (
+                  {/* Cancel Button logic: Available before order is Out for Delivery */}
+                  {order.status !== 'Out for Delivery' && order.status !== 'Delivered' && order.status !== 'Cancelled' && order.status !== 'Cancellation Requested' && order.status !== 'Cancellation Rejected' && order.status !== 'Refund Requested' && (
                     <button 
                       className="track-cancel-btn" 
                       onClick={() => handleCancelRequest(order)}
@@ -848,7 +855,7 @@ const TrackOrderPage = ({ navigate }) => {
                     >
                       {cancellingOrderId === order.id 
                         ? 'Processing...' 
-                        : (order.status === 'Preparing' ? 'Request Cancellation' : 'Cancel Order')}
+                        : (order.status === 'Placed' || order.status === 'Payment Pending' ? 'Cancel Order' : 'Request Cancellation')}
                     </button>
                   )}
                 </div>

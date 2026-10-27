@@ -345,12 +345,27 @@ const AdminDashboard = ({ initialTab }) => {
     );
   };
 
-  const printOrderReceipt = (order) => {
+  const printOrderReceipt = async (order, invoiceType = 'customer') => {
     try {
+      // Fetch fresh branding settings or use cached
+      let brand = {};
+      try {
+        brand = await db.branding.get() || {};
+      } catch (_) {}
+
+      const appName = brand.app_name || 'Quickly';
+      const appTagline = brand.app_tagline || 'Quickly ~ Fastest Delivery';
+      const legalName = brand.legal_name || `${appName} Technologies & Co.`;
+      const supportEmail = brand.support_email || 'zipitrural@gmail.com';
+
       const invoiceDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
+      });
+      const invoiceTime = new Date(order.created_at || Date.now()).toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
       });
 
       const subtotal = (order.items || []).reduce((sum, i) => sum + ((Number(i.price) || 0) * (Number(i.qty) || 1)), 0);
@@ -362,53 +377,71 @@ const AdminDashboard = ({ initialTab }) => {
 
       const addr = order.delivery_address || {};
       const details = addr.details || addr.address || '';
-      const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Zipit Store Hubs' : 'Customer Location');
+      const cleanAddress = details.split('\n---TAG:')[0] || (isPickup ? 'Store Hubs' : 'Customer Location');
+
+      const isOfficial = invoiceType === 'official';
 
       const html = `
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Invoice - #${order.id.slice(0,8).toUpperCase()}</title>
+            <title>${isOfficial ? 'Official Tax Invoice' : 'Customer Bill'} - #${order.id.slice(0,8).toUpperCase()}</title>
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
             <style>
-              @page { size: A4; margin: 15mm; }
+              @page { size: A4; margin: 12mm; }
               * { box-sizing: border-box; }
               body { 
                 font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
-                padding: 40px 48px; 
+                padding: 36px 42px; 
                 color: #111827; 
-                max-width: 620px; 
+                max-width: 660px; 
                 margin: 0 auto; 
                 background: #FDFCF7; 
                 font-size: 13px; 
                 line-height: 1.5; 
               }
-              .invoice-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
-              .brand-logo-mark { font-family: 'Cinzel', serif; font-size: 36px; font-weight: 800; color: #111827; letter-spacing: -1px; line-height: 1; }
-              .brand-tagline { font-size: 11px; color: #6B7280; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 4px; font-weight: 600; }
-              .invoice-title { font-family: 'Cinzel', serif; font-size: 32px; font-weight: 700; letter-spacing: 3px; color: #111827; text-align: right; margin: 0; }
+              .invoice-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+              .brand-logo-mark { font-family: 'Cinzel', serif; font-size: 32px; font-weight: 800; color: #111827; letter-spacing: -0.5px; line-height: 1; }
+              .brand-tagline { font-size: 11px; color: #6B7280; letter-spacing: 0.5px; margin-top: 4px; font-weight: 600; }
+              .invoice-title { font-family: 'Cinzel', serif; font-size: 26px; font-weight: 800; letter-spacing: 2px; color: #111827; text-align: right; margin: 0; }
+              .invoice-badge { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; margin-top: 4px; ${isOfficial ? 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;' : 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;'} }
               
-              .billed-meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
+              .billed-meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 26px; }
               .meta-block { max-width: 58%; }
               .meta-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 6px; }
               .meta-text { color: #111827; font-size: 13px; font-weight: 700; }
               .meta-subtext { font-size: 12px; color: #4B5563; margin-top: 2px; }
               .meta-right { text-align: right; }
 
+              ${isOfficial ? `
+              .official-panel {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 24px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                font-size: 12px;
+              }
+              .official-panel-item strong { color: #0f172a; display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; color: #64748b; }
+              ` : ''}
+
               .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
               .invoice-table th { text-align: left; padding: 10px 0; border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; font-size: 11.5px; font-weight: 700; color: #111827; }
-              .invoice-table td { padding: 12px 0; border-bottom: 1px solid #E5E7EB; color: #111827; font-size: 13px; vertical-align: top; }
+              .invoice-table td { padding: 10px 0; border-bottom: 1px solid #E5E7EB; color: #111827; font-size: 12.5px; vertical-align: top; }
               .invoice-table th.num, .invoice-table td.num { text-align: right; }
 
-              .totals-container { display: flex; justify-content: flex-end; margin-bottom: 40px; }
+              .totals-container { display: flex; justify-content: flex-end; margin-bottom: 30px; }
               .totals-table { width: 250px; }
               .totals-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #4B5563; }
               .totals-row.grand-total { border-top: 2px solid #111827; border-bottom: 2px solid #111827; margin-top: 8px; padding: 10px 0; font-size: 16px; font-weight: 800; color: #111827; }
 
-              .thank-you-note { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #374151; margin-bottom: 28px; }
-              .payment-info-box { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 20px; border-top: 1px dashed #D1D5DB; }
+              .thank-you-note { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #374151; margin-bottom: 20px; }
+              .payment-info-box { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 18px; border-top: 1px dashed #D1D5DB; }
               .payment-info-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 4px; }
               .signature-mark { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; color: #111827; text-align: right; }
 
@@ -421,11 +454,12 @@ const AdminDashboard = ({ initialTab }) => {
           <body>
             <div class="invoice-top">
               <div>
-                <div class="brand-logo-mark">ZIPIT &amp; CO.</div>
-                <div class="brand-tagline">Quick Commerce Delivery</div>
+                <div class="brand-logo-mark">${appName.toUpperCase()} &amp; CO.</div>
+                <div class="brand-tagline">${appTagline}</div>
               </div>
-              <div>
-                <h1 class="invoice-title">INVOICE</h1>
+              <div style="text-align: right;">
+                <h1 class="invoice-title">${isOfficial ? 'OFFICIAL INVOICE' : 'CUSTOMER BILL'}</h1>
+                <span class="invoice-badge">${isOfficial ? 'Merchant & Logistics Record' : 'Customer Receipt'}</span>
               </div>
             </div>
 
@@ -440,21 +474,44 @@ const AdminDashboard = ({ initialTab }) => {
               </div>
 
               <div class="meta-right">
-                <div style="font-weight: 700; color: #111827;">Invoice No. ${order.id.slice(0, 8).toUpperCase()}</div>
-                <div style="color: #6B7280; font-size: 12px; margin-top: 3px;">${invoiceDate}</div>
+                <div style="font-weight: 700; color: #111827;">Invoice #${order.id.slice(0, 8).toUpperCase()}</div>
+                <div style="color: #6B7280; font-size: 12px; margin-top: 3px;">${invoiceDate} ${invoiceTime}</div>
                 <div style="font-size: 12px; margin-top: 6px; font-weight: 600; color: #16A34A;">
-                  ${order.status} (${isPickup ? 'STORE PICKUP' : 'EXPRESS DELIVERY'})
+                  Status: ${order.status} (${isPickup ? 'STORE PICKUP' : 'EXPRESS DELIVERY'})
                 </div>
               </div>
             </div>
 
+            ${isOfficial ? `
+            <!-- Official Operations & Logistics Summary -->
+            <div class="official-panel">
+              <div class="official-panel-item">
+                <strong>Assigned Shopkeeper / Store</strong>
+                <span>${order.accepted_by_shopkeeper ? `Code: ${order.accepted_by_shopkeeper}` : 'Main Store Hub'}</span>
+              </div>
+              <div class="official-panel-item">
+                <strong>Assigned Delivery Rider</strong>
+                <span>${isPickup ? 'None (Store Pickup)' : (order.accepted_by_rider ? `Rider: ${order.accepted_by_rider}` : 'Unassigned / Pending')}</span>
+              </div>
+              <div class="official-panel-item">
+                <strong>Delivery Handover PIN</strong>
+                <span>${order.delivery_otp ? `OTP: ${order.delivery_otp}` : 'Direct Handover'}</span>
+              </div>
+              <div class="official-panel-item">
+                <strong>Fulfillment Mode</strong>
+                <span>${isPickup ? 'Store Pickup By Customer' : 'Express Doorstep Delivery'}</span>
+              </div>
+            </div>
+            ` : ''}
+
             <table class="invoice-table">
               <thead>
                 <tr>
-                  <th style="width: 50%;">Item</th>
-                  <th class="num" style="width: 15%;">Quantity</th>
-                  <th class="num" style="width: 15%;">Unit Price</th>
-                  <th class="num" style="width: 20%;">Total</th>
+                  <th style="width: ${isOfficial ? '45%' : '50%'};">Item</th>
+                  ${isOfficial ? '<th style="width: 15%;">SKU / Code</th>' : ''}
+                  <th class="num" style="width: 12%;">Qty</th>
+                  <th class="num" style="width: 13%;">Price</th>
+                  <th class="num" style="width: 15%;">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -469,6 +526,7 @@ const AdminDashboard = ({ initialTab }) => {
                         ${item.is_refund_chosen ? `<div style="font-size: 11px; color: #DC2626;">Refund requested</div>` : ''}
                         ${item.is_substituted ? `<div style="font-size: 11px; color: #16A34A;">Substituted product</div>` : ''}
                       </td>
+                      ${isOfficial ? `<td style="font-size: 11px; color: #64748b;">${item.barcode || item.shopkeeper_codes || item.id?.slice(0,6) || '-'}</td>` : ''}
                       <td class="num">${qty}</td>
                       <td class="num">₹${price}</td>
                       <td class="num" style="font-weight: 600;">₹${lineTotal}</td>
@@ -515,30 +573,30 @@ const AdminDashboard = ({ initialTab }) => {
             </div>
 
             <div class="thank-you-note">
-              Thank you!
+              ${isOfficial ? 'Official Accounting Document' : 'Thank you for ordering with us!'}
             </div>
 
             <div class="payment-info-box">
               <div>
                 <div class="payment-info-title">PAYMENT INFORMATION</div>
                 <div style="font-size: 12.5px; color: #374151;">
-                  Mode: <strong>${order.payment_method || 'Online (UPI)'}</strong>
+                  Payment Mode: <strong>${order.payment_method || 'Online (UPI)'}</strong>
                 </div>
                 <div style="font-size: 11.5px; color: #6B7280; margin-top: 2px;">
-                  Official computerized invoice issued by Zipit Quick Commerce
+                  Issued by ${legalName}
                 </div>
               </div>
               <div>
-                <div class="signature-mark">Zipit Express</div>
+                <div class="signature-mark">${appName} Express</div>
                 <div style="font-size: 11px; color: #6B7280; text-align: right; margin-top: 2px;">
-                  zipitrural@gmail.com
+                  ${supportEmail}
                 </div>
               </div>
             </div>
 
             <div class="no-print" style="margin-top: 30px; text-align: center;">
               <button onclick="window.print()" style="background:#111827; color:#fff; border:none; padding:12px 28px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
-                Print Invoice
+                Print ${isOfficial ? 'Official Invoice' : 'Customer Bill'}
               </button>
             </div>
 
@@ -559,13 +617,12 @@ const AdminDashboard = ({ initialTab }) => {
       `;
 
       // Method 1: Try standard popup window
-      const printWindow = window.open('', '_blank', 'width=580,height=750,menubar=no,toolbar=no,location=no,status=no');
+      const printWindow = window.open('', '_blank', 'width=600,height=800,menubar=no,toolbar=no,location=no,status=no');
       
       if (printWindow && !printWindow.closed) {
         printWindow.document.open();
         printWindow.document.write(html);
         printWindow.document.close();
-        // Fallback trigger in case load event was already consumed
         setTimeout(() => {
           try {
             printWindow.focus();
@@ -573,7 +630,7 @@ const AdminDashboard = ({ initialTab }) => {
           } catch (_) {}
         }, 500);
       } else {
-        // Method 2: Popup blocked by desktop browser; fallback to invisible iframe printing
+        // Method 2: Invisible iframe printing fallback
         let printIframe = document.getElementById('zipit-admin-print-frame');
         if (!printIframe) {
           printIframe = document.createElement('iframe');
@@ -947,10 +1004,18 @@ const AdminDashboard = ({ initialTab }) => {
                   
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button 
-                      onClick={() => printOrderReceipt(o)} 
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface-muted, #f1f5f9)', border: '1px solid var(--color-border)', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--color-text)', fontSize: '13px', fontWeight: '600' }}
+                      onClick={() => printOrderReceipt(o, 'customer')} 
+                      title="Print Customer Bill Receipt"
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-surface-muted, #f1f5f9)', border: '1px solid var(--color-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', color: 'var(--color-text)', fontSize: '12.5px', fontWeight: '600' }}
                     >
-                      <Printer size={15} /> Print Bill
+                      <Printer size={14} /> Customer Bill
+                    </button>
+                    <button 
+                      onClick={() => printOrderReceipt(o, 'official')} 
+                      title="Print Official Tax & Operations Invoice"
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.25)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', color: '#0369a1', fontSize: '12.5px', fontWeight: '700' }}
+                    >
+                      <Printer size={14} /> Official Invoice
                     </button>
                     <select className={`status-select ${o.status.toLowerCase().replace(/ /g, '-')}`} value={o.status} onChange={async (e) => {
                       const newStatus = e.target.value;

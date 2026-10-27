@@ -241,8 +241,8 @@ export const downloadInvoice = (order) => {
         <div class="invoice-card-frame">
         <div class="invoice-top">
           <div>
-            <div class="brand-logo-mark">QUICKLY & CO.</div>
-            <div class="brand-tagline">Quick Commerce Delivery</div>
+            <div class="brand-logo-mark">QUICKLY &amp; CO.</div>
+            <div class="brand-tagline">Quickly ~ Fastest Delivery</div>
           </div>
           <div>
             <h1 class="invoice-title">INVOICE</h1>

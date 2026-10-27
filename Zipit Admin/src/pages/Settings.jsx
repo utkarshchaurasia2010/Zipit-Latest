@@ -183,16 +183,103 @@ const Settings = ({ profile, setProfile }) => {
         </form>
       </div>
 
-      {/* App Branding & Logo Synchronization Card */}
+      {/* App Branding & Dynamic Information Synchronization Card */}
       <div className="settings-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <div>
-            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>🎨 App Branding & Dynamic Logos</h3>
+            <h3 style={{ borderBottom: 'none', margin: 0, paddingBottom: 0 }}>🎨 App Names, Identity & Branding</h3>
             <p style={{ color: 'var(--color-text-light)', fontSize: '13px', margin: '4px 0 0 0' }}>
-              Upload logos for each app. Changes automatically sync in realtime across all app icons and headers.
+              Update company names, taglines, support contact, and dynamic app logos. Changes sync across all platforms in realtime.
             </p>
           </div>
-          {brandingLoading && <span style={{ fontSize: '12px', color: '#64748b' }}>Syncing logos...</span>}
+          {brandingLoading && <span style={{ fontSize: '12px', color: '#64748b' }}>Syncing branding...</span>}
+        </div>
+
+        {/* Essential App Info Fields */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', margin: '16px 0 20px 0', padding: '16px', background: 'var(--color-surface-muted, #f8fafc)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ fontSize: '12px', fontWeight: '700' }}>Company / Brand Name</label>
+            <input 
+              type="text" 
+              value={branding.app_name ?? 'Quickly'} 
+              onChange={(e) => setBranding(prev => ({ ...prev, app_name: e.target.value }))}
+              placeholder="e.g. Quickly"
+              className="form-input"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ fontSize: '12px', fontWeight: '700' }}>Tagline / Delivery Slogan</label>
+            <input 
+              type="text" 
+              value={branding.app_tagline ?? 'Quickly ~ Fastest Delivery'} 
+              onChange={(e) => setBranding(prev => ({ ...prev, app_tagline: e.target.value }))}
+              placeholder="e.g. Quickly ~ Fastest Delivery"
+              className="form-input"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ fontSize: '12px', fontWeight: '700' }}>Official Invoice Business Name</label>
+            <input 
+              type="text" 
+              value={branding.legal_name ?? 'Quickly Technologies & Co.'} 
+              onChange={(e) => setBranding(prev => ({ ...prev, legal_name: e.target.value }))}
+              placeholder="e.g. Quickly Technologies & Co."
+              className="form-input"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ fontSize: '12px', fontWeight: '700' }}>Official Support Email</label>
+            <input 
+              type="email" 
+              value={branding.support_email ?? 'zipitrural@gmail.com'} 
+              onChange={(e) => setBranding(prev => ({ ...prev, support_email: e.target.value }))}
+              placeholder="e.g. support@quickly.com"
+              className="form-input"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '22px' }}>
+          <button 
+            type="button" 
+            onClick={async () => {
+              try {
+                setSaving(true);
+                await db.branding.update(branding);
+                showToast('Brand details and names updated live across all apps!', 'success');
+              } catch (err) {
+                showToast('Failed to save brand details: ' + err.message, 'error');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="save-settings-btn"
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 20px',
+              background: '#0c831f',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13px',
+              border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <Save size={15} color="#ffffff" strokeWidth={2.2} />
+            <span>{saving ? 'Saving...' : 'Save Brand Information'}</span>
+          </button>
         </div>
 
         <div className="branding-grid">
