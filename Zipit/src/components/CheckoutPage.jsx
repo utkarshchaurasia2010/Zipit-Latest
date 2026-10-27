@@ -7,6 +7,7 @@ import { triggerConfetti, triggerMoneyConfetti } from '../utils/confetti';
 import { triggerHaptic } from '../utils/haptics';
 import { useToast } from '../context/ToastContext';
 import { useWishlist } from '../context/WishlistContext';
+import { executeInvisibleTurnstile } from '../utils/turnstile';
 import './CheckoutPage.css';
 import './ProductListPage.css'; // For the bestseller-card style
 
@@ -261,6 +262,9 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
     setProcessing(true);
     try {
+      // Invisible Bot Protection verification for checkout
+      await executeInvisibleTurnstile('checkout_place_order');
+
       // 0. Check store open status set by Admin
       try {
         const { data: adminProf } = await supabase

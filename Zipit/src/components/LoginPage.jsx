@@ -5,6 +5,7 @@ import './LoginPage.css';
 import { db, supabase } from '../services/db';
 import { Mail, ShieldCheck } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { executeInvisibleTurnstile } from '../utils/turnstile';
 
 const DEFAULT_bgProducts = [
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/assets/products/sliding_images/jpeg/1c0db977-31ab-4d8e-abf3-d42e4a4b4632.jpg?ts=1706182142",
@@ -143,10 +144,14 @@ const LoginPage = ({ onLogin }) => {
     }
     setEmailLoading(true);
     try {
+      // Invisible Bot Protection verification
+      const turnstileToken = await executeInvisibleTurnstile('login_send_otp');
+      
       const { error } = await supabase.auth.signInWithOtp({ 
         email: cleanEmail,
         options: {
-          shouldCreateUser: true
+          shouldCreateUser: true,
+          captchaToken: turnstileToken && !turnstileToken.includes('fallback') ? turnstileToken : undefined
         }
       });
       if (error) {
