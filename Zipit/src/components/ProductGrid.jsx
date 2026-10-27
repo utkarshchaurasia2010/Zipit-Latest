@@ -103,8 +103,6 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
   });
   const categoryCards = Object.values(groupedBestsellers).slice(0, 16);
 
-  const [orderCounts, setOrderCounts] = useState({});
-
   // Dynamic Homepage Sections configuration synced live from Admin Panel
   const [sectionsConfig, setSectionsConfig] = useState(() => {
     try {
@@ -147,49 +145,16 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
     };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchOrderStats = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('items')
-          .limit(100);
-
-        if (!error && data) {
-          const counts = {};
-          data.forEach(order => {
-            if (Array.isArray(order.items)) {
-              order.items.forEach(item => {
-                if (item?.id) {
-                  const qty = Number(item.qty || item.quantity || 1);
-                  counts[item.id] = (counts[item.id] || 0) + (qty > 0 ? qty : 1);
-                }
-              });
-            }
-          });
-          if (isMounted) setOrderCounts(counts);
-        }
-      } catch (err) {
-        console.warn("Could not load order statistics:", err);
-      }
-    };
-    fetchOrderStats();
-    return () => { isMounted = false; };
-  }, []);
-
-  // Live Database Sync for Curated Sections
+  // Live Database Sync for Curated Sections (Fast in-memory sort without scanning orders table)
   const budgetUnder49 = allProducts.filter(p => p.price <= 49 && !p.is_out_of_stock && p.stock_count !== 0);
   const budgetUnder99 = allProducts.filter(p => p.price > 49 && p.price <= 99 && !p.is_out_of_stock && p.stock_count !== 0);
   const trendingProducts = allProducts
     .filter(p => !p.is_out_of_stock && p.stock_count !== 0)
     .sort((a, b) => {
-      const countA = orderCounts[a.id] || 0;
-      const countB = orderCounts[b.id] || 0;
-      if (countB !== countA) return countB - countA;
-      // Secondary fallback to bestsellers or recency
       if (b.is_bestseller && !a.is_bestseller) return 1;
       if (a.is_bestseller && !b.is_bestseller) return -1;
+      if (b.is_grid && !a.is_grid) return 1;
+      if (a.is_grid && !b.is_grid) return -1;
       return 0;
     })
     .slice(0, 6);

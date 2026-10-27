@@ -6,6 +6,9 @@ const supabaseAnonKey = 'sb_publishable_rCjAUoKGrW0u-CCnBb9rQw_ori9Y1dQ';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+let activeProductsPromise = null;
+let activeCategoriesPromise = null;
+
 const getUserId = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user?.id) return session.user.id;
@@ -618,21 +621,30 @@ export const db = {
   },
   categories: {
     getAll: async () => {
-      try {
-        const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
-        if (error) throw error;
-        if (data && data.length > 0) {
-          try { 
-            localStorage.setItem('zipit_cached_categories', JSON.stringify(data));
-            preloadImages(data.map(c => c.image_url));
-          } catch (e) {}
-        }
-        return data || [];
-      } catch (err) {
-        console.warn("DB offline fallback (categories):", err);
-        const cached = localStorage.getItem('zipit_cached_categories');
-        return cached ? JSON.parse(cached) : [];
+      if (activeCategoriesPromise) {
+        return activeCategoriesPromise;
       }
+
+      activeCategoriesPromise = (async () => {
+        try {
+          const { data, error } = await supabase.from('categories').select('*').order('created_at', { ascending: true });
+          if (error) throw error;
+          if (data && data.length > 0) {
+            try { 
+              localStorage.setItem('zipit_cached_categories', JSON.stringify(data));
+              preloadImages(data.map(c => c.image_url));
+            } catch (e) {}
+          }
+          return data || [];
+        } catch (err) {
+          console.warn("DB offline fallback (categories):", err);
+          const cached = localStorage.getItem('zipit_cached_categories');
+          return cached ? JSON.parse(cached) : [];
+        } finally {
+          setTimeout(() => { activeCategoriesPromise = null; }, 300);
+        }
+      })();
+      return activeCategoriesPromise;
     },
     add: async (category) => {
       const { data, error } = await supabase.from('categories').insert([category]).select().single();
@@ -668,11 +680,17 @@ export const db = {
   },
   products: {
     getAll: async () => {
-      try {
-        const { data, error } = await supabase.from('products').select('*, categories(name)').order('created_at', { ascending: false });
-        if (error) throw error;
-        
-        const filtered = (data || []).filter(p => !p.name.includes('---TAG:BANNER---'));
+      // In-flight request deduplication: reuse ongoing promise if called multiple times within the same render tick
+      if (activeProductsPromise) {
+        return activeProductsPromise;
+      }
+
+      activeProductsPromise = (async () => {
+        try {
+          const { data, error } = await supabase.from('products').select('*, categories(name)').order('created_at', { ascending: false });
+          if (error) throw error;
+          
+          const filtered = (data || []).filter(p => !p.name.includes('---TAG:BANNER---'));
         const mapped = filtered.map(p => {
           const is_wafer = p.name.includes('---TAG:WAFER---');
           const is_grid = p.name.includes('---TAG:GRID---');
@@ -729,8 +747,12 @@ export const db = {
         console.warn("DB offline fallback (products getAll):", err);
         const cached = localStorage.getItem('zipit_cached_products');
         return cached ? JSON.parse(cached) : [];
+      } finally {
+        setTimeout(() => { activeProductsPromise = null; }, 300);
       }
-    },
+    })();
+    return activeProductsPromise;
+  },
     getByCategory: async (categoryId) => {
       const { data, error } = await supabase.from('products').select('*, categories(name)').eq('category_id', categoryId).order('created_at', { ascending: false });
       if (error) console.error("DB Error (products getByCategory):", error);
