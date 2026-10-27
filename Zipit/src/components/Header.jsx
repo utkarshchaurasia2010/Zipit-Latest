@@ -99,25 +99,25 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
               <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.2" />
             </linearGradient>
 
-            {/* Dark Mode Gradients - Unified 3D Emerald / Mint Waves */}
+            {/* Dark Mode Gradients - Vibrant #FF6B00 Vector Curve */}
             <linearGradient id="curve1Dark" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#34D399" stopOpacity="0.38" />
-              <stop offset="45%" stopColor="#10B981" stopOpacity="0.22" />
-              <stop offset="80%" stopColor="#059669" stopOpacity="0.10" />
-              <stop offset="100%" stopColor="#047857" stopOpacity="0.03" />
+              <stop offset="0%" stopColor="#FF6B00" stopOpacity="0.45" />
+              <stop offset="45%" stopColor="#EA580C" stopOpacity="0.28" />
+              <stop offset="80%" stopColor="#C2410C" stopOpacity="0.14" />
+              <stop offset="100%" stopColor="#7C2D12" stopOpacity="0.04" />
             </linearGradient>
 
             <linearGradient id="curve2Dark" x1="10%" y1="0%" x2="90%" y2="100%">
-              <stop offset="0%" stopColor="#6EE7B7" stopOpacity="0.30" />
-              <stop offset="50%" stopColor="#10B981" stopOpacity="0.18" />
-              <stop offset="85%" stopColor="#047857" stopOpacity="0.06" />
-              <stop offset="100%" stopColor="#064E3B" stopOpacity="0.01" />
+              <stop offset="0%" stopColor="#FF8533" stopOpacity="0.35" />
+              <stop offset="50%" stopColor="#FF6B00" stopOpacity="0.22" />
+              <stop offset="85%" stopColor="#C2410C" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#431407" stopOpacity="0.01" />
             </linearGradient>
 
             <linearGradient id="curveRidgeDark" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#A7F3D0" stopOpacity="0.85" />
-              <stop offset="50%" stopColor="#34D399" stopOpacity="0.55" />
-              <stop offset="100%" stopColor="#10B981" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="#FFB380" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#FF6B00" stopOpacity="0.65" />
+              <stop offset="100%" stopColor="#EA580C" stopOpacity="0.2" />
             </linearGradient>
 
             <radialGradient id="sphere3DLight" cx="35%" cy="30%" r="65%">
@@ -128,17 +128,17 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             </radialGradient>
 
             <radialGradient id="sphere3DDark" cx="35%" cy="30%" r="65%">
-              <stop offset="0%" stopColor="#A7F3D0" stopOpacity="0.5" />
-              <stop offset="45%" stopColor="#10B981" stopOpacity="0.2" />
-              <stop offset="85%" stopColor="#065F46" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#064E3B" stopOpacity="0" />
+              <stop offset="0%" stopColor="#FFB380" stopOpacity="0.55" />
+              <stop offset="45%" stopColor="#FF6B00" stopOpacity="0.25" />
+              <stop offset="85%" stopColor="#C2410C" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#431407" stopOpacity="0" />
             </radialGradient>
           </defs>
 
           {/* Deep Base Shadow Wave (Lends realistic physical lift) */}
           <path
             d="M-30 -25 Q 75 142, 238 48 T 445 105 L 445 -45 Z"
-            fill={theme === 'dark' ? 'rgba(0, 0, 0, 0.35)' : 'rgba(180, 83, 9, 0.08)'}
+            fill={theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(180, 83, 9, 0.08)'}
             transform="translate(0, 3)"
           />
 
@@ -169,7 +169,7 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
           {/* Secondary Fine Specular Ridge (1px edge) */}
           <path
             d="M80 -45 Q 215 160, 375 38 T 530 92"
-            stroke={theme === 'dark' ? 'rgba(110, 231, 183, 0.65)' : 'rgba(255, 255, 255, 0.9)'}
+            stroke={theme === 'dark' ? 'rgba(255, 179, 128, 0.7)' : 'rgba(255, 255, 255, 0.9)'}
             strokeWidth="1.0"
             strokeLinecap="round"
             fill="none"

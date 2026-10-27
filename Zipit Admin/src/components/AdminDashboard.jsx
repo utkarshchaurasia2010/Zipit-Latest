@@ -476,7 +476,7 @@ const AdminDashboard = ({ initialTab }) => {
               <div class="meta-right">
                 <div style="font-weight: 700; color: #111827;">Invoice #${order.id.slice(0, 8).toUpperCase()}</div>
                 <div style="color: #6B7280; font-size: 12px; margin-top: 3px;">${invoiceDate} ${invoiceTime}</div>
-                <div style="font-size: 12px; margin-top: 6px; font-weight: 600; color: #16A34A;">
+                <div style="font-size: 12px; margin-top: 6px; font-weight: 700; color: ${order.status?.toLowerCase().includes('cancel') ? '#DC2626' : '#16A34A'};">
                   Status: ${order.status} (${isPickup ? 'STORE PICKUP' : 'EXPRESS DELIVERY'})
                 </div>
               </div>
