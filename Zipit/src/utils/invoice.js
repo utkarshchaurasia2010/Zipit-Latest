@@ -54,30 +54,32 @@ export const downloadInvoice = (order) => {
 
           .invoice-card-frame {
             background: #FFFFFF;
-            border: 1.5px solid #1E293B;
-            border-radius: 10px;
-            padding: 36px 40px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 24px 28px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
           }
           
           .invoice-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 32px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #E5E7EB;
+            padding-bottom: 12px;
           }
 
           .brand-logo-mark {
             font-family: 'Cinzel', serif;
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 800;
             color: #111827;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.3px;
             line-height: 1.1;
           }
 
           .brand-tagline {
-            font-size: 9.5px;
+            font-size: 9px;
             color: #6B7280;
             letter-spacing: 0.5px;
             text-transform: uppercase;
@@ -86,10 +88,10 @@ export const downloadInvoice = (order) => {
           }
 
           .invoice-title {
-            font-family: 'Cinzel', serif;
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 2px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
             color: #111827;
             text-align: right;
             margin: 0;

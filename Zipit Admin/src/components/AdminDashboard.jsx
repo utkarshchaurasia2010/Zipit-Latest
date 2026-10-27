@@ -394,25 +394,25 @@ const AdminDashboard = ({ initialTab }) => {
               * { box-sizing: border-box; }
               body { 
                 font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
-                padding: 36px 42px; 
+                padding: 24px 28px; 
                 color: #111827; 
-                max-width: 660px; 
+                max-width: 640px; 
                 margin: 0 auto; 
-                background: #FDFCF7; 
-                font-size: 13px; 
-                line-height: 1.5; 
+                background: #FFFFFF; 
+                font-size: 12.5px; 
+                line-height: 1.45; 
               }
-              .invoice-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-              .brand-logo-mark { font-family: 'Cinzel', serif; font-size: 32px; font-weight: 800; color: #111827; letter-spacing: -0.5px; line-height: 1; }
-              .brand-tagline { font-size: 11px; color: #6B7280; letter-spacing: 0.5px; margin-top: 4px; font-weight: 600; }
-              .invoice-title { font-family: 'Cinzel', serif; font-size: 26px; font-weight: 800; letter-spacing: 2px; color: #111827; text-align: right; margin: 0; }
-              .invoice-badge { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; margin-top: 4px; ${isOfficial ? 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;' : 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;'} }
+              .invoice-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 14px; }
+              .brand-logo-mark { font-family: 'Cinzel', serif; font-size: 20px; font-weight: 800; color: #111827; letter-spacing: -0.3px; line-height: 1.1; }
+              .brand-tagline { font-size: 10px; color: #6B7280; letter-spacing: 0.5px; margin-top: 3px; font-weight: 600; text-transform: uppercase; }
+              .invoice-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: 0.5px; color: #111827; text-align: right; margin: 0; }
+              .invoice-badge { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; margin-top: 4px; ${isOfficial ? 'background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;' : 'background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;'} }
               
-              .billed-meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 26px; }
+              .billed-meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
               .meta-block { max-width: 58%; }
-              .meta-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 6px; }
+              .meta-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #6B7280; margin-bottom: 4px; }
               .meta-text { color: #111827; font-size: 13px; font-weight: 700; }
-              .meta-subtext { font-size: 12px; color: #4B5563; margin-top: 2px; }
+              .meta-subtext { font-size: 11.5px; color: #4B5563; margin-top: 2px; }
               .meta-right { text-align: right; }
 
               ${isOfficial ? `
@@ -420,30 +420,30 @@ const AdminDashboard = ({ initialTab }) => {
                 background: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
-                padding: 14px 16px;
-                margin-bottom: 24px;
+                padding: 10px 14px;
+                margin-bottom: 18px;
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 12px;
-                font-size: 12px;
+                gap: 10px;
+                font-size: 11.5px;
               }
-              .official-panel-item strong { color: #0f172a; display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; color: #64748b; }
+              .official-panel-item strong { color: #64748b; display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
               ` : ''}
 
-              .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-              .invoice-table th { text-align: left; padding: 10px 0; border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; font-size: 11.5px; font-weight: 700; color: #111827; }
-              .invoice-table td { padding: 10px 0; border-bottom: 1px solid #E5E7EB; color: #111827; font-size: 12.5px; vertical-align: top; }
+              .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+              .invoice-table th { text-align: left; padding: 8px 0; border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; font-size: 11px; font-weight: 700; color: #111827; text-transform: uppercase; letter-spacing: 0.5px; }
+              .invoice-table td { padding: 8px 0; border-bottom: 1px solid #F1F5F9; color: #111827; font-size: 12px; vertical-align: top; }
               .invoice-table th.num, .invoice-table td.num { text-align: right; }
 
-              .totals-container { display: flex; justify-content: flex-end; margin-bottom: 30px; }
-              .totals-table { width: 250px; }
-              .totals-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #4B5563; }
-              .totals-row.grand-total { border-top: 2px solid #111827; border-bottom: 2px solid #111827; margin-top: 8px; padding: 10px 0; font-size: 16px; font-weight: 800; color: #111827; }
+              .totals-container { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+              .totals-table { width: 230px; }
+              .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: #4B5563; }
+              .totals-row.grand-total { border-top: 1.5px solid #111827; border-bottom: 1.5px solid #111827; margin-top: 6px; padding: 8px 0; font-size: 15px; font-weight: 800; color: #111827; }
 
-              .thank-you-note { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #374151; margin-bottom: 20px; }
-              .payment-info-box { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 18px; border-top: 1px dashed #D1D5DB; }
-              .payment-info-title { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #111827; margin-bottom: 4px; }
-              .signature-mark { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700; color: #111827; text-align: right; }
+              .thank-you-note { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 14px; }
+              .payment-info-box { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 14px; border-top: 1px dashed #D1D5DB; }
+              .payment-info-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #6B7280; margin-bottom: 3px; }
+              .signature-mark { font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700; color: #111827; text-align: right; }
 
               @media print { 
                 body { padding: 0; background: #fff; } 
@@ -454,12 +454,12 @@ const AdminDashboard = ({ initialTab }) => {
           <body>
             <div class="invoice-top">
               <div>
-                <div class="brand-logo-mark">${appName.toUpperCase()} &amp; CO.</div>
+                <div class="brand-logo-mark">${appName.toUpperCase()}</div>
                 <div class="brand-tagline">${appTagline}</div>
               </div>
               <div style="text-align: right;">
                 <h1 class="invoice-title">${isOfficial ? 'OFFICIAL INVOICE' : 'CUSTOMER BILL'}</h1>
-                <span class="invoice-badge">${isOfficial ? 'Merchant & Logistics Record' : 'Customer Receipt'}</span>
+                <span class="invoice-badge">${isOfficial ? 'Merchant & Operations Record' : 'Customer Receipt'}</span>
               </div>
             </div>
 
