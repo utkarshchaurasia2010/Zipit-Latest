@@ -140,7 +140,9 @@ const AdminDashboard = ({ initialTab }) => {
             o.status === 'Cancellation Requested' || 
             o.status === 'Refund Requested' || 
             o.status === 'Cancelled' || 
-            o.status === 'Cancellation Rejected'
+            o.status === 'Cancellation Rejected' ||
+            o.substitution_status === 'CANCELLATION_REQUESTED' ||
+            o.substitution_status === 'CANCELLATION_REJECTED'
           ));
         } else {
           setData(allOrders);
@@ -1017,12 +1019,29 @@ const AdminDashboard = ({ initialTab }) => {
                     >
                       <Printer size={14} /> Official Invoice
                     </button>
-                    <select className={`status-select ${o.status.toLowerCase().replace(/ /g, '-')}`} value={o.status} onChange={async (e) => {
-                      const newStatus = e.target.value;
-                      setData(prev => prev.map(item => item.id === o.id ? { ...item, status: newStatus } : item));
-                      await supabase.from('orders').update({status: newStatus}).eq('id', o.id);
-                      showToast(`Order status updated to ${newStatus}`, 'success');
-                    }}>
+                    <select 
+                      className={`status-select ${(o.substitution_status === 'CANCELLATION_REQUESTED' ? 'cancellation-requested' : o.status).toLowerCase().replace(/ /g, '-')}`} 
+                      value={o.substitution_status === 'CANCELLATION_REQUESTED' ? 'Cancellation Requested' : o.status} 
+                      onChange={async (e) => {
+                        const newSelection = e.target.value;
+                        const updatePayload = {};
+
+                        if (newSelection === 'Cancelled') {
+                          updatePayload.status = 'Cancelled';
+                          updatePayload.substitution_status = 'CANCELLED';
+                        } else if (newSelection === 'Cancellation Rejected') {
+                          updatePayload.substitution_status = 'CANCELLATION_REJECTED';
+                        } else if (newSelection === 'Cancellation Requested') {
+                          updatePayload.substitution_status = 'CANCELLATION_REQUESTED';
+                        } else {
+                          updatePayload.status = newSelection;
+                        }
+
+                        setData(prev => prev.map(item => item.id === o.id ? { ...item, ...updatePayload } : item));
+                        await supabase.from('orders').update(updatePayload).eq('id', o.id);
+                        showToast(`Order updated to ${newSelection}`, 'success');
+                      }}
+                    >
                       {initialTab === 'refunds' ? (
                         <>
                           <option value="Refund Requested">Refund Requested</option>

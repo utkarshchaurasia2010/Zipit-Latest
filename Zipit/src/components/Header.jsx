@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, Mic, Bell, Check, Home, LayoutGrid, Navigation, ShoppingCart, Heart } from 'lucide-react';
-import { db } from '../services/db';
+import { db, supabase } from '../services/db';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
@@ -21,6 +21,38 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
   const [nativePerm, setNativePerm] = useState(() => {
     return typeof Notification !== 'undefined' ? Notification.permission : 'default';
   });
+
+  const [brandingConfig, setBrandingConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    db.branding.get().then(b => {
+      if (b) setBrandingConfig(b);
+    }).catch(() => {});
+
+    const channel = supabase.channel('header-branding-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+      }, () => {
+        db.branding.get().then(b => {
+          if (b) setBrandingConfig(b);
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
@@ -191,13 +223,12 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
         {/* Brand & Delivery Pill */}
         <div className="desktop-header-left">
           <div className="desktop-brand" onClick={() => navigate && navigate('/')}>
-            <span className="brand-zip" style={{ color: 'var(--color-text)' }}>Quick</span>
-            <span className="brand-it" style={{ color: '#10B981' }}>ly</span>
+            <span className="brand-zip" style={{ color: 'var(--color-text)' }}>{brandingConfig?.app_name || 'Quickly'}</span>
           </div>
 
           <div className="desktop-delivery-pill" onClick={onAddressClick} title="Change delivery location">
             <div className="desktop-eta-box">
-              <span className="desktop-eta-num">{getCartDeliveryTime(cart) || time}</span>
+              <span className="desktop-eta-num">{getCartDeliveryTime(cart) || brandingConfig?.default_eta_mins || time}</span>
               <span className="desktop-eta-unit">MINS</span>
             </div>
             <div className="desktop-address-box">
@@ -309,8 +340,8 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
         <div className="header-top" style={{ color: textColor }}>
           <div className="location-info" onClick={onAddressClick}>
             <div className="delivery-time">
-              <strong>Quickly in</strong>
-              <h1>{getCartDeliveryTime(cart) || time} minutes</h1>
+              <strong>{brandingConfig?.app_name || 'Quickly'} in</strong>
+              <h1>{getCartDeliveryTime(cart) || brandingConfig?.default_eta_mins || time} minutes</h1>
             </div>
             <div className="address" style={{ display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '240px', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>
               {defaultAddress && typeof defaultAddress.details === 'string' && defaultAddress.details.trim() ? (

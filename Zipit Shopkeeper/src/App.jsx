@@ -7,6 +7,7 @@ import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import { ToastProvider } from './context/ToastContext';
 import { auth } from './services/auth';
+import { supabase } from './services/db';
 import './index.css';
 
 function App() {

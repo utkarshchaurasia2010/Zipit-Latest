@@ -73,9 +73,23 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
     }
   }, [initialGeofence]);
 
+  const [paymentConfig, setPaymentConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      if (stored) {
+        const b = JSON.parse(stored);
+        return {
+          cod_enabled: b.cod_enabled !== false,
+          upi_enabled: b.upi_enabled !== false
+        };
+      }
+    } catch (_) {}
+    return { cod_enabled: true, upi_enabled: true };
+  });
+
   useEffect(() => {
-    // Load store geofencing settings from branding config
-    const loadGeofence = () => {
+    // Load store geofencing & payment settings from branding config
+    const loadSettings = () => {
       db.branding.get().then(b => {
         if (b) {
           setGeofenceConfig({
@@ -83,20 +97,29 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             store_lng: Number(b.store_lng) || 83.5780,
             max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
           });
+          const cod = b.cod_enabled !== false;
+          const upi = b.upi_enabled !== false;
+          setPaymentConfig({ cod_enabled: cod, upi_enabled: upi });
+          
+          setSelectedPayment(prev => {
+            if (prev === 'Cash on Delivery' && !cod) return upi ? 'UPI' : 'UPI';
+            if (prev === 'UPI' && !upi) return cod ? 'Cash on Delivery' : 'Cash on Delivery';
+            return prev;
+          });
         }
       }).catch(() => {});
     };
 
-    loadGeofence();
+    loadSettings();
 
-    const channel = supabase.channel('checkout-geofence-sync')
+    const channel = supabase.channel('checkout-branding-config-sync')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'profiles',
         filter: 'id=eq.00000000-0000-0000-0000-000000000001'
       }, () => {
-        loadGeofence();
+        loadSettings();
       })
       .subscribe();
 
@@ -732,7 +755,9 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
               <button onClick={() => setIsPaymentSheetOpen(false)}><X size={20} /></button>
             </div>
             <div className="payment-options-list">
-              {['UPI', 'Cash on Delivery'].map(method => (
+              {['UPI', 'Cash on Delivery']
+                .filter(method => method === 'UPI' ? paymentConfig.upi_enabled : paymentConfig.cod_enabled)
+                .map(method => (
                 <div 
                   key={method} 
                   className={`payment-option-item ${selectedPayment === method ? 'selected' : ''}`}

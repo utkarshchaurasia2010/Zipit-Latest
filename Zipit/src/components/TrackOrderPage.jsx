@@ -428,27 +428,70 @@ const TrackOrderPage = ({ navigate }) => {
       return;
     }
 
-    if (!window.confirm('Do you want to request cancellation for this order? Our team will review and process your request.')) return;
+    const isEarlyStage = orderObj?.status === 'Placed' || orderObj?.status === 'Payment Pending';
+    const confirmPrompt = isEarlyStage 
+      ? 'Do you want to cancel this order?' 
+      : 'Order is being prepared. Submit a cancellation request for admin review?';
+
+    if (!window.confirm(confirmPrompt)) return;
 
     setCancellingOrderId(orderId);
     try {
-      const targetStatus = 'Cancellation Requested';
-      
-      // Update local state immediately so user sees immediate feedback without blinking
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: targetStatus } : o));
+      if (isEarlyStage) {
+        // Immediate cancellation for unconfirmed/early stage orders
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled', substitution_status: 'CANCELLED' } : o));
+        
+        const { error } = await supabase
+          .from('orders')
+          .update({ 
+            status: 'Cancelled',
+            substitution_status: 'CANCELLED'
+          })
+          .eq('id', orderId);
 
-      const { data: updatedData, error } = await supabase
-        .from('orders')
-        .update({ status: targetStatus })
-        .eq('id', orderId)
-        .select();
+        if (error) {
+          console.error('Cancellation failed:', error);
+          throw error;
+        }
 
-      if (error) {
-        console.error('Supabase update status failed:', error);
-        throw error;
+        // Restore stock for items
+        if (orderObj?.items && Array.isArray(orderObj.items)) {
+          for (const it of orderObj.items) {
+            const qty = Number(it.quantity || it.qty || 1);
+            if (it.id && qty > 0) {
+              try {
+                const { data: p } = await supabase.from('products').select('stock_count').eq('id', it.id).single();
+                if (p && typeof p.stock_count === 'number') {
+                  await supabase.from('products').update({
+                    stock_count: p.stock_count + qty,
+                    is_out_of_stock: false
+                  }).eq('id', it.id);
+                }
+              } catch (_) {}
+            }
+          }
+        }
+
+        alert('Order has been cancelled successfully.');
+      } else {
+        // Preparation stage: route to Admin Refunds / Review queue via substitution_status
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, substitution_status: 'CANCELLATION_REQUESTED' } : o));
+        
+        const { error } = await supabase
+          .from('orders')
+          .update({ 
+            substitution_status: 'CANCELLATION_REQUESTED'
+          })
+          .eq('id', orderId);
+
+        if (error) {
+          console.error('Cancellation request failed:', error);
+          throw error;
+        }
+
+        alert('Cancellation request submitted. It has been routed to our team for review.');
       }
-      
-      alert('Cancellation request submitted. It will be reviewed by our team and updated shortly.');
+
       await fetchOrders(true);
     } catch (err) {
       console.error('Failed to cancel order:', err);
@@ -542,9 +585,10 @@ const TrackOrderPage = ({ navigate }) => {
           </div>
         ) : (
           orders.map(order => {
-            const isCancellationReq = order.status === 'Cancellation Requested';
-            const isCancellationRej = order.status === 'Cancellation Rejected';
+            const isCancellationReq = order.status === 'Cancellation Requested' || order.substitution_status === 'CANCELLATION_REQUESTED';
+            const isCancellationRej = order.status === 'Cancellation Rejected' || order.substitution_status === 'CANCELLATION_REJECTED';
             const hasUnavailableItems = order.substitution_status === 'PENDING_CUSTOMER_ACTION';
+            const displayStatus = isCancellationReq ? 'Cancellation Requested' : isCancellationRej ? 'Cancellation Rejected' : order.status;
 
             return (
               <div key={order.id} className="track-card modern-track-card">
@@ -554,9 +598,9 @@ const TrackOrderPage = ({ navigate }) => {
                     <span className="track-order-id">#{order.id.split('-')[0].toUpperCase()}</span>
                     <span className="track-date">{new Date(order.created_at).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
                   </div>
-                  <div className="track-status-pill" style={{ background: `${getStatusColor(order.status)}18`, color: getStatusColor(order.status) }}>
-                    <span className="live-status-dot" style={{ background: getStatusColor(order.status) }} />
-                    <span className="track-status-text">{order.status}</span>
+                  <div className="track-status-pill" style={{ background: `${getStatusColor(displayStatus)}18`, color: getStatusColor(displayStatus) }}>
+                    <span className="live-status-dot" style={{ background: getStatusColor(displayStatus) }} />
+                    <span className="track-status-text">{displayStatus}</span>
                   </div>
                 </div>
 
@@ -821,8 +865,8 @@ const TrackOrderPage = ({ navigate }) => {
                 {/* Footer */}
                 <div className="track-footer">
                   <span className="track-payment">Paid via {order.payment_method}</span>
-                  {/* Cancel Button logic: Available before order is Out for Delivery */}
-                  {order.status !== 'Out for Delivery' && order.status !== 'Delivered' && order.status !== 'Cancelled' && order.status !== 'Cancellation Requested' && order.status !== 'Cancellation Rejected' && order.status !== 'Refund Requested' && (
+                  {/* Cancel Button logic: Available before order is Out for Delivery and not already requested */}
+                  {order.status !== 'Out for Delivery' && order.status !== 'Delivered' && order.status !== 'Cancelled' && !isCancellationReq && !isCancellationRej && order.status !== 'Refund Requested' && (
                     <button 
                       className="track-cancel-btn" 
                       onClick={() => handleCancelRequest(order)}

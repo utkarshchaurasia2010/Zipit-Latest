@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import OrderIncomingModal from './components/OrderIncomingModal';
 import { ToastProvider } from './context/ToastContext';
 import { auth } from './services/auth';
+import { supabase } from './services/db';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import './index.css';
 

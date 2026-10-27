@@ -19,9 +19,45 @@ export default function DashboardPage() {
   const [otpError, setOtpError] = useState('');
   const [sliderResetKey, setSliderResetKey] = useState(0);
   const [remainingTimers, setRemainingTimers] = useState({}); // orderId -> seconds remaining for 5m limit
+  const [brandingConfig, setBrandingConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  });
   const navigate = useNavigate();
 
   const riderCode = auth.getCode() || 'RIDER';
+
+  // Realtime System Branding & Fleet Configuration sync
+  useEffect(() => {
+    if (db?.branding?.get) {
+      db.branding.get().then(b => {
+        if (b) setBrandingConfig(b);
+      }).catch(() => {});
+    }
+
+    const channel = supabase.channel('rider-branding-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+      }, () => {
+        if (db?.branding?.get) {
+          db.branding.get().then(b => {
+            if (b) setBrandingConfig(b);
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Listen to network online/offline events and auto-sync queue
   useEffect(() => {
@@ -205,11 +241,13 @@ export default function DashboardPage() {
       }
     }
 
-    if (otp) {
+    const requireOtp = brandingConfig?.require_delivery_otp !== false;
+
+    if (otp && requireOtp) {
       setOtpModalOrder({ ...order, delivery_otp: otp });
       setEnteredOtp('');
       setOtpError('');
-    } else {
+    } else if (requireOtp) {
       const isPickup = order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP';
       if (!isPickup) {
         // Enforce prompt so rider can input PIN
@@ -219,6 +257,8 @@ export default function DashboardPage() {
       } else {
         confirmDelivery(order.id);
       }
+    } else {
+      confirmDelivery(order.id);
     }
   };
 
@@ -322,7 +362,7 @@ export default function DashboardPage() {
         });
         const allTimeDelivered = historyOrders;
 
-        const PAYOUT_PER_DROP = 30; // ₹30 delivery partner fee per drop
+        const PAYOUT_PER_DROP = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 30;
 
         const todayEarnings = todayDelivered.length * PAYOUT_PER_DROP;
         const monthEarnings = monthDelivered.length * PAYOUT_PER_DROP;
@@ -1061,7 +1101,9 @@ export default function DashboardPage() {
             }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Payout</div>
-                <div style={{ fontSize: '16px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>₹30</div>
+                <div style={{ fontSize: '16px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
+                  ₹{Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 30}
+                </div>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Bill Total</div>
@@ -1436,7 +1478,8 @@ export default function DashboardPage() {
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {Object.entries(groups).map(([dateLabel, dateOrders]) => {
-                    const dayPayout = dateOrders.length * 30;
+                    const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 30;
+                    const dayPayout = dateOrders.length * basePayout;
                     return (
                       <div key={dateLabel} style={{ background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '10px' }}>

@@ -613,5 +613,32 @@ export const db = {
       const { error } = await supabase.from('carts').delete().eq('profile_id', pid);
       if (error) console.error("DB Error (carts clear):", error);
     }
+  },
+  branding: {
+    get: async () => {
+      let cached = null;
+      try {
+        const stored = localStorage.getItem('zipit_cached_branding');
+        if (stored) cached = JSON.parse(stored);
+      } catch (_) {}
+
+      try {
+        const { data } = await supabase.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').limit(1);
+        if (data && data.length > 0 && data[0].address) {
+          try {
+            const parsed = JSON.parse(data[0].address);
+            if (parsed) {
+              try { localStorage.setItem('zipit_cached_branding', JSON.stringify(parsed)); } catch (_) {}
+              return parsed;
+            }
+          } catch (_) {
+            return cached;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load branding in shopkeeper:', err);
+      }
+      return cached;
+    }
   }
 };

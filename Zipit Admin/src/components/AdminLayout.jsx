@@ -192,7 +192,8 @@ const AdminLayout = ({ profile, setProfile }) => {
       const allOrders = await db.orders.getAllAdmin();
       const pendingRefunds = allOrders.filter(o => 
         o.status === 'Refund Requested' || 
-        o.status === 'Cancellation Requested'
+        o.status === 'Cancellation Requested' ||
+        o.substitution_status === 'CANCELLATION_REQUESTED'
       );
       setPendingRefundCount(pendingRefunds.length);
     };
