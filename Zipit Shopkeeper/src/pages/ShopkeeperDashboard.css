@@ -165,17 +165,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .order-number {
   font-weight: 900;
-  font-size: 16px;
+  font-size: 15px;
   color: #0f172a;
   letter-spacing: -0.3px;
+  white-space: nowrap;
 }
 
 .status-pill {
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 800;
@@ -183,6 +186,9 @@
   color: #475569;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
 
 .status-pill.preparing, .status-pill.payment-pending {
@@ -224,7 +230,7 @@
 .card-middle-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .info-line {
@@ -232,8 +238,15 @@
   color: #334155;
   font-weight: 600;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.info-line svg {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .info-line-sub {
@@ -243,6 +256,8 @@
   font-size: 13px;
   color: #64748b;
   margin-top: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .order-total-price {
@@ -260,6 +275,8 @@
   padding: 6px 12px;
   border-radius: 10px;
   align-self: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* Order Details Pane */

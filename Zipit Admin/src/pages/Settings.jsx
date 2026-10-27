@@ -4,7 +4,6 @@ import {
   Mail, 
   Phone, 
   KeyRound, 
-  Save, 
   Upload, 
   Image as ImageIcon, 
   MapPin, 
@@ -183,7 +182,6 @@ const Settings = ({ profile, setProfile }) => {
 
           <div className="form-actions">
             <button type="submit" disabled={saving} className="save-btn">
-              <Save size={15} />
               <span>{saving ? 'Saving...' : 'Save Profile & Code'}</span>
             </button>
           </div>
@@ -289,7 +287,6 @@ const Settings = ({ profile, setProfile }) => {
 
         <div className="form-actions">
           <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
-            <Save size={15} />
             <span>{saving ? 'Saving...' : 'Save Brand Settings'}</span>
           </button>
         </div>
@@ -341,7 +338,6 @@ const Settings = ({ profile, setProfile }) => {
 
         <div className="form-actions">
           <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
-            <Save size={15} />
             <span>{saving ? 'Saving...' : 'Save Geofence'}</span>
           </button>
         </div>
@@ -459,7 +455,6 @@ const Settings = ({ profile, setProfile }) => {
 
         <div className="form-actions">
           <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
-            <Save size={15} />
             <span>{saving ? 'Saving...' : 'Save Order & Fee Settings'}</span>
           </button>
         </div>
@@ -542,7 +537,7 @@ const Settings = ({ profile, setProfile }) => {
                 type="checkbox" 
                 checked={branding.require_delivery_otp !== false} 
                 onChange={e => setBranding(prev => ({ ...prev, require_delivery_otp: e.target.checked }))} 
-              />
+                />
               <span className="slider round"></span>
             </label>
           </div>
@@ -550,7 +545,6 @@ const Settings = ({ profile, setProfile }) => {
 
         <div className="form-actions">
           <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
-            <Save size={15} />
             <span>{saving ? 'Saving...' : 'Save Fleet Controls'}</span>
           </button>
         </div>

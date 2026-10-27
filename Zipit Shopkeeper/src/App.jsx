@@ -77,14 +77,6 @@ function App() {
         <Route path="/" element={<ShopkeeperLayout />}>
           <Route index element={<ShopkeeperDashboard />} />
           <Route path="orders" element={<ShopkeeperDashboard />} />
-          <Route path="categories" element={<AdminDashboard key="categories" initialTab="categories" />} />
-          <Route path="products" element={<AdminDashboard key="products" initialTab="products" />} />
-          <Route path="grid-products" element={<AdminDashboard key="grid-products" initialTab="grid-products" />} />
-          <Route path="bestsellers" element={<AdminDashboard key="bestsellers" initialTab="bestsellers" />} />
-          <Route path="banners" element={<AdminDashboard key="banners" initialTab="banners" />} />
-          <Route path="refunds" element={<AdminDashboard key="refunds" initialTab="refunds" />} />
-          <Route path="coupons" element={<AdminDashboard key="coupons" initialTab="coupons" />} />
-          <Route path="users" element={<AdminDashboard key="users" initialTab="users" />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

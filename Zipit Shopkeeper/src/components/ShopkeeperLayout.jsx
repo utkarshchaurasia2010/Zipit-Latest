@@ -32,10 +32,6 @@ export default function ShopkeeperLayout({ profile, setProfile }) {
             <ShoppingBag size={18} />
             <span>Orders Queue</span>
           </NavLink>
-          <NavLink to="/products" className="nav-item">
-            <Package size={18} />
-            <span>Stock / Inventory</span>
-          </NavLink>
           <NavLink to="/profile" className="nav-item">
             <User size={18} />
             <span>Store Profile</span>

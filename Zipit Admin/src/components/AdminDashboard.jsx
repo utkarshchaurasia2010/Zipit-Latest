@@ -1547,7 +1547,19 @@ const AdminDashboard = ({ initialTab }) => {
                       <span>Wafer Price Tag</span>
                     </label>
                     <label className={`checkbox-pill ${formData.is_out_of_stock ? 'active-red' : ''}`}>
-                      <input type="checkbox" checked={formData.is_out_of_stock||false} onChange={e=>setFormData({...formData, is_out_of_stock:e.target.checked})} style={{display:'none'}}/>
+                      <input 
+                        type="checkbox" 
+                        checked={formData.is_out_of_stock || false} 
+                        onChange={e => {
+                          const checked = e.target.checked;
+                          setFormData({
+                            ...formData, 
+                            is_out_of_stock: checked,
+                            stock_count: checked ? 0 : (formData.stock_count === 0 ? -1 : (formData.stock_count ?? -1))
+                          });
+                        }} 
+                        style={{display:'none'}}
+                      />
                       <span>Force Out of Stock</span>
                     </label>
                   </div>
