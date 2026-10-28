@@ -1896,8 +1896,21 @@ const AdminDashboard = ({ initialTab }) => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label>Inventory Stock (-1 for unlimited)</label>
-                    <input type="number" className="admin-input" value={formData.stock_count ?? -1} onChange={e=>setFormData({...formData, stock_count:parseInt(e.target.value)})} required/>
+                    <label>Inventory Stock (-1 for unlimited, 0 for out of stock)</label>
+                    <input 
+                      type="number" 
+                      className="admin-input" 
+                      value={formData.stock_count ?? -1} 
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setFormData({
+                          ...formData, 
+                          stock_count: isNaN(val) ? 0 : val,
+                          is_out_of_stock: val === 0
+                        });
+                      }} 
+                      required
+                    />
                   </div>
                 </>
               )}

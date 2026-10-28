@@ -348,35 +348,55 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
     setIsListening(false);
   };
 
-  // Search with fuzzy fallback
+  // High-performance search with client-side indexed catalog & quick debounce
+  const catalogCacheRef = useRef(null);
+
   useEffect(() => {
+    // Warm up the local search index as soon as overlay opens
+    if (isOpen && !catalogCacheRef.current) {
+      db.products.getAll().then(prods => {
+        catalogCacheRef.current = prods || [];
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const qTrim = query.trim();
+    if (!qTrim) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
     const timer = setTimeout(async () => {
-      if (query.trim().length > 0) {
-        setLoading(true);
-        // First try normal DB search (handles exact/partial matches on name and tags)
-        let data = await db.products.search(query.trim());
+      setLoading(true);
 
-        // If the DB search returns results or needs widening, apply matching against name, tags, and category
-        const allProducts = await db.products.getAll();
-        const searchLower = query.trim().toLowerCase();
+      const allProducts = catalogCacheRef.current || await db.products.getAll();
+      catalogCacheRef.current = allProducts;
 
-        const tagOrFuzzyMatches = allProducts.filter(item => {
-          const nameMatch = fuzzyMatch(item.name, query.trim());
-          const tagsLower = (item.tags || '').toLowerCase();
-          const tagDirectMatch = tagsLower.includes(searchLower) || searchLower.split(/\s+/).some(t => t.length >= 2 && tagsLower.includes(t));
-          return nameMatch || tagDirectMatch;
-        });
+      const searchLower = qTrim.toLowerCase();
+      const tokens = searchLower.split(/\s+/).filter(Boolean);
 
-        const combinedMap = new Map();
-        (data || []).forEach(item => combinedMap.set(item.id, item));
-        tagOrFuzzyMatches.forEach(item => combinedMap.set(item.id, item));
+      // Fast-path in-memory search across indexed name, category, and tags
+      const matched = allProducts.filter(item => {
+        const nameLower = (item.name || '').toLowerCase();
+        const tagsLower = (item.tags || '').toLowerCase();
+        const catLower = (item.categories?.name || '').toLowerCase();
 
-        setResults(Array.from(combinedMap.values()));
-        setLoading(false);
-      } else {
-        setResults([]);
-      }
-    }, 400);
+        // 1. Exact or prefix token match (highest speed)
+        const tokenMatch = tokens.every(tok => 
+          nameLower.includes(tok) || tagsLower.includes(tok) || catLower.includes(tok)
+        );
+        if (tokenMatch) return true;
+
+        // 2. Fuzzy match fallback
+        return fuzzyMatch(item.name, qTrim);
+      });
+
+      setResults(matched);
+      setLoading(false);
+    }, 120); // 120ms debounce for instantaneous typing response
+
     return () => clearTimeout(timer);
   }, [query]);
 
