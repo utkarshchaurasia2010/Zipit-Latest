@@ -186,9 +186,21 @@ const AdminDashboard = ({ initialTab }) => {
 
     if (initialTab === 'orders' || initialTab === 'refunds') {
       channel = supabase
-        .channel(`admin-orders-realtime-${Math.random()}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-          loadData(true); // Silent reload to prevent screen flashing/blinking
+        .channel(`admin-orders-realtime-${Date.now()}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+          if (payload?.new) {
+            setData(prev => prev.map(item => item.id === payload.new.id ? { ...item, ...payload.new } : item));
+          }
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+          if (payload?.new) {
+            setData(prev => [payload.new, ...prev.filter(item => item.id !== payload.new.id)]);
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, (payload) => {
+          if (payload?.old?.id) {
+            setData(prev => prev.filter(item => item.id !== payload.old.id));
+          }
         })
         .subscribe();
     }

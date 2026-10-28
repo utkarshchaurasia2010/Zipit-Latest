@@ -131,30 +131,6 @@
   border: 1px solid var(--color-border);
 }
 
-.bestseller-category-card::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transform: skewX(-20deg);
-  transition: none;
-  pointer-events: none;
-}
-
-.bestseller-category-card:hover::after,
-.bestseller-category-card:active::after {
-  animation: shine 1s;
-}
-
-@keyframes shine {
-  100% {
-    left: 200%;
-  }
-}
-
 .category-window-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

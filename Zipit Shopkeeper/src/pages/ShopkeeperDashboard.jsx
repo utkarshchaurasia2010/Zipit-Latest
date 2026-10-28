@@ -51,9 +51,22 @@ export default function ShopkeeperDashboard() {
     db.branding.get().then(b => { if (b) setBrandingConfig(b); }).catch(() => {});
 
     const channel = supabase
-      .channel('shopkeeper-live-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchOrders(true);
+      .channel(`shopkeeper-live-dashboard-${Date.now()}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload?.new) {
+          setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
+          setSelectedOrder(prev => prev && prev.id === payload.new.id ? { ...prev, ...payload.new } : prev);
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload?.new) {
+          setOrders(prev => [payload.new, ...prev.filter(o => o.id !== payload.new.id)]);
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload?.old?.id) {
+          setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        }
       })
       .subscribe();
 

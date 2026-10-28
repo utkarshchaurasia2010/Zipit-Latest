@@ -138,24 +138,6 @@
   position: relative;
 }
 
-.bestseller-img-wrapper::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transform: skewX(-20deg);
-  transition: none;
-  pointer-events: none;
-}
-
-.bestseller-card:hover .bestseller-img-wrapper::after,
-.bestseller-card:active .bestseller-img-wrapper::after {
-  animation: shine 1s;
-}
-
 .img-footer-row {
   display: flex;
   justify-content: space-between;

@@ -793,6 +793,18 @@ class ErrorBoundary extends React.Component {
   }
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught error:", error, errorInfo);
+    // If a new production build was deployed and user has old HTML requesting stale chunk hashes:
+    const isChunkError = error?.message?.includes('dynamically imported module') ||
+                         error?.message?.includes('Failed to fetch') ||
+                         error?.message?.includes('Loading chunk');
+    if (isChunkError) {
+      const lastReload = sessionStorage.getItem('zipit_last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem('zipit_last_chunk_reload', String(now));
+        window.location.reload();
+      }
+    }
   }
   render() {
     if (this.state.hasError) {

@@ -113,10 +113,14 @@ const SubstituteSelectionPage = ({ navigate }) => {
         return item;
       });
 
+      const substitutedItemsList = finalItems.filter(i => i.is_substituted || i.is_refund_chosen);
+
       const updatePayload = {
         items: finalItems,
         total: Math.round(newTotal),
-        substitution_status: totalRefundDue > 0 ? 'REFUND_PENDING' : 'RESOLVED'
+        substituted_items: substitutedItemsList,
+        substitution_status: totalRefundDue > 0 ? 'REFUND_PENDING' : 'RESOLVED',
+        updated_at: new Date().toISOString()
       };
 
       if (totalRefundDue > 0 || isRefundChosenForOrder) {
@@ -129,13 +133,14 @@ const SubstituteSelectionPage = ({ navigate }) => {
         updatePayload.extra_charges = totalExtraCharge;
       }
 
-      await supabase.from('orders').update(updatePayload).eq('id', activeOrder.id);
+      const { error: updateErr } = await supabase.from('orders').update(updatePayload).eq('id', activeOrder.id);
+      if (updateErr) throw updateErr;
 
       showToast('Substitutions confirmed! Your order has been updated.', 'Items Updated');
       navigate('/track', { replace: true });
     } catch (err) {
       console.error('Failed to update substitutions:', err);
-      showToast('Could not save substitutions. Please try again.', 'Error');
+      showToast('Could not save substitutions: ' + (err.message || 'Please try again'), 'Error');
     } finally {
       setSubmitting(false);
       setExtraPaymentModal(null);
@@ -180,6 +185,28 @@ const SubstituteSelectionPage = ({ navigate }) => {
           <p className="substitute-header-sub">Order #{activeOrder.id.slice(0, 8).toUpperCase()} • {unavailableItemsCount} item(s) out of stock</p>
         </div>
       </header>
+
+      {/* Sticky Top Action Bar for Instant Confirmation without Scrolling */}
+      <div className="substitute-top-action-bar">
+        <button
+          className={`substitute-bottom-btn refund-btn ${selectedSubstitutes[activeItemIndex]?.action === 'refund' ? 'active' : ''}`}
+          onClick={() => {
+            setSelectedSubstitutes(prev => ({ ...prev, [activeItemIndex]: { action: 'refund' } }));
+            handleConfirmSubstitutions();
+          }}
+          disabled={submitting}
+        >
+          <Ban size={16} /> Refund ₹{(currentItem?.price || 0) * (currentItem?.qty || 1)}
+        </button>
+
+        <button
+          className={`substitute-bottom-btn replace-btn ${selectedSubstitutes[activeItemIndex]?.action === 'replace' && selectedSubstitutes[activeItemIndex]?.replacementProduct ? 'active' : 'inactive'}`}
+          onClick={() => handleConfirmSubstitutions(false)}
+          disabled={submitting || !(selectedSubstitutes[activeItemIndex]?.action === 'replace' && selectedSubstitutes[activeItemIndex]?.replacementProduct)}
+        >
+          <RefreshCw size={16} /> Substitute Product
+        </button>
+      </div>
 
       {/* Out of Stock Item Tabs Selector */}
       {unavailableItemsCount > 1 && (
@@ -307,28 +334,6 @@ const SubstituteSelectionPage = ({ navigate }) => {
               </div>
             );
           })}
-      </div>
-
-      {/* Fixed Bottom-of-Screen Dual Action Bar */}
-      <div className="substitute-bottom-bar">
-        <button
-          className={`substitute-bottom-btn refund-btn ${selectedSubstitutes[activeItemIndex]?.action === 'refund' ? 'active' : ''}`}
-          onClick={() => {
-            setSelectedSubstitutes(prev => ({ ...prev, [activeItemIndex]: { action: 'refund' } }));
-            handleConfirmSubstitutions();
-          }}
-          disabled={submitting}
-        >
-          <Ban size={16} /> Refund ₹{(currentItem?.price || 0) * (currentItem?.qty || 1)}
-        </button>
-
-        <button
-          className={`substitute-bottom-btn replace-btn ${selectedSubstitutes[activeItemIndex]?.action === 'replace' && selectedSubstitutes[activeItemIndex]?.replacementProduct ? 'active' : 'inactive'}`}
-          onClick={() => handleConfirmSubstitutions(false)}
-          disabled={submitting || !(selectedSubstitutes[activeItemIndex]?.action === 'replace' && selectedSubstitutes[activeItemIndex]?.replacementProduct)}
-        >
-          <RefreshCw size={16} /> Substitute Product
-        </button>
       </div>
 
       {/* Extra Charges Confirmation Modal */}

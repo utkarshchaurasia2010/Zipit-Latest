@@ -320,6 +320,13 @@ const TrackOrderPage = ({ navigate }) => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
         if (payload?.new) {
           setOrders(prev => {
+            const exists = prev.some(o => o.id === payload.new.id);
+            if (!exists) {
+              if (ACTIVE_STATUSES.includes(payload.new.status)) {
+                return [payload.new, ...prev];
+              }
+              return prev;
+            }
             if (!ACTIVE_STATUSES.includes(payload.new.status)) {
               return prev.filter(o => o.id !== payload.new.id);
             }
@@ -327,7 +334,6 @@ const TrackOrderPage = ({ navigate }) => {
           });
         }
         playBellSound();
-        fetchOrders(true);
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, (payload) => {
         if (payload?.old?.id) {
