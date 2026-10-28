@@ -555,11 +555,23 @@ const TrackOrderPage = ({ navigate }) => {
           </div>
         ) : (
           orders.map(order => {
-            const isCancellationReq = order.status === 'Cancellation Requested' || order.status === 'Cancellation requested' || order.substitution_status === 'CANCELLATION_REQUESTED';
-            const isCancellationRej = order.status === 'Cancellation Rejected' || order.substitution_status === 'CANCELLATION_REJECTED';
-            const isRefundInit = order.status === 'Refund Requested' || order.status === 'Refund Initiated' || order.substitution_status === 'REFUND_PENDING';
+            const isExplicitRefund = order.status === 'Refund Initiated' || order.status === 'Refund Requested' || order.status === 'Refunded';
+            const isExplicitCancelled = order.status === 'Cancelled';
+            const isExplicitRejected = order.status === 'Cancellation Rejected';
+            const isExplicitCancelReq = order.status === 'Cancellation Requested' || order.status === 'Cancellation requested';
+
+            const isCancellationReq = !isExplicitRefund && !isExplicitCancelled && !isExplicitRejected && (isExplicitCancelReq || order.substitution_status === 'CANCELLATION_REQUESTED');
+            const isCancellationRej = !isExplicitRefund && !isExplicitCancelled && (isExplicitRejected || order.substitution_status === 'CANCELLATION_REJECTED');
+            const isRefundInit = isExplicitRefund || order.substitution_status === 'REFUND_PENDING' || order.substitution_status === 'REFUND_INITIATED';
             const hasUnavailableItems = order.substitution_status === 'PENDING_CUSTOMER_ACTION';
-            const displayStatus = isCancellationReq ? 'Cancellation requested' : isCancellationRej ? 'Cancellation Rejected' : isRefundInit ? 'Refund Initiated' : order.status;
+
+            const displayStatus = isRefundInit 
+              ? (order.status === 'Refunded' ? 'Refunded' : 'Refund Initiated')
+              : isCancellationReq 
+                ? 'Cancellation requested' 
+                : isCancellationRej 
+                  ? 'Cancellation Rejected' 
+                  : order.status;
 
             return (
               <div key={order.id} className="track-card modern-track-card">

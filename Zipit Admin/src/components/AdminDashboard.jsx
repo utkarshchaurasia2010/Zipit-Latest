@@ -1074,12 +1074,22 @@ const AdminDashboard = ({ initialTab }) => {
                           updatePayload.substitution_status = 'CANCELLED';
                         } else if (newSelection === 'Cancellation Rejected') {
                           updatePayload.substitution_status = 'CANCELLATION_REJECTED';
+                          // Keep existing active order status or default to Preparing
+                          if (o.status === 'Cancellation requested' || o.status === 'Cancellation Requested' || o.status === 'Cancelled') {
+                            updatePayload.status = 'Preparing';
+                          }
                         } else if (newSelection === 'Cancellation Requested') {
+                          updatePayload.status = 'Cancellation requested';
                           updatePayload.substitution_status = 'CANCELLATION_REQUESTED';
                         } else if (newSelection === 'Refund Initiated') {
                           updatePayload.status = 'Refund Initiated';
+                          updatePayload.substitution_status = 'REFUND_INITIATED';
+                        } else if (newSelection === 'Refunded') {
+                          updatePayload.status = 'Refunded';
+                          updatePayload.substitution_status = 'REFUNDED';
                         } else {
                           updatePayload.status = newSelection;
+                          updatePayload.substitution_status = null;
                         }
 
                         setData(prev => prev.map(item => item.id === o.id ? { ...item, ...updatePayload } : item));
