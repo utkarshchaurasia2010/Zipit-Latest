@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, Store, Bike, Sparkles, ArrowRight } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, Store, Bike } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -142,131 +142,6 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           </div>
         </div>
 
-        {/* Partner with Quickly Section Cards */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Sparkles size={16} color="#0c831f" />
-              <span style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.2px' }}>
-                Quickly Partner Program (पार्टनर बनें)
-              </span>
-            </div>
-            <span style={{ fontSize: '11px', fontWeight: '800', color: '#0c831f', background: 'rgba(12, 131, 31, 0.12)', padding: '2px 8px', borderRadius: '12px' }}>
-              Earn with Us
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            {/* Retail Partner Card */}
-            <div 
-              onClick={() => navigate('/partner-register', { state: { role: 'shopkeeper' } })}
-              style={{
-                background: theme === 'dark' ? '#1e293b' : '#ecfdf5',
-                border: '1.5px solid #a7f3d0',
-                borderRadius: '16px',
-                padding: '14px 12px',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 2px 8px rgba(12, 131, 31, 0.08)',
-                transition: 'transform 0.15s ease'
-              }}
-            >
-              <div>
-                <div style={{ 
-                  width: '36px', 
-                  height: '36px', 
-                  borderRadius: '10px', 
-                  background: '#0c831f', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  marginBottom: '10px',
-                  boxShadow: '0 2px 6px rgba(12, 131, 31, 0.3)'
-                }}>
-                  <Store size={20} color="#ffffff" />
-                </div>
-                <div style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--color-text)', lineHeight: '1.2' }}>
-                  Retail Partner
-                </div>
-                <div style={{ fontSize: '11px', color: '#0c831f', fontWeight: '700', marginTop: '2px' }}>
-                  दुकानदार / सेलर बनें
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '4px', lineHeight: '1.3' }}>
-                  Sell products & get daily payouts
-                </div>
-              </div>
-
-              <div style={{ 
-                marginTop: '12px', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '4px', 
-                fontSize: '11.5px', 
-                fontWeight: '800', 
-                color: '#0c831f' 
-              }}>
-                Apply to Sell <ArrowRight size={13} />
-              </div>
-            </div>
-
-            {/* Delivery Partner Card */}
-            <div 
-              onClick={() => navigate('/partner-register', { state: { role: 'rider' } })}
-              style={{
-                background: theme === 'dark' ? '#1e293b' : '#fffbeb',
-                border: '1.5px solid #fde68a',
-                borderRadius: '16px',
-                padding: '14px 12px',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.08)',
-                transition: 'transform 0.15s ease'
-              }}
-            >
-              <div>
-                <div style={{ 
-                  width: '36px', 
-                  height: '36px', 
-                  borderRadius: '10px', 
-                  background: '#d97706', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  marginBottom: '10px',
-                  boxShadow: '0 2px 6px rgba(217, 119, 6, 0.3)'
-                }}>
-                  <Bike size={20} color="#ffffff" />
-                </div>
-                <div style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--color-text)', lineHeight: '1.2' }}>
-                  Delivery Partner
-                </div>
-                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', marginTop: '2px' }}>
-                  डिलीवरी राइडर बनें
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '4px', lineHeight: '1.3' }}>
-                  Deliver orders on bike & earn daily
-                </div>
-              </div>
-
-              <div style={{ 
-                marginTop: '12px', 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '4px', 
-                fontSize: '11.5px', 
-                fontWeight: '800', 
-                color: '#b45309' 
-              }}>
-                Join Fleet <ArrowRight size={13} />
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="profile-menu">
 
           <div className="menu-item" onClick={() => navigate('/past-orders')}>
@@ -315,6 +190,26 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                 <HelpCircle size={18} color={theme === 'dark' ? '#6ee7b7' : '#15803d'} />
               </div>
               <span>Customer Support</span>
+            </div>
+            <ChevronRight size={20} color="var(--color-text-light)" />
+          </div>
+
+          <div className="menu-item" onClick={() => navigate('/partner-register', { state: { role: 'shopkeeper' } })}>
+            <div className="menu-item-left">
+              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(12, 131, 31, 0.2)' : '#ecfdf5' }}>
+                <Store size={18} color={theme === 'dark' ? '#4ade80' : '#0c831f'} />
+              </div>
+              <span>Retail Partner (Sell on Quickly)</span>
+            </div>
+            <ChevronRight size={20} color="var(--color-text-light)" />
+          </div>
+
+          <div className="menu-item" onClick={() => navigate('/partner-register', { state: { role: 'rider' } })}>
+            <div className="menu-item-left">
+              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(217, 119, 6, 0.2)' : '#fffbeb' }}>
+                <Bike size={18} color={theme === 'dark' ? '#fbbf24' : '#d97706'} />
+              </div>
+              <span>Delivery Partner (Deliver & Earn)</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
