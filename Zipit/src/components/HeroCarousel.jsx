@@ -7,8 +7,48 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragDelta, setDragDelta] = useState(0);
+  const [slideRatios, setSlideRatios] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_banner_ratios');
+      return cached ? JSON.parse(cached) : {};
+    } catch (_) {
+      return {};
+    }
+  });
   const intervalRef = useRef(null);
   const count = banners.length;
+
+  const updateRatio = useCallback((url, ratio) => {
+    if (!url || !ratio || isNaN(ratio) || !isFinite(ratio) || ratio <= 0) return;
+    setSlideRatios(prev => {
+      if (prev[url] && Math.abs(prev[url] - ratio) < 0.005) return prev;
+      const updated = { ...prev, [url]: ratio };
+      try {
+        localStorage.setItem('zipit_cached_banner_ratios', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+  }, []);
+
+  // Pre-measure images to determine their natural aspect ratio immediately
+  useEffect(() => {
+    if (!banners || banners.length === 0) return;
+    banners.forEach((banner) => {
+      const url = banner.image_url;
+      if (url && url !== 'https://none.com/none.png' && url !== 'NONE' && !slideRatios[url]) {
+        const img = new Image();
+        img.onload = () => {
+          if (img.naturalWidth && img.naturalHeight) {
+            updateRatio(url, img.naturalWidth / img.naturalHeight);
+          }
+        };
+        img.src = url;
+        if (img.complete && img.naturalWidth && img.naturalHeight) {
+          updateRatio(url, img.naturalWidth / img.naturalHeight);
+        }
+      }
+    });
+  }, [banners, slideRatios, updateRatio]);
 
   const goTo = useCallback((idx) => {
     // Infinite loop: wrap around
@@ -68,8 +108,20 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
 
   if (!banners || count === 0) return null;
 
+  const activeBanner = banners[currentIdx] || banners[0];
+  const activeImageUrl = activeBanner?.image_url;
+  const activeRatio = (activeImageUrl && slideRatios[activeImageUrl]) 
+    || Object.values(slideRatios)[0] 
+    || null;
+
   return (
-    <div className="hero-carousel-wrapper">
+    <div 
+      className="hero-carousel-wrapper"
+      style={{
+        aspectRatio: activeRatio ? `${activeRatio}` : '16 / 9',
+        backgroundColor: activeBanner?.bg_color || 'transparent'
+      }}
+    >
       <div 
         className="hero-carousel-track-outer"
         onMouseDown={(e) => handleDragStart(e.clientX)}
@@ -94,7 +146,10 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
                 key={banner.id}
                 className="hero-carousel-slide"
                 onClick={() => onBannerClick && onBannerClick(banner)}
-                style={{ cursor: banner.link_url ? 'pointer' : 'default' }}
+                style={{ 
+                  cursor: banner.link_url ? 'pointer' : 'default',
+                  backgroundColor: banner.bg_color || 'transparent'
+                }}
               >
                 {hasImage ? (
                   <img
@@ -105,6 +160,11 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
                     loading={i === 0 ? "eager" : "lazy"}
                     fetchPriority={i === 0 ? "high" : "low"}
                     decoding="async"
+                    onLoad={(e) => {
+                      if (e.target.naturalWidth && e.target.naturalHeight) {
+                        updateRatio(banner.image_url, e.target.naturalWidth / e.target.naturalHeight);
+                      }
+                    }}
                   />
                 ) : (
                   <div

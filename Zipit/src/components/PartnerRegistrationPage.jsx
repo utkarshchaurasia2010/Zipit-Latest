@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Store, 
   Bike, 
@@ -25,7 +26,10 @@ import './PartnerRegistrationPage.css';
 
 export default function PartnerRegistrationPage({ navigate }) {
   const { showToast } = useToast();
-  const [role, setRole] = useState('shopkeeper'); // 'shopkeeper' or 'rider'
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialRole = location.state?.role || searchParams.get('role') || 'shopkeeper';
+  const [role, setRole] = useState(initialRole === 'rider' ? 'rider' : 'shopkeeper');
   const [submittedApp, setSubmittedApp] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -79,9 +83,61 @@ export default function PartnerRegistrationPage({ navigate }) {
       return;
     }
 
+    // 1. Client-side 24-hour rate limit check
+    const lastSubTime = localStorage.getItem('zipit_last_partner_app_time');
+    if (lastSubTime) {
+      const elapsedHours = (Date.now() - Number(lastSubTime)) / (1000 * 60 * 60);
+      if (elapsedHours < 24) {
+        const remainingHours = Math.ceil(24 - elapsedHours);
+        showToast(`Only 1 application per IP / device is permitted in 24 hours. Please wait ${remainingHours} hours before applying again.`, 'error');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
+      // 2. Fetch Client IP Address for strict 24-hour network rate limiting
+      let clientIp = null;
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
+        clientIp = ipRes?.ip;
+      } catch (_) {
+        try {
+          const ipRes2 = await fetch('https://ipapi.co/json/').then(r => r.json());
+          clientIp = ipRes2?.ip;
+        } catch (_) {}
+      }
+
+      // 3. Database rate limit check: Only 1 application per IP address in 24 hours
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      if (clientIp) {
+        const { data: recentIpApps } = await supabase
+          .from('access_codes')
+          .select('code, created_at, label')
+          .gte('created_at', twentyFourHoursAgo)
+          .like('label', `%---IP:${clientIp}---%`);
+
+        if (recentIpApps && recentIpApps.length > 0) {
+          showToast('Only 1 partner application per IP address is permitted in 24 hours. An application was already submitted from this network.', 'error');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 4. Also prevent duplicate mobile or Aadhaar in last 24 hours
+      const { data: recentIdentities } = await supabase
+        .from('access_codes')
+        .select('code, mobile, aadhar')
+        .gte('created_at', twentyFourHoursAgo)
+        .or(`mobile.eq.${formData.mobile.trim()},aadhar.eq.${formData.aadhar.trim()}`);
+
+      if (recentIdentities && recentIdentities.length > 0) {
+        showToast('An application with this mobile number or Aadhaar was already submitted in the last 24 hours.', 'error');
+        setLoading(false);
+        return;
+      }
+
       // Generate unique application tracking code
       const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
       const appCode = `APP-${randomSuffix}`;
@@ -101,7 +157,7 @@ export default function PartnerRegistrationPage({ navigate }) {
         shop_landmark: role === 'shopkeeper' 
           ? formData.shop_landmark.trim() 
           : (formData.vehicle_type ? `${formData.vehicle_type} (DL: ${formData.license_no || 'Pending'})` : null),
-        label: 'Online Application - Pending Review',
+        label: `Online Application - Pending Review${clientIp ? ` ---IP:${clientIp}---` : ''}`,
         is_active: false, // Locked until Admin verifies in Partners section
         agreed_terms: true
       };
@@ -111,6 +167,10 @@ export default function PartnerRegistrationPage({ navigate }) {
       if (error) {
         throw new Error(error.message);
       }
+
+      // Record rate limit in localStorage
+      localStorage.setItem('zipit_last_partner_app_time', String(Date.now()));
+      if (clientIp) localStorage.setItem('zipit_last_partner_app_ip', clientIp);
 
       setSubmittedApp({
         code: appCode,

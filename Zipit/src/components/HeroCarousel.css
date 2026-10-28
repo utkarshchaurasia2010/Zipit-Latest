@@ -7,8 +7,14 @@
   overflow: hidden;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
   background: transparent;
-  height: 180px;
-  min-height: 170px;
+  max-height: 80vh;
+  transition: aspect-ratio 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@media (min-width: 1024px) {
+  .hero-carousel-wrapper {
+    max-height: 520px;
+  }
 }
 
 /* ── Track outer (clip) ─────────────────────────────────── */
