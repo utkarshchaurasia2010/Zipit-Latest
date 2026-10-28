@@ -3,9 +3,11 @@ import { PackageCheck, ShoppingBag, ChevronLeft, Check, X, AlertCircle } from 'l
 import { db, supabase } from '../services/db';
 import { playBellSound } from '../utils/siren';
 import { PageSkeleton } from './SkeletonLoader';
+import { useToast } from '../context/ToastContext';
 import './HistoryPage.css';
 
 const PlacedOrdersPage = ({ navigate }) => {
+  const { showToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,8 +37,8 @@ const PlacedOrdersPage = ({ navigate }) => {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, fetchOrders)
       .subscribe();
 
-    // Fallback polling every 2 seconds to guarantee realtime sync if Supabase Realtime is not fully enabled in the DB
-    const interval = setInterval(fetchOrders, 2000);
+    // Fallback polling every 5 seconds to guarantee sync while WebSocket handles instantaneous events
+    const interval = setInterval(fetchOrders, 5000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -158,11 +160,11 @@ const PlacedOrdersPage = ({ navigate }) => {
                                   }).eq('id', order.id);
                                 }
 
-                                alert('Your order is requested for cancellation.');
+                                showToast('Your order is requested for cancellation.', 'Cancellation Requested');
                                 const refreshed = await db.orders.getAll();
                                 setOrders(refreshed);
                               } catch (e) {
-                                alert('Your order is requested for cancellation.');
+                                showToast('Your order is requested for cancellation.', 'Cancellation Requested');
                               }
                             }}
                             style={{

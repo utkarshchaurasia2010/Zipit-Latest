@@ -8,7 +8,11 @@ export default defineConfig({
     strictPort: true,
     host: true
   },
+  esbuild: {
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
+  },
   build: {
+    sourcemap: false,
     chunkSizeWarningLimit: 2000
   }
 })

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Check, Plus, RefreshCw, Ban, ShoppingBag, ArrowRight } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { PageSkeleton } from './SkeletonLoader';
+import { useToast } from '../context/ToastContext';
 import './SubstituteSelectionPage.css';
 
 const SubstituteSelectionPage = ({ navigate }) => {
+  const { showToast } = useToast();
   const [activeOrder, setActiveOrder] = useState(null);
   const [availableProducts, setAvailableProducts] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
@@ -129,9 +131,11 @@ const SubstituteSelectionPage = ({ navigate }) => {
 
       await supabase.from('orders').update(updatePayload).eq('id', activeOrder.id);
 
+      showToast('Substitutions confirmed! Your order has been updated.', 'Items Updated');
       navigate('/track', { replace: true });
     } catch (err) {
       console.error('Failed to update substitutions:', err);
+      showToast('Could not save substitutions. Please try again.', 'Error');
     } finally {
       setSubmitting(false);
       setExtraPaymentModal(null);

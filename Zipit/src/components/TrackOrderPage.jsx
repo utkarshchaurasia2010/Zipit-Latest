@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { playBellSound } from '../utils/siren';
 import { PageSkeleton } from './SkeletonLoader';
+import { useToast } from '../context/ToastContext';
 import './TrackOrderPage.css';
 
 // Error boundary so a Leaflet crash never blanks the whole page
@@ -270,6 +271,7 @@ const ACTIVE_STATUSES = [
 ];
 
 const TrackOrderPage = ({ navigate }) => {
+  const { showToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSubstituteModalOrder, setActiveSubstituteModalOrder] = useState(null);
@@ -335,10 +337,10 @@ const TrackOrderPage = ({ navigate }) => {
       })
       .subscribe();
 
-    // 2. High-speed resilient polling fallback (every 2.0s) to guarantee instant status updates even if WebSocket drops or DB replication lags
+    // 2. Resilient polling fallback (every 5.0s) to guarantee updates while WebSocket handles instantaneous events
     const pollInterval = setInterval(() => {
       fetchOrders(true);
-    }, 2000);
+    }, 5000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -426,7 +428,7 @@ const TrackOrderPage = ({ navigate }) => {
 
     // Check if cancellation is allowed (before Out for Delivery)
     if (orderObj && (orderObj.status === 'Out for Delivery' || orderObj.status === 'Delivered' || orderObj.status === 'Cancelled')) {
-      alert(`Order cannot be cancelled once it is ${orderObj.status}.`);
+      showToast(`Order cannot be cancelled once it is ${orderObj.status}.`, 'Cancellation Restricted');
       return;
     }
 
@@ -459,11 +461,11 @@ const TrackOrderPage = ({ navigate }) => {
           .eq('id', orderId);
       }
 
-      alert('Your order is requested for cancellation.');
+      showToast('Your order is requested for cancellation.', 'Cancellation Requested');
       await fetchOrders(true);
     } catch (err) {
       console.warn('Cancellation request notice:', err);
-      alert('Your order is requested for cancellation.');
+      showToast('Your order is requested for cancellation.', 'Cancellation Requested');
       await fetchOrders(true);
     } finally {
       setCancellingOrderId(null);
