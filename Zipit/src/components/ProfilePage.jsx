@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, Store, Bike } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, Handshake } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -194,22 +194,12 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
 
-          <div className="menu-item" onClick={() => navigate('/partner-register', { state: { role: 'shopkeeper' } })}>
+          <div className="menu-item" onClick={() => navigate('/partner-register')}>
             <div className="menu-item-left">
               <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(12, 131, 31, 0.2)' : '#ecfdf5' }}>
-                <Store size={18} color={theme === 'dark' ? '#4ade80' : '#0c831f'} />
+                <Handshake size={18} color={theme === 'dark' ? '#4ade80' : '#0c831f'} />
               </div>
-              <span>Retail Partner (Sell on Quickly)</span>
-            </div>
-            <ChevronRight size={20} color="var(--color-text-light)" />
-          </div>
-
-          <div className="menu-item" onClick={() => navigate('/partner-register', { state: { role: 'rider' } })}>
-            <div className="menu-item-left">
-              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(217, 119, 6, 0.2)' : '#fffbeb' }}>
-                <Bike size={18} color={theme === 'dark' ? '#fbbf24' : '#d97706'} />
-              </div>
-              <span>Delivery Partner (Deliver & Earn)</span>
+              <span>Be a Partner</span>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>
