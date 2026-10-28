@@ -99,10 +99,19 @@ const AdminDashboard = ({ initialTab }) => {
       if (shopkeeperCode && !reassignShopkeeperModalOrder?.status?.startsWith('Preparing')) {
         updateData.status = 'Preparing';
       }
-      const { error } = await supabase
+      let { error } = await supabase
         .from('orders')
         .update(updateData)
         .eq('id', orderId);
+
+      // If check constraint fails on status 'Preparing', retry with accepted_by_shopkeeper alone
+      if (error && error.code === '23514') {
+        const retryRes = await supabase
+          .from('orders')
+          .update({ accepted_by_shopkeeper: shopkeeperCode })
+          .eq('id', orderId);
+        error = retryRes.error;
+      }
 
       if (error) {
         showToast('Failed to assign shopkeeper: ' + error.message, 'error');
