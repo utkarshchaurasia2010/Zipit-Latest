@@ -694,7 +694,7 @@ function AppContent() {
                 <Route path="/categories" element={<CategoriesPage navigate={navigate} />} />
                 <Route path="/orders" element={<PlacedOrdersPage navigate={navigate} />} />
                 <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
-                <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} />} />
+                <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} editId={location.state?.editId} />} />
                 <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
                 <Route path="/customer-support" element={<CustomerSupportPage navigate={navigate} />} />
                 <Route path="/support" element={<CustomerSupportPage navigate={navigate} />} />

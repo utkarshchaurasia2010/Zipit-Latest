@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowRight, Check } from 'lucide-react';
 import './SlideToAccept.css';
 
@@ -6,102 +6,127 @@ export default function SlideToAccept({ onAccept, label = "Slide to Accept", dis
   const [sliderPosition, setSliderPosition] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  
   const containerRef = useRef(null);
-  const handleRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const sliderPosRef = useRef(0);
+  const isCompletedRef = useRef(false);
+
+  useEffect(() => {
+    isCompletedRef.current = isCompleted;
+  }, [isCompleted]);
 
   useEffect(() => {
     if (resetTrigger !== null && resetTrigger !== undefined) {
       setIsCompleted(false);
+      isCompletedRef.current = false;
       setSliderPosition(0);
+      sliderPosRef.current = 0;
       setIsDragging(false);
+      isDraggingRef.current = false;
     }
   }, [resetTrigger]);
 
-  const getContainerWidth = () => {
-    if (!containerRef.current) return 280;
-    return containerRef.current.clientWidth;
-  };
-
-  const getMaxTravel = () => {
-    const containerW = getContainerWidth();
-    const handleW = 54;
-    return containerW - handleW - 8; // padding offset
-  };
+  const getMaxTravel = useCallback(() => {
+    if (!containerRef.current) return 220;
+    const containerW = containerRef.current.clientWidth || 280;
+    const handleW = 48;
+    return Math.max(80, containerW - handleW - 8);
+  }, []);
 
   const handleStart = (clientX) => {
-    if (disabled || isCompleted) return;
+    if (disabled || isCompletedRef.current) return;
     setIsDragging(true);
+    isDraggingRef.current = true;
   };
 
-  const handleMove = (clientX) => {
-    if (!isDragging || disabled || isCompleted) return;
+  const handleMove = useCallback((clientX) => {
+    if (!isDraggingRef.current || disabled || isCompletedRef.current || !containerRef.current) return;
+    
     const containerRect = containerRef.current.getBoundingClientRect();
     const maxTravel = getMaxTravel();
-    let currentX = clientX - containerRect.left - 27; // center handle
+    let currentX = clientX - containerRect.left - 24; // center 48px handle
 
     if (currentX < 0) currentX = 0;
     if (currentX > maxTravel) currentX = maxTravel;
 
+    sliderPosRef.current = currentX;
     setSliderPosition(currentX);
 
-    // Threshold for acceptance (90% crossed)
-    if (currentX >= maxTravel * 0.88) {
+    // Threshold for acceptance: 75% crossed allows effortless confirmation
+    if (currentX >= maxTravel * 0.75) {
+      isDraggingRef.current = false;
       setIsDragging(false);
+      sliderPosRef.current = maxTravel;
       setSliderPosition(maxTravel);
       setIsCompleted(true);
+      isCompletedRef.current = true;
       if (onAccept) onAccept();
     }
-  };
+  }, [disabled, getMaxTravel, onAccept]);
 
-  const handleEnd = () => {
-    if (!isDragging) return;
+  const handleEnd = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
     setIsDragging(false);
+    
     const maxTravel = getMaxTravel();
-    if (sliderPosition < maxTravel * 0.88) {
-      setSliderPosition(0); // bounce back
+    if (sliderPosRef.current < maxTravel * 0.75) {
+      sliderPosRef.current = 0;
+      setSliderPosition(0); // smooth bounce back
     }
-  };
+  }, [getMaxTravel]);
 
-  // Mouse event listeners
-  const onMouseDown = (e) => handleStart(e.clientX);
-  const onMouseMove = (e) => handleMove(e.clientX);
-  const onMouseUp = () => handleEnd();
-
-  // Touch event listeners
-  const onTouchStart = (e) => handleStart(e.touches[0].clientX);
-  const onTouchMove = (e) => handleMove(e.touches[0].clientX);
-  const onTouchEnd = () => handleEnd();
-
+  // Global listeners for both mouse and touch
   useEffect(() => {
-    const handleGlobalMouseMove = (e) => {
-      if (isDragging) handleMove(e.clientX);
+    const onWindowMouseMove = (e) => {
+      if (isDraggingRef.current) handleMove(e.clientX);
     };
-    const handleGlobalMouseUp = () => {
-      if (isDragging) handleEnd();
+    const onWindowMouseUp = () => {
+      if (isDraggingRef.current) handleEnd();
     };
 
-    window.addEventListener('mousemove', handleGlobalMouseMove);
-    window.addEventListener('mouseup', handleGlobalMouseUp);
+    const onWindowTouchMove = (e) => {
+      if (isDraggingRef.current && e.touches && e.touches[0]) {
+        handleMove(e.touches[0].clientX);
+      }
+    };
+    const onWindowTouchEnd = () => {
+      if (isDraggingRef.current) handleEnd();
+    };
+
+    window.addEventListener('mousemove', onWindowMouseMove, { passive: true });
+    window.addEventListener('mouseup', onWindowMouseUp);
+    window.addEventListener('touchmove', onWindowTouchMove, { passive: true });
+    window.addEventListener('touchend', onWindowTouchEnd);
+    window.addEventListener('touchcancel', onWindowTouchEnd);
+
     return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('mousemove', onWindowMouseMove);
+      window.removeEventListener('mouseup', onWindowMouseUp);
+      window.removeEventListener('touchmove', onWindowTouchMove);
+      window.removeEventListener('touchend', onWindowTouchEnd);
+      window.removeEventListener('touchcancel', onWindowTouchEnd);
     };
-  }, [isDragging, sliderPosition]);
+  }, [handleMove, handleEnd]);
 
-  const maxTravel = getMaxTravel();
-  const fillWidth = sliderPosition + 27;
+  const fillWidth = sliderPosition + 24;
 
   return (
     <div
       ref={containerRef}
       className={`slide-to-accept-container ${isCompleted ? 'completed' : ''} ${disabled ? 'disabled' : ''}`}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      onMouseDown={(e) => handleStart(e.clientX)}
+      onTouchStart={(e) => {
+        if (e.touches && e.touches[0]) handleStart(e.touches[0].clientX);
+      }}
     >
       <div
         className="slide-fill"
-        style={{ width: isCompleted ? '100%' : `${fillWidth}px` }}
+        style={{ 
+          width: isCompleted ? '100%' : `${fillWidth}px`,
+          transition: isDragging ? 'none' : 'width 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)'
+        }}
       />
       
       <span className="slide-text">
@@ -109,12 +134,13 @@ export default function SlideToAccept({ onAccept, label = "Slide to Accept", dis
       </span>
 
       <div
-        ref={handleRef}
         className={`slide-handle ${isDragging ? 'dragging' : ''}`}
-        style={{ transform: `translateX(${sliderPosition}px)` }}
-        onMouseDown={onMouseDown}
+        style={{ 
+          transform: `translateX(${sliderPosition}px)`,
+          transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s'
+        }}
       >
-        {isCompleted ? <Check size={22} color="#fff" /> : <ArrowRight size={22} color="#15803d" />}
+        {isCompleted ? <Check size={22} color="#fff" strokeWidth={3} /> : <ArrowRight size={22} color="#15803d" strokeWidth={2.5} />}
       </div>
     </div>
   );

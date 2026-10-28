@@ -7,7 +7,6 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragDelta, setDragDelta] = useState(0);
-  const [scrollY, setScrollY] = useState(0);
   const intervalRef = useRef(null);
   const count = banners.length;
 
@@ -30,16 +29,6 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
     return () => clearInterval(intervalRef.current);
   }, [startAutoPlay]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      // Find the scrollable container. If body/window scrolls:
-      setScrollY(document.querySelector('.page-transition > div')?.scrollTop || window.scrollY);
-    };
-    const scrollContainer = document.querySelector('.page-transition > div') || window;
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-    return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const handlePrev = () => {
     goTo(currentIdx - 1);
     startAutoPlay();
@@ -60,33 +49,27 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
 
   const handleDragMove = (clientX) => {
     if (!isDragging) return;
-    setDragDelta(clientX - dragStartX);
+    let delta = clientX - dragStartX;
+    // Elastic resistance if dragging at boundary
+    if ((currentIdx === 0 && delta > 0) || (currentIdx === count - 1 && delta < 0)) {
+      delta = delta * 0.25;
+    }
+    setDragDelta(delta);
   };
 
   const handleDragEnd = () => {
     if (!isDragging) return;
     setIsDragging(false);
-    if (dragDelta < -50) handleNext();
-    else if (dragDelta > 50) handlePrev();
+    if (dragDelta < -45) handleNext();
+    else if (dragDelta > 45) handlePrev();
     else startAutoPlay();
     setDragDelta(0);
   };
 
   if (!banners || count === 0) return null;
 
-  // We create a parallax effect based on scrollY
-  const parallaxTransform = `translateY(${scrollY * 0.4}px) scale(${Math.max(0.9, 1 - scrollY * 0.0005)})`;
-  const parallaxOpacity = Math.max(0, 1 - scrollY * 0.003);
-
   return (
-    <div 
-      className="hero-carousel-wrapper"
-      style={{
-        transform: parallaxTransform,
-        opacity: parallaxOpacity,
-        transformOrigin: 'bottom center'
-      }}
-    >
+    <div className="hero-carousel-wrapper">
       <div 
         className="hero-carousel-track-outer"
         onMouseDown={(e) => handleDragStart(e.clientX)}
@@ -101,7 +84,7 @@ const HeroCarousel = ({ banners, onBannerClick }) => {
           className="hero-carousel-track"
           style={{
             transform: `translateX(calc(-${currentIdx * 100}% + ${dragDelta}px))`,
-            transition: isDragging ? 'none' : 'transform 0.55s cubic-bezier(0.25, 1, 0.5, 1)',
+            transition: isDragging ? 'none' : 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)',
           }}
         >
           {banners.map((banner, i) => {

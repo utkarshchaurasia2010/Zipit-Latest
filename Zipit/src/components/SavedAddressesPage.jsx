@@ -10,7 +10,7 @@ export const stripAddressTags = (str) => {
   return str.toString().replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').replace(/---.*$/, '').trim();
 };
 
-const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) => {
+const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, editId }) => {
   const [isEditing, setIsEditing] = useState(null);
   const [formData, setFormData] = useState({
     type: 'Home',
@@ -19,7 +19,8 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
     family_head: '',
     phone: '',
     alt_phone: '',
-    details: ''
+    details: '',
+    is_default: false
   });
   const [mapPinData, setMapPinData] = useState(null);
   const [step, setStep] = useState(1); // 1: Map Pin & GPS, 2: Village / House details
@@ -30,6 +31,13 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
   const { showToast } = useToast();
 
   useEffect(() => {
+    // Fresh sync on mount to ensure local state matches DB exactly
+    db.addresses.getAll().then(fresh => {
+      if (Array.isArray(fresh) && fresh.length > 0) {
+        setAddresses(fresh);
+      }
+    }).catch(() => {});
+
     db.branding.get().then(b => {
       if (b && b.store_lat && b.store_lng) {
         setStoreGeofence({
@@ -39,6 +47,26 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
       }
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (editId && addresses && addresses.length > 0 && !isEditing) {
+      const target = addresses.find(a => a.id === editId);
+      if (target) {
+        setIsEditing(target.id);
+        setFormData({
+          type: target.type || 'Home',
+          village_area: target.village_area || '',
+          landmark: target.landmark || '',
+          family_head: target.family_head || '',
+          phone: target.phone || '',
+          alt_phone: target.alt_phone || '',
+          details: stripAddressTags(target.details || ''),
+          is_default: !!target.is_default
+        });
+        setStep(2);
+      }
+    }
+  }, [editId, addresses]);
 
   useEffect(() => {
     if (isEditing || isAddingNew) {
@@ -76,11 +104,20 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
         map_full_address: mapPinData?.fullAddress || combinedDetails,
         google_maps_url: mapPinData?.googleMapsUrl || `https://maps.google.com/?q=${mapPinData?.lat || defaultLat},${mapPinData?.lng || defaultLng}`
       };
+
+      let savedId = isEditing;
       if (isEditing) {
         await db.addresses.update(isEditing, enrichedData);
       } else {
-        await db.addresses.add(enrichedData);
+        const added = await db.addresses.add(enrichedData);
+        savedId = added?.id;
       }
+
+      // If user marked this as default, seamlessly promote it
+      if (formData.is_default && savedId && savedId !== 'primary') {
+        await db.addresses.setDefault(savedId);
+      }
+
       const refreshed = await db.addresses.getAll();
       setAddresses(refreshed);
       setIsEditing(null);
@@ -92,7 +129,8 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
         family_head: '',
         phone: '',
         alt_phone: '',
-        details: ''
+        details: '',
+        is_default: false
       });
       setMapPinData(null);
       setStep(1);
@@ -179,20 +217,20 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
             style={{ zIndex: showMenu === addr.id ? 100 : 1, position: 'relative' }}
           >
             <div className="address-card-content">
-              <div className="address-icon-box" onClick={() => handleSetDefault(addr.id)}>
+              <div className="address-icon-box">
                 <div className={`icon-circle ${addr.is_default ? 'default-active' : ''}`}>
                   <MapPin size={20} color={addr.is_default ? "#FFFFFF" : "var(--color-primary, #0c831f)"} />
                 </div>
               </div>
               <div className="address-info-box">
                 <div className="address-header">
-                  <h4 onClick={() => handleSetDefault(addr.id)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {addr.type}
                     {addr.is_default && <span style={{ background: 'rgba(12, 131, 31, 0.1)', color: '#0c831f', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DEFAULT</span>}
                   </h4>
                   <MapPin size={16} className="pin-icon" />
                 </div>
-                <p className="address-details" onClick={() => handleSetDefault(addr.id)}>{stripAddressTags(addr.details)}</p>
+                <p className="address-details">{stripAddressTags(addr.details)}</p>
                 {addr.landmark && (
                   <div style={{ margin: '4px 0', fontSize: '12px', color: '#0c831f', fontWeight: 600 }}>
                     Landmark: {addr.landmark}
@@ -275,7 +313,8 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                             family_head: addr.family_head || '',
                             phone: addr.phone || '',
                             alt_phone: addr.alt_phone || '',
-                            details: stripAddressTags(addr.details || '')
+                            details: stripAddressTags(addr.details || ''),
+                            is_default: !!addr.is_default
                           });
                           setStep(2);
                           setShowMenu(null);
@@ -489,6 +528,26 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add }) =>
                     rows={2}
                     style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
                   />
+                </div>
+
+                {/* Make Default Delivery Address Option */}
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px 14px', background: 'var(--color-surface, #ffffff)', borderRadius: '12px', border: '1.5px solid var(--color-border)', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!formData.is_default} 
+                      onChange={e => setFormData({ ...formData, is_default: e.target.checked })} 
+                      style={{ width: '18px', height: '18px', accentColor: '#0c831f', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--color-text)', display: 'block' }}>
+                        Make this default delivery address (डिफ़ॉल्ट पता बनाएं)
+                      </span>
+                      <span style={{ fontSize: '11.5px', color: 'var(--color-text-light)', display: 'block', marginTop: '2px' }}>
+                        Future orders will automatically be delivered to this location
+                      </span>
+                    </div>
+                  </label>
                 </div>
 
                 <div style={{display: 'flex', gap: 12, marginTop: 8}}>

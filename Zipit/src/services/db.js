@@ -366,17 +366,35 @@ export const db = {
           google_maps_url: google_maps_url || null,
           phone: phone || profile?.phone
         }).eq('id', pid).select().single();
+        try {
+          localStorage.removeItem('zipit_cached_addresses');
+          localStorage.removeItem('zipit_cached_user_profile');
+        } catch (_) {}
         if (error) throw new Error(error.message);
         return { id: 'primary', ...data, landmark, family_head, alt_phone, village_area };
       }
 
       payload.details = `${cleanDetails}\n${tags}`;
       delete payload.phone; delete payload.lat; delete payload.lng; delete payload.gps_area; delete payload.map_full_address; delete payload.google_maps_url;
-      delete payload.landmark; delete payload.family_head; delete payload.alt_phone; delete payload.village_area;
+      delete payload.landmark; delete payload.family_head; delete payload.alt_phone; delete payload.village_area; delete payload.is_default;
 
-      const { data, error } = await supabase.from('addresses').update(payload).eq('id', id).select().single();
-      if (error) throw new Error(error.message);
-      return data;
+      const { data, error } = await supabase.from('addresses').update(payload).eq('id', id).select().maybeSingle();
+      if (!data) {
+        // Fallback: If address was moved or became primary, update profiles
+        await supabase.from('profiles').update({
+          address: cleanDetails ? `${cleanDetails}\n${tags}` : tags,
+          lat: lat ? parseFloat(lat) : null,
+          lng: lng ? parseFloat(lng) : null,
+          gps_area: gps_area || null,
+          google_maps_url: google_maps_url || null,
+          phone: phone || profile?.phone
+        }).eq('id', pid);
+      }
+      try {
+        localStorage.removeItem('zipit_cached_addresses');
+        localStorage.removeItem('zipit_cached_user_profile');
+      } catch (_) {}
+      return data || { id, ...payload };
     },
     delete: async (id) => {
       const pid = await getUserId();
@@ -398,6 +416,10 @@ export const db = {
         const { error } = await supabase.from('addresses').delete().eq('id', id);
         if (error) console.error("DB Error (addresses delete):", error);
       }
+      try {
+        localStorage.removeItem('zipit_cached_addresses');
+        localStorage.removeItem('zipit_cached_user_profile');
+      } catch (_) {}
     },
     setDefault: async (id) => {
       const pid = await getUserId();
@@ -410,27 +432,33 @@ export const db = {
       
       if (!targetAddr) return;
 
-      // 1. Move old primary to addresses table (if it exists)
+      const cleanTargetDetails = (targetAddr.details || '').replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
+
+      // 1. Move old primary to addresses table (if it exists and is not duplicate of target)
       if (currentPrimary && currentPrimary.details) {
-         const oldTags = [
-           currentPrimary.phone ? `---TAG:PHONE:${currentPrimary.phone}---` : '',
-           currentPrimary.landmark ? `---TAG:LANDMARK:${currentPrimary.landmark}---` : '',
-           currentPrimary.family_head ? `---TAG:FAMILY_HEAD:${currentPrimary.family_head}---` : '',
-           currentPrimary.alt_phone ? `---TAG:ALT_PHONE:${currentPrimary.alt_phone}---` : '',
-           currentPrimary.village_area ? `---TAG:VILLAGE:${currentPrimary.village_area}---` : '',
-           currentPrimary.lat ? `---TAG:LAT:${currentPrimary.lat}---` : '',
-           currentPrimary.lng ? `---TAG:LNG:${currentPrimary.lng}---` : '',
-           currentPrimary.gps_area ? `---TAG:GPS_AREA:${currentPrimary.gps_area}---` : '',
-           currentPrimary.google_maps_url ? `---TAG:GMAPS:${currentPrimary.google_maps_url}---` : '',
-           `---TAG:NAME:${profile?.name || 'Unknown'}---`
-         ].filter(Boolean).join('\n');
+         const cleanOldDetails = (currentPrimary.details || '').replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
          
-         await supabase.from('addresses').insert([{ 
-           profile_id: pid, 
-           type: currentPrimary.type || 'HOME', 
-           is_default: false, 
-           details: `${currentPrimary.details}\n${oldTags}`
-         }]);
+         if (cleanOldDetails && cleanOldDetails.toLowerCase() !== cleanTargetDetails.toLowerCase()) {
+           const oldTags = [
+             currentPrimary.phone ? `---TAG:PHONE:${currentPrimary.phone}---` : '',
+             currentPrimary.landmark ? `---TAG:LANDMARK:${currentPrimary.landmark}---` : '',
+             currentPrimary.family_head ? `---TAG:FAMILY_HEAD:${currentPrimary.family_head}---` : '',
+             currentPrimary.alt_phone ? `---TAG:ALT_PHONE:${currentPrimary.alt_phone}---` : '',
+             currentPrimary.village_area ? `---TAG:VILLAGE:${currentPrimary.village_area}---` : '',
+             currentPrimary.lat ? `---TAG:LAT:${currentPrimary.lat}---` : '',
+             currentPrimary.lng ? `---TAG:LNG:${currentPrimary.lng}---` : '',
+             currentPrimary.gps_area ? `---TAG:GPS_AREA:${currentPrimary.gps_area}---` : '',
+             currentPrimary.google_maps_url ? `---TAG:GMAPS:${currentPrimary.google_maps_url}---` : '',
+             `---TAG:NAME:${profile?.name || 'Unknown'}---`
+           ].filter(Boolean).join('\n');
+           
+           await supabase.from('addresses').insert([{ 
+             profile_id: pid, 
+             type: currentPrimary.type || 'HOME', 
+             is_default: false, 
+             details: `${cleanOldDetails}\n${oldTags}`
+           }]);
+         }
       }
       
       // 2. Build full metadata tags for target address before setting to profiles table
@@ -447,8 +475,6 @@ export const db = {
         `---TAG:NAME:${profile?.name || 'Unknown'}---`
       ].filter(Boolean).join('\n');
 
-      const cleanTargetDetails = (targetAddr.details || '').replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').trim();
-
       await supabase.from('profiles').update({
           address: targetTags ? `${cleanTargetDetails}\n${targetTags}` : cleanTargetDetails,
           lat: targetAddr.lat ? parseFloat(targetAddr.lat) : null,
@@ -460,6 +486,12 @@ export const db = {
 
       // 3. Delete target address from addresses table
       await supabase.from('addresses').delete().eq('id', id);
+
+      // Invalidate caches
+      try {
+        localStorage.removeItem('zipit_cached_addresses');
+        localStorage.removeItem('zipit_cached_user_profile');
+      } catch (_) {}
     }
   },
   wishlist: {

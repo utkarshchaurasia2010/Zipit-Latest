@@ -67,14 +67,28 @@ const PlacedOrdersPage = ({ navigate }) => {
           </div>
         ) : (
           <>
-            {orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length > 0 && (
+            {orders.filter(o => !['Delivered', 'Cancelled', 'Refunded'].includes(o.status) || o.substitution_status === 'CANCELLATION_REQUESTED').length > 0 && (
               <div className="orders-section">
                 <h3 className="section-title">Active Orders</h3>
-                {orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').map(order => {
-                  const isCancellationReq = order.status === 'Cancellation Requested' || order.status === 'Cancellation requested' || order.substitution_status === 'CANCELLATION_REQUESTED';
-                  const isCancellationRej = order.status === 'Cancellation Rejected' || order.substitution_status === 'CANCELLATION_REJECTED';
-                  const isRefundInit = order.status === 'Refund Requested' || order.status === 'Refund Initiated' || order.substitution_status === 'REFUND_PENDING';
-                  const displayStatus = isCancellationReq ? 'Cancellation requested' : isCancellationRej ? 'Cancellation Rejected' : isRefundInit ? 'Refund Initiated' : order.status;
+                {orders.filter(o => !['Delivered', 'Cancelled', 'Refunded'].includes(o.status) || o.substitution_status === 'CANCELLATION_REQUESTED').map(order => {
+                  const isExplicitRefund = order.status === 'Refund Initiated' || order.status === 'Refund Requested' || order.status === 'Refunded';
+                  const isExplicitCancelled = order.status === 'Cancelled';
+                  const isExplicitRejected = order.status === 'Cancellation Rejected';
+                  const isExplicitCancelReq = order.status === 'Cancellation Requested' || order.status === 'Cancellation requested';
+
+                  const isCancellationReq = !isExplicitRefund && !isExplicitCancelled && !isExplicitRejected && (isExplicitCancelReq || order.substitution_status === 'CANCELLATION_REQUESTED');
+                  const isCancellationRej = !isExplicitRefund && !isExplicitCancelled && (isExplicitRejected || order.substitution_status === 'CANCELLATION_REJECTED');
+                  const isRefundInit = isExplicitRefund || order.substitution_status === 'REFUND_PENDING' || order.substitution_status === 'REFUND_INITIATED';
+                  const isCancelled = order.status === 'Cancelled' || order.substitution_status === 'CANCELLED';
+                  const isRefunded = order.status === 'Refunded' || order.substitution_status === 'REFUNDED';
+
+                  const displayStatus = isRefundInit 
+                    ? (order.status === 'Refunded' ? 'Refunded' : 'Refund Initiated')
+                    : isCancellationReq 
+                      ? 'Cancellation requested' 
+                      : isCancellationRej 
+                        ? 'Cancellation Rejected' 
+                        : order.status;
 
                   return (
                     <div key={order.id} className="order-card active-order-card">
@@ -82,11 +96,11 @@ const PlacedOrdersPage = ({ navigate }) => {
                         <div className={`order-status ${isCancellationReq ? 'pending-cancel' : 'active-status'}`}>
                           <PackageCheck 
                             size={16} 
-                            color={isCancellationReq ? '#F59E0B' : (isCancellationRej ? '#E23744' : '#0c831f')} 
+                            color={isCancellationReq ? '#F59E0B' : (isCancellationRej || isCancelled ? '#E23744' : isRefundInit ? '#10B981' : '#0c831f')} 
                           />
                           <span 
                             className="status-text" 
-                            style={{color: isCancellationReq ? '#F59E0B' : (isCancellationRej ? '#E23744' : '#0c831f')}}
+                            style={{color: isCancellationReq ? '#F59E0B' : (isCancellationRej || isCancelled ? '#E23744' : isRefundInit ? '#10B981' : '#0c831f')}}
                           >
                             {displayStatus}
                           </span>
@@ -130,12 +144,6 @@ const PlacedOrdersPage = ({ navigate }) => {
                                <span className="timeline-label">Delivered</span>
                             </div>
                           </div>
-                          {isCancellationRej && (
-                            <div className="cancellation-rejected-alert">
-                              <AlertCircle size={16} />
-                              Cancellation was denied by the store.
-                            </div>
-                          )}
                         </>
                       )}
 
@@ -184,7 +192,52 @@ const PlacedOrdersPage = ({ navigate }) => {
                         )}
                       </div>
 
-                      {order.status === 'Cancelled' && (
+                      {/* Info Alert Notes */}
+                      {isRefunded && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#059669',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <Check size={15} style={{ flexShrink: 0 }} />
+                          <span>Refund Completed: The amount has been successfully refunded.</span>
+                        </div>
+                      )}
+
+                      {isRefundInit && !isRefunded && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#059669',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                          <span>
+                            {/upi|online/i.test(order.payment_method || '')
+                              ? 'Refund Initiated: The amount will be credited to your original payment method shortly.'
+                              : 'Refund Initiated: Please share your UPI ID / Account details on our Support WhatsApp to receive your refund.'}
+                          </span>
+                        </div>
+                      )}
+
+                      {isCancelled && !isRefundInit && (
                         <div style={{
                           marginTop: '10px',
                           padding: '10px 12px',
@@ -194,11 +247,57 @@ const PlacedOrdersPage = ({ navigate }) => {
                           fontSize: '12px',
                           fontWeight: 600,
                           color: '#b91c1c',
-                          lineHeight: '1.4'
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
                         }}>
-                          {/upi|online/i.test(order.payment_method || '')
-                            ? 'Your refund will be initiated shortly.'
-                            : 'Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp'}
+                          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                          <span>
+                            {/upi|online/i.test(order.payment_method || '')
+                              ? 'Order Cancelled: Your refund will be initiated shortly.'
+                              : 'Order Cancelled: Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp.'}
+                          </span>
+                        </div>
+                      )}
+
+                      {isCancellationReq && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(245, 158, 11, 0.08)',
+                          border: '1px solid rgba(245, 158, 11, 0.25)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#d97706',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                          <span>Cancellation request submitted. Waiting for store confirmation.</span>
+                        </div>
+                      )}
+
+                      {isCancellationRej && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#b91c1c',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                          <span>Cancellation was denied by the store. Your order is being processed.</span>
                         </div>
                       )}
                     </div>
@@ -207,51 +306,110 @@ const PlacedOrdersPage = ({ navigate }) => {
               </div>
             )}
             
-            {orders.filter(o => o.status === 'Delivered' || o.status === 'Cancelled').length > 0 && (
+            {orders.filter(o => ['Delivered', 'Cancelled', 'Refunded'].includes(o.status) && o.substitution_status !== 'CANCELLATION_REQUESTED').length > 0 && (
               <div className="orders-section" style={{marginTop: 24}}>
                 <h3 className="section-title" style={{fontSize: 14, color: 'var(--color-text-light)'}}>Past Orders</h3>
-                {orders.filter(o => o.status === 'Delivered' || o.status === 'Cancelled').map(order => (
-                  <div key={order.id} className="order-card past-order-card">
-                    <div className="order-card-header">
-                      <div className="order-status">
-                        <PackageCheck size={16} color={order.status === 'Cancelled' ? '#E23744' : 'var(--color-text-light)'} />
-                        <span className="status-text" style={{color: order.status === 'Cancelled' ? '#E23744' : 'var(--color-text-light)'}}>{order.status}</span>
-                      </div>
-                      <span className="order-date">{new Date(order.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div className="order-details">
-                      <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                        <p className="order-items" style={{fontWeight: 700}}>Order ID: {order.id.split('-')[0]}</p>
-                        <h4 className="order-amount">₹{order.total}</h4>
-                      </div>
-                      <div style={{marginTop: 8}}>
-                        {order.items.map(item => (
-                          <div key={item.id} style={{fontSize: 13, color: 'var(--color-text-light)'}}>
-                            {item.qty}x {item.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                {orders.filter(o => ['Delivered', 'Cancelled', 'Refunded'].includes(o.status) && o.substitution_status !== 'CANCELLATION_REQUESTED').map(order => {
+                  const isRefunded = order.status === 'Refunded' || order.substitution_status === 'REFUNDED';
+                  const isRefundInit = order.status === 'Refund Initiated' || order.status === 'Refund Requested' || order.substitution_status === 'REFUND_INITIATED' || order.substitution_status === 'REFUND_PENDING';
+                  const isCancelled = order.status === 'Cancelled' || order.substitution_status === 'CANCELLED';
+                  const pastStatusColor = isRefunded || isRefundInit ? '#10B981' : isCancelled ? '#E23744' : 'var(--color-text-light)';
+                  const pastStatusLabel = isRefunded ? 'Refunded' : isRefundInit ? 'Refund Initiated' : order.status;
 
-                    {order.status === 'Cancelled' && (
-                      <div style={{
-                        marginTop: '10px',
-                        padding: '10px 12px',
-                        background: 'rgba(239, 68, 68, 0.08)',
-                        border: '1px solid rgba(239, 68, 68, 0.2)',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: '#b91c1c',
-                        lineHeight: '1.4'
-                      }}>
-                        {/upi|online/i.test(order.payment_method || '')
-                          ? 'Your refund will be initiated shortly.'
-                          : 'Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp'}
+                  return (
+                    <div key={order.id} className="order-card past-order-card">
+                      <div className="order-card-header">
+                        <div className="order-status">
+                          <PackageCheck size={16} color={pastStatusColor} />
+                          <span className="status-text" style={{color: pastStatusColor}}>{pastStatusLabel}</span>
+                        </div>
+                        <span className="order-date">{new Date(order.created_at).toLocaleDateString()}</span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div className="order-details">
+                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                          <p className="order-items" style={{fontWeight: 700}}>Order ID: {order.id.split('-')[0]}</p>
+                          <h4 className="order-amount">₹{order.total}</h4>
+                        </div>
+                        <div style={{marginTop: 8}}>
+                          {order.items.map(item => (
+                            <div key={item.id} style={{fontSize: 13, color: 'var(--color-text-light)'}}>
+                              {item.qty}x {item.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Info Alert Notes in Past Orders */}
+                      {isRefunded && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#059669',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <Check size={15} style={{ flexShrink: 0 }} />
+                          <span>Refund Completed: The amount has been credited to your account.</span>
+                        </div>
+                      )}
+
+                      {isRefundInit && !isRefunded && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#059669',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                          <span>
+                            {/upi|online/i.test(order.payment_method || '')
+                              ? 'Refund Initiated: The amount will be credited to your original payment method shortly.'
+                              : 'Refund Initiated: Please share your UPI ID / Account details on our Support WhatsApp to receive your refund.'}
+                          </span>
+                        </div>
+                      )}
+
+                      {isCancelled && !isRefundInit && !isRefunded && (
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#b91c1c',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                          <span>
+                            {/upi|online/i.test(order.payment_method || '')
+                              ? 'Order Cancelled: Your refund will be initiated shortly.'
+                              : 'Order Cancelled: Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp.'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>

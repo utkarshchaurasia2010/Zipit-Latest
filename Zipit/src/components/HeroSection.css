@@ -1,7 +1,7 @@
 .hero-section-wrapper {
   position: relative;
   width: 100%;
-  padding-bottom: 4px;
+  padding-bottom: 0;
   z-index: 10;
 }
 

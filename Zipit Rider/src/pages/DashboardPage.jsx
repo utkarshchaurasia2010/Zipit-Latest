@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff, KeyRound, Navigation, IndianRupee, Wallet, TrendingUp, Calendar, Clock, ChevronRight } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
 import { auth } from '../services/auth';
+import { useToast } from '../context/ToastContext';
 
 export default function DashboardPage() {
+  const { showToast } = useToast();
   const [activeOrders, setActiveOrders] = useState([]);
   const [historyOrders, setHistoryOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'history'
@@ -79,6 +81,17 @@ export default function DashboardPage() {
   }, []);
 
   const toggleOnline = async () => {
+    if (isOnline) {
+      // Check if rider has active accepted orders that are not yet delivered/cancelled
+      const hasActiveOrders = activeOrders.some(
+        o => o.accepted_by_rider === riderCode && o.status !== 'Delivered' && o.status !== 'Cancelled'
+      );
+      if (hasActiveOrders) {
+        showToast('You cannot go offline while you have an active order to deliver! Please complete delivery first.', 'Active Order in Progress');
+        return;
+      }
+    }
+
     const newState = !isOnline;
     setIsOnline(newState);
     localStorage.setItem('partner_online', String(newState));

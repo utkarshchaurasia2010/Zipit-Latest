@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PackageCheck, ShoppingBag, ChevronLeft, RotateCcw, Download } from 'lucide-react';
+import { PackageCheck, ShoppingBag, ChevronLeft, RotateCcw, Download, AlertCircle, Check } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { downloadInvoice } from '../utils/invoice';
 import { useToast } from '../context/ToastContext';
@@ -116,6 +116,48 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
                   <span>{order.delivery_address?.type ? `Delivered to ${order.delivery_address.type}` : ''}</span>
                 </div>
 
+                {order.status === 'Refunded' && (
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#059669',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <Check size={15} style={{ flexShrink: 0 }} />
+                    <span>Refund Completed: The amount has been credited to your account.</span>
+                  </div>
+                )}
+
+                {(order.status === 'Refund Initiated' || order.status === 'Refund Requested' || order.substitution_status === 'REFUND_INITIATED' || order.substitution_status === 'REFUND_PENDING') && order.status !== 'Refunded' && (
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#059669',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    <span>
+                      {/upi|online/i.test(order.payment_method || '')
+                        ? 'Refund Initiated: The amount will be credited to your original payment method shortly.'
+                        : 'Refund Initiated: Please share your UPI ID / Account details on our Support WhatsApp to receive your refund.'}
+                    </span>
+                  </div>
+                )}
+
                 {order.status === 'Cancelled' && (
                   <div style={{
                     padding: '10px 14px',
@@ -125,11 +167,17 @@ const PastOrdersPage = ({ navigate, updateCartQty }) => {
                     fontSize: '12px',
                     fontWeight: 600,
                     color: '#b91c1c',
-                    lineHeight: '1.4'
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}>
-                    {/upi|online/i.test(order.payment_method || '')
-                      ? 'Your refund will be initiated shortly.'
-                      : 'Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp'}
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    <span>
+                      {/upi|online/i.test(order.payment_method || '')
+                        ? 'Order Cancelled: Your refund will be initiated shortly.'
+                        : 'Order Cancelled: Your refund will be initiated if you share your UPI Id/Account Details on our Support Whatsapp.'}
+                    </span>
                   </div>
                 )}
 
