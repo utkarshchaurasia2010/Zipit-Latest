@@ -13,6 +13,28 @@ const PlacedOrdersPage = ({ navigate }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let metaRobots = document.querySelector('meta[name="robots"]');
+    const created = !metaRobots;
+    if (created) {
+      metaRobots = document.createElement('meta');
+      metaRobots.setAttribute('name', 'robots');
+      document.head.appendChild(metaRobots);
+    }
+    const prevContent = metaRobots.getAttribute('content');
+    metaRobots.setAttribute('content', 'noindex, nofollow, noarchive');
+
+    return () => {
+      if (created) {
+        metaRobots.remove();
+      } else if (prevContent) {
+        metaRobots.setAttribute('content', prevContent);
+      } else {
+        metaRobots.removeAttribute('content');
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchOrders = async () => {
       try {
         const data = await db.orders.getAll();

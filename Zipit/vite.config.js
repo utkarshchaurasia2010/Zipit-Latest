@@ -10,6 +10,7 @@ export default defineConfig({
       injectRegister: 'auto',
       workbox: {
         globIgnores: ['**/firebase-messaging-sw.js'],
+        navigateFallbackDenylist: [/^\/track/, /^\/orders/, /^\/past-orders/, /^\/checkout/, /^\/payment/],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin.includes('supabase.co') && url.pathname.includes('/storage/v1/object/public/'),
@@ -26,14 +27,23 @@ export default defineConfig({
             }
           },
           {
-            // Cache Supabase REST API requests with StaleWhileRevalidate for fast offline and rural load
-            urlPattern: ({ url }) => url.origin.includes('supabase.co') && url.pathname.includes('/rest/v1/'),
+            // Cache only static catalogue REST API requests (categories/catalog).
+            // NEVER cache realtime tables: orders, refunds, order tracking, rider/shopkeeper status, or live stock!
+            urlPattern: ({ url }) => {
+              if (!url.origin.includes('supabase.co') || !url.pathname.includes('/rest/v1/')) return false;
+              const fullQuery = (url.pathname + url.search).toLowerCase();
+              const realtimeKeywords = ['order', 'refund', 'rpc', 'status', 'profiles', 'stock', 'delivery'];
+              if (realtimeKeywords.some(kw => fullQuery.includes(kw))) {
+                return false; // Direct live network request every time
+              }
+              return true;
+            },
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'quickly-supabase-api',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days (prevents cold 10s wait after 24h)
+                maxAgeSeconds: 7 * 24 * 60 * 60
               },
               cacheableResponse: {
                 statuses: [0, 200]

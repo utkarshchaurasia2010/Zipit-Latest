@@ -279,8 +279,29 @@ const TrackOrderPage = ({ navigate }) => {
   const [availableCategories, setAvailableCategories] = useState([]);
   const [selectedSubstitutes, setSelectedSubstitutes] = useState({});
   const [catalogPickerItemIndex, setCatalogPickerItemIndex] = useState(null);
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [isSubmittingSubstitute, setIsSubmittingSubstitute] = useState(false);
+
+  useEffect(() => {
+    let metaRobots = document.querySelector('meta[name="robots"]');
+    const created = !metaRobots;
+    if (created) {
+      metaRobots = document.createElement('meta');
+      metaRobots.setAttribute('name', 'robots');
+      document.head.appendChild(metaRobots);
+    }
+    const prevContent = metaRobots.getAttribute('content');
+    metaRobots.setAttribute('content', 'noindex, nofollow, noarchive');
+
+    return () => {
+      if (created) {
+        metaRobots.remove();
+      } else if (prevContent) {
+        metaRobots.setAttribute('content', prevContent);
+      } else {
+        metaRobots.removeAttribute('content');
+      }
+    };
+  }, []);
 
   const fetchOrders = async (isSilent = false) => {
     if (!isSilent) setLoading(true);

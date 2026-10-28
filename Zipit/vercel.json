@@ -77,6 +77,19 @@
       ]
     },
     {
+      "source": "/(track|orders|past-orders|substitute-selection|checkout|payment|profile|saved-addresses)(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
