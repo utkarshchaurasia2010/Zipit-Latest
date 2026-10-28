@@ -107,8 +107,12 @@ export default function PartnersCodesManager() {
       mobile: '',
       aadhar: '',
       email: '',
+      store_name: '',
       fssai: '',
+      vehicle_type: 'Motorcycle',
       vehicle_no: '',
+      driving_license_no: '',
+      delivery_area: '',
       shop_address: '',
       shop_landmark: '',
       agreed_terms: false
@@ -123,8 +127,10 @@ export default function PartnersCodesManager() {
       return;
     }
 
-    if (role === 'rider' && !formData.vehicle_no) {
-      showToast('Vehicle Number is compulsory for Riders (*)', 'error');
+    const isBicycle = role === 'rider' && formData.vehicle_type === 'Bicycle';
+
+    if (role === 'rider' && !isBicycle && !formData.vehicle_no) {
+      showToast('Vehicle Number is compulsory for motorized Riders (*)', 'error');
       return;
     }
 
@@ -143,16 +149,50 @@ export default function PartnersCodesManager() {
       mobile: formData.mobile.trim(),
       aadhar: formData.aadhar.trim(),
       email: formData.email.trim(),
+      store_name: role === 'shopkeeper' ? (formData.store_name?.trim() || null) : null,
       fssai: role === 'shopkeeper' ? (formData.fssai.trim() || null) : null,
-      vehicle_no: role === 'rider' ? (formData.vehicle_no.trim() || null) : null,
       shop_address: role === 'shopkeeper' ? (formData.shop_address?.trim() || null) : null,
       shop_landmark: role === 'shopkeeper' ? (formData.shop_landmark?.trim() || null) : null,
+      vehicle_type: role === 'rider' ? formData.vehicle_type : null,
+      vehicle_no: role === 'rider' && !isBicycle ? (formData.vehicle_no.trim() || null) : (isBicycle ? 'BICYCLE' : null),
+      driving_license_no: role === 'rider' && !isBicycle ? (formData.driving_license_no?.trim() || null) : null,
+      delivery_area: role === 'rider' ? (formData.delivery_area?.trim() || null) : null,
       label: 'Verified Partner',
       is_active: true,
       agreed_terms: true
     };
 
-    const { error } = await supabase.from('access_codes').insert([payload]);
+    let { error } = await supabase.from('access_codes').insert([payload]);
+
+    if (error && error.message && (
+      error.message.includes('column') || 
+      error.message.includes('store_name') || 
+      error.message.includes('vehicle_type') ||
+      error.message.includes('driving_license_no') ||
+      error.message.includes('delivery_area')
+    )) {
+      const fallbackPayload = {
+        code: newCode,
+        role: role,
+        name: formData.name.trim(),
+        mobile: formData.mobile.trim(),
+        aadhar: formData.aadhar.trim(),
+        email: formData.email.trim(),
+        fssai: role === 'shopkeeper' ? (formData.fssai.trim() || null) : null,
+        vehicle_no: role === 'rider' && !isBicycle ? (formData.vehicle_no.trim() || null) : (isBicycle ? 'BICYCLE' : null),
+        shop_address: role === 'shopkeeper' 
+          ? `${formData.store_name ? `[${formData.store_name}] ` : ''}${formData.shop_address?.trim() || ''}`
+          : (formData.delivery_area?.trim() || null),
+        shop_landmark: role === 'shopkeeper' 
+          ? (formData.shop_landmark?.trim() || null) 
+          : `${formData.vehicle_type}${formData.driving_license_no ? ` (DL: ${formData.driving_license_no})` : ''}`,
+        label: 'Verified Partner',
+        is_active: true,
+        agreed_terms: true
+      };
+      const { error: fallbackError } = await supabase.from('access_codes').insert([fallbackPayload]);
+      error = fallbackError;
+    }
 
     if (error) {
       showToast(error.message, 'error');
@@ -600,11 +640,35 @@ export default function PartnersCodesManager() {
                         <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', color: 'var(--color-text-light)', fontSize: '12.5px' }}>
                           {partner.role === 'rider' ? (
                             <div>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{partner.vehicle_no || 'Vehicle N/A'}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  background: partner.vehicle_type === 'Bicycle' ? '#ecfdf5' : '#fef3c7',
+                                  color: partner.vehicle_type === 'Bicycle' ? '#047857' : '#92400e',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  fontWeight: 700
+                                }}>
+                                  {partner.vehicle_type === 'Bicycle' ? '🚲 Bicycle' : (partner.vehicle_type || '🛵 Vehicle')}
+                                </span>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {partner.vehicle_type === 'Bicycle' ? 'No Reg. Required' : (partner.vehicle_no || 'Vehicle N/A')}
+                                </span>
+                              </div>
+                              {(partner.delivery_area || (partner.shop_address && !partner.shop_address.includes('['))) && (
+                                <div style={{ fontSize: '11.5px', color: 'var(--color-text-light)', marginTop: '2px' }}>
+                                  📍 {partner.delivery_area || partner.shop_address}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              <span>{partner.shop_address || 'Aadhaar: ' + (partner.aadhar ? '•••• ' + partner.aadhar.slice(-4) : 'N/A')}</span>
+                              {(partner.store_name || partner.shop_address?.match(/^\[(.*?)\]/)?.[1]) && (
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '13px' }}>
+                                  🏬 {partner.store_name || partner.shop_address?.match(/^\[(.*?)\]/)?.[1]}
+                                </div>
+                              )}
+                              <span>{partner.shop_address?.replace(/^\[.*?\]\s*/, '') || 'Aadhaar: ' + (partner.aadhar ? '•••• ' + partner.aadhar.slice(-4) : 'N/A')}</span>
                             </div>
                           )}
                         </td>
@@ -794,7 +858,10 @@ export default function PartnersCodesManager() {
                     <Store size={15} /> Retail Store & Location Details
                   </div>
                   <div style={{ fontSize: '13px', marginBottom: '6px' }}>
-                    <strong>Shop Address:</strong> {reviewingApp.shop_address || 'Not specified'}
+                    <strong>Store Name:</strong> {reviewingApp.store_name || (reviewingApp.shop_address?.match(/^\[(.*?)\]/)?.[1]) || 'Not specified'}
+                  </div>
+                  <div style={{ fontSize: '13px', marginBottom: '6px' }}>
+                    <strong>Shop Address:</strong> {reviewingApp.shop_address?.replace(/^\[.*?\]\s*/, '') || reviewingApp.shop_address || 'Not specified'}
                   </div>
                   <div style={{ fontSize: '13px', marginBottom: '6px' }}>
                     <strong>Nearest Landmark:</strong> {reviewingApp.shop_landmark || 'Not specified'}
@@ -811,10 +878,16 @@ export default function PartnersCodesManager() {
                     <Bike size={15} /> Delivery Fleet & Vehicle Details
                   </div>
                   <div style={{ fontSize: '13px', marginBottom: '6px' }}>
-                    <strong>Vehicle Reg. Number:</strong> {reviewingApp.vehicle_no || 'Not specified'}
+                    <strong>Vehicle Type:</strong> {reviewingApp.vehicle_type || (reviewingApp.shop_landmark?.split(' (DL:')?.[0]) || 'Motorcycle'}
+                  </div>
+                  <div style={{ fontSize: '13px', marginBottom: '6px' }}>
+                    <strong>Vehicle Reg. Number:</strong> {(reviewingApp.vehicle_type === 'Bicycle' || reviewingApp.vehicle_no === 'BICYCLE') ? 'Not Required (Bicycle 🚲)' : (reviewingApp.vehicle_no || 'Not specified')}
+                  </div>
+                  <div style={{ fontSize: '13px', marginBottom: '6px' }}>
+                    <strong>Driving License No.:</strong> {(reviewingApp.vehicle_type === 'Bicycle' || reviewingApp.vehicle_no === 'BICYCLE') ? 'Not Required (Bicycle 🚲)' : (reviewingApp.driving_license_no || reviewingApp.shop_landmark?.match(/DL:\s*([^)]+)/)?.[1] || 'Not specified')}
                   </div>
                   <div style={{ fontSize: '13px' }}>
-                    <strong>Vehicle Type / Notes:</strong> {reviewingApp.shop_landmark || 'Standard Delivery Vehicle'}
+                    <strong>Preferred Delivery Area:</strong> {reviewingApp.delivery_area || (reviewingApp.shop_address && !reviewingApp.shop_address.includes('[') ? reviewingApp.shop_address : 'All Service Areas')}
                   </div>
                 </div>
               )}
@@ -922,16 +995,20 @@ export default function PartnersCodesManager() {
               {viewingPartner.role === 'shopkeeper' && (
                 <div style={{ background: 'var(--color-surface-muted)', padding: '12px', borderRadius: '10px', marginBottom: '16px' }}>
                   <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>Shop Location & Details</div>
-                  <div style={{ fontSize: '13px' }}><strong>Address:</strong> {viewingPartner.shop_address || 'N/A'}</div>
-                  <div style={{ fontSize: '13px' }}><strong>Landmark:</strong> {viewingPartner.shop_landmark || 'N/A'}</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}><strong>Store Name:</strong> {viewingPartner.store_name || (viewingPartner.shop_address?.match(/^\[(.*?)\]/)?.[1]) || 'N/A'}</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}><strong>Address:</strong> {viewingPartner.shop_address?.replace(/^\[.*?\]\s*/, '') || viewingPartner.shop_address || 'N/A'}</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}><strong>Landmark:</strong> {viewingPartner.shop_landmark || 'N/A'}</div>
                   {viewingPartner.fssai && <div style={{ fontSize: '13px' }}><strong>FSSAI:</strong> {viewingPartner.fssai}</div>}
                 </div>
               )}
 
               {viewingPartner.role === 'rider' && (
                 <div style={{ background: 'var(--color-surface-muted)', padding: '12px', borderRadius: '10px', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>Vehicle Information</div>
-                  <div style={{ fontSize: '13px' }}><strong>Vehicle No:</strong> {viewingPartner.vehicle_no || 'N/A'}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>Vehicle & Delivery Information</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}><strong>Vehicle Type:</strong> {viewingPartner.vehicle_type || 'Motorcycle'}</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}><strong>Vehicle No:</strong> {(viewingPartner.vehicle_type === 'Bicycle' || viewingPartner.vehicle_no === 'BICYCLE') ? 'Not Required (Bicycle 🚲)' : (viewingPartner.vehicle_no || 'N/A')}</div>
+                  <div style={{ fontSize: '13px', marginBottom: '4px' }}><strong>Driving License No:</strong> {(viewingPartner.vehicle_type === 'Bicycle' || viewingPartner.vehicle_no === 'BICYCLE') ? 'Not Required (Bicycle 🚲)' : (viewingPartner.driving_license_no || 'N/A')}</div>
+                  <div style={{ fontSize: '13px' }}><strong>Preferred Area:</strong> {viewingPartner.delivery_area || 'All Service Areas'}</div>
                 </div>
               )}
 
@@ -1068,21 +1145,81 @@ export default function PartnersCodesManager() {
                 </div>
 
                 {role === 'rider' && (
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Vehicle Number *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. UP61AY1234"
-                      value={formData.vehicle_no}
-                      onChange={e => setFormData({ ...formData, vehicle_no: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Vehicle Type (वाहन का प्रकार) *</label>
+                      <select
+                        value={formData.vehicle_type}
+                        onChange={e => setFormData({
+                          ...formData,
+                          vehicle_type: e.target.value,
+                          ...(e.target.value === 'Bicycle' ? { vehicle_no: '', driving_license_no: '' } : {})
+                        })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                      >
+                        <option value="Motorcycle">Motorcycle</option>
+                        <option value="Scooter">Scooter</option>
+                        <option value="Electric Two-wheeler">Electric Two-wheeler</option>
+                        <option value="Bicycle">Bicycle</option>
+                      </select>
+                    </div>
+
+                    {formData.vehicle_type !== 'Bicycle' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Vehicle Number *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. UP61AY1234"
+                            value={formData.vehicle_no}
+                            onChange={e => setFormData({ ...formData, vehicle_no: e.target.value.toUpperCase() })}
+                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Driving License No. *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. DL-0420110012345"
+                            value={formData.driving_license_no}
+                            onChange={e => setFormData({ ...formData, driving_license_no: e.target.value.toUpperCase() })}
+                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 12px', color: '#166534', fontSize: '12.5px', fontWeight: 600 }}>
+                        🚲 Bicycle selected: No vehicle registration number or driving license required.
+                      </div>
+                    )}
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Preferred Delivery Area (पसंदीदा कार्य क्षेत्र)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Pahetiya, Ghazipur Bazar..."
+                        value={formData.delivery_area}
+                        onChange={e => setFormData({ ...formData, delivery_area: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                      />
+                    </div>
+                  </>
                 )}
 
                 {role === 'shopkeeper' && (
                   <>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Store Name (दुकान का नाम)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Gupta General Store"
+                        value={formData.store_name}
+                        onChange={e => setFormData({ ...formData, store_name: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-surface-muted)', color: 'var(--color-text)', outline: 'none' }}
+                      />
+                    </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', marginBottom: '5px' }}>Shop Address (दुकान का पूरा पता)</label>
                       <input

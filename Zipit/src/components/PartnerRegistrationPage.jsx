@@ -44,7 +44,7 @@ export default function PartnerRegistrationPage({ navigate }) {
     fssai: '',
     vehicle_type: 'Motorcycle',
     vehicle_no: '',
-    license_no: '',
+    driving_license_no: '',
     delivery_area: '',
     agreed_terms: false
   });
@@ -73,8 +73,10 @@ export default function PartnerRegistrationPage({ navigate }) {
       return;
     }
 
-    if (role === 'rider' && !formData.vehicle_no.trim()) {
-      showToast('Vehicle registration number is required for delivery partners (*)', 'error');
+    const isBicycle = role === 'rider' && formData.vehicle_type === 'Bicycle';
+
+    if (role === 'rider' && !isBicycle && !formData.vehicle_no.trim()) {
+      showToast('Vehicle registration number is required for motorized delivery partners (*)', 'error');
       return;
     }
 
@@ -149,23 +151,54 @@ export default function PartnerRegistrationPage({ navigate }) {
         mobile: formData.mobile.trim(),
         email: formData.email.trim(),
         aadhar: formData.aadhar.trim(),
+        store_name: role === 'shopkeeper' ? (formData.shop_name.trim() || null) : null,
         fssai: role === 'shopkeeper' ? (formData.fssai.trim() || null) : null,
-        vehicle_no: role === 'rider' ? (formData.vehicle_no.trim() || null) : null,
-        shop_address: role === 'shopkeeper' 
-          ? `${formData.shop_name ? `[${formData.shop_name}] ` : ''}${formData.shop_address.trim()}`
-          : (formData.delivery_area.trim() || null),
-        shop_landmark: role === 'shopkeeper' 
-          ? formData.shop_landmark.trim() 
-          : (formData.vehicle_type ? `${formData.vehicle_type} (DL: ${formData.license_no || 'Pending'})` : null),
+        shop_address: role === 'shopkeeper' ? formData.shop_address.trim() : null,
+        shop_landmark: role === 'shopkeeper' ? formData.shop_landmark.trim() : null,
+        vehicle_type: role === 'rider' ? formData.vehicle_type : null,
+        vehicle_no: role === 'rider' && !isBicycle ? (formData.vehicle_no.trim() || null) : (isBicycle ? 'BICYCLE' : null),
+        driving_license_no: role === 'rider' && !isBicycle ? (formData.driving_license_no.trim() || null) : null,
+        delivery_area: role === 'rider' ? (formData.delivery_area.trim() || null) : null,
         label: `Online Application - Pending Review${clientIp ? ` ---IP:${clientIp}---` : ''}`,
         is_active: false, // Locked until Admin verifies in Partners section
         agreed_terms: true
       };
 
-      const { error } = await supabase.from('access_codes').insert([payload]);
+      let { error: insertError } = await supabase.from('access_codes').insert([payload]);
 
-      if (error) {
-        throw new Error(error.message);
+      // Fallback if schema columns haven't been added yet in database
+      if (insertError && insertError.message && (
+        insertError.message.includes('column') || 
+        insertError.message.includes('store_name') || 
+        insertError.message.includes('vehicle_type') ||
+        insertError.message.includes('driving_license_no') ||
+        insertError.message.includes('delivery_area')
+      )) {
+        const fallbackPayload = {
+          code: appCode,
+          role: role,
+          name: formData.name.trim(),
+          mobile: formData.mobile.trim(),
+          email: formData.email.trim(),
+          aadhar: formData.aadhar.trim(),
+          fssai: role === 'shopkeeper' ? (formData.fssai.trim() || null) : null,
+          vehicle_no: role === 'rider' && !isBicycle ? (formData.vehicle_no.trim() || null) : (isBicycle ? 'BICYCLE' : null),
+          shop_address: role === 'shopkeeper' 
+            ? `${formData.shop_name ? `[${formData.shop_name}] ` : ''}${formData.shop_address.trim()}`
+            : (formData.delivery_area.trim() || null),
+          shop_landmark: role === 'shopkeeper' 
+            ? formData.shop_landmark.trim() 
+            : `${formData.vehicle_type}${formData.driving_license_no ? ` (DL: ${formData.driving_license_no})` : ''}`,
+          label: `Online Application - Pending Review${clientIp ? ` ---IP:${clientIp}---` : ''}`,
+          is_active: false,
+          agreed_terms: true
+        };
+        const { error: fallbackError } = await supabase.from('access_codes').insert([fallbackPayload]);
+        insertError = fallbackError;
+      }
+
+      if (insertError) {
+        throw new Error(insertError.message);
       }
 
       // Record rate limit in localStorage
@@ -424,52 +457,79 @@ export default function PartnerRegistrationPage({ navigate }) {
                   <Truck size={18} /> Delivery Fleet & Vehicle Information (वाहन विवरण)
                 </div>
 
-                <div className="form-grid-2">
-                  <div className="form-field">
-                    <label>Vehicle Type (वाहन का प्रकार) *</label>
-                    <select
-                      value={formData.vehicle_type}
-                      onChange={e => setFormData({ ...formData, vehicle_type: e.target.value })}
-                    >
-                      <option value="Motorcycle">Motorcycle / Bike (मोटरसाइकिल)</option>
-                      <option value="Scooter">Scooter (स्कूटर)</option>
-                      <option value="EV Bike">Electric Two-Wheeler (ई-बाइक)</option>
-                      <option value="Bicycle">Bicycle (साइकिल)</option>
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label>Vehicle Reg. Number (गाड़ी का नंबर) *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. UP61AY1234"
-                      value={formData.vehicle_no}
-                      onChange={e => setFormData({ ...formData, vehicle_no: e.target.value })}
-                    />
-                  </div>
+                <div className="form-field">
+                  <label>Vehicle Type (वाहन का प्रकार) *</label>
+                  <select
+                    value={formData.vehicle_type}
+                    onChange={e => {
+                      const vType = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        vehicle_type: vType,
+                        ...(vType === 'Bicycle' ? { vehicle_no: '', driving_license_no: '' } : {})
+                      }));
+                    }}
+                  >
+                    <option value="Motorcycle">Motorcycle</option>
+                    <option value="Scooter">Scooter</option>
+                    <option value="Electric Two-wheeler">Electric Two-wheeler</option>
+                    <option value="Bicycle">Bicycle</option>
+                  </select>
                 </div>
 
-                <div className="form-grid-2">
-                  <div className="form-field">
-                    <label>Driving License No. (ड्राइविंग लाइसेंस)</label>
-                    <input
-                      type="text"
-                      placeholder="DL number (Optional for bicycle)"
-                      value={formData.license_no}
-                      onChange={e => setFormData({ ...formData, license_no: e.target.value })}
-                    />
-                  </div>
+                {formData.vehicle_type !== 'Bicycle' ? (
+                  <div className="form-grid-2">
+                    <div className="form-field">
+                      <label>Vehicle Reg. Number (गाड़ी का नंबर) *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. UP61AY1234"
+                        value={formData.vehicle_no}
+                        onChange={e => setFormData({ ...formData, vehicle_no: e.target.value.toUpperCase() })}
+                      />
+                    </div>
 
-                  <div className="form-field">
-                    <label>Preferred Delivery Village / Area (कार्य क्षेत्र)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Pahetiya, Ghazipur Bazar..."
-                      value={formData.delivery_area}
-                      onChange={e => setFormData({ ...formData, delivery_area: e.target.value })}
-                    />
+                    <div className="form-field">
+                      <label>Driving License No. (ड्राइविंग लाइसेंस) *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. DL-0420110012345"
+                        value={formData.driving_license_no}
+                        onChange={e => setFormData({ ...formData, driving_license_no: e.target.value.toUpperCase() })}
+                      />
+                    </div>
                   </div>
+                ) : (
+                  <div style={{
+                    background: '#f0fdf4',
+                    border: '1.5px solid #bbf7d0',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    margin: '6px 0 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    color: '#166534',
+                    fontSize: '13px',
+                    fontWeight: '600'
+                  }}>
+                    <span style={{ fontSize: '20px' }}>🚲</span>
+                    <div>
+                      <strong>Bicycle Selected:</strong> No vehicle registration number or driving license is required to deliver on bicycle!
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-field">
+                  <label>Preferred Delivery Area (पसंदीदा कार्य क्षेत्र)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Pahetiya, Ghazipur Bazar, Ward 4..."
+                    value={formData.delivery_area}
+                    onChange={e => setFormData({ ...formData, delivery_area: e.target.value })}
+                  />
                 </div>
               </>
             )}
