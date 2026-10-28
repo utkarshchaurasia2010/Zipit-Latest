@@ -7,9 +7,8 @@
   overflow: hidden;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
   background: transparent;
-  aspect-ratio: 21 / 9;
-  min-height: 130px;
-  max-height: 250px;
+  height: 180px;
+  min-height: 170px;
 }
 
 /* ── Track outer (clip) ─────────────────────────────────── */

@@ -32,6 +32,7 @@ const ProductDetailsSheet = React.lazy(() => import('./components/ProductDetails
 const OfflineBanner = React.lazy(() => import('./components/OfflineBanner'));
 const UpdatePrompt = React.lazy(() => import('./components/UpdatePrompt'));
 const OnboardingModal = React.lazy(() => import('./components/OnboardingModal'));
+const PartnerRegistrationPage = React.lazy(() => import('./components/PartnerRegistrationPage'));
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -710,6 +711,10 @@ function AppContent() {
                 <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
                 <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} initialGeofence={geofenceConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
                 <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
+                <Route path="/partner-register" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="/partner" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="/sell" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="/join-partner" element={<PartnerRegistrationPage navigate={navigate} />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </React.Suspense>

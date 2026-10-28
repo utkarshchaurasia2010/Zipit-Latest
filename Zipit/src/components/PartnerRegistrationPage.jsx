@@ -1,0 +1,449 @@
+import React, { useState } from 'react';
+import { 
+  Store, 
+  Bike, 
+  CheckCircle2, 
+  ShieldCheck, 
+  Sparkles, 
+  ArrowLeft, 
+  Send, 
+  Phone, 
+  Mail, 
+  User, 
+  FileText, 
+  Building, 
+  MapPin, 
+  HelpCircle,
+  Truck,
+  IndianRupee,
+  Clock,
+  Award
+} from 'lucide-react';
+import { supabase } from '../services/db';
+import { useToast } from '../context/ToastContext';
+import './PartnerRegistrationPage.css';
+
+export default function PartnerRegistrationPage({ navigate }) {
+  const { showToast } = useToast();
+  const [role, setRole] = useState('shopkeeper'); // 'shopkeeper' or 'rider'
+  const [submittedApp, setSubmittedApp] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    mobile: '',
+    email: '',
+    aadhar: '',
+    shop_name: '',
+    shop_address: '',
+    shop_landmark: '',
+    fssai: '',
+    vehicle_type: 'Motorcycle',
+    vehicle_no: '',
+    license_no: '',
+    delivery_area: '',
+    agreed_terms: false
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validations
+    if (!formData.name.trim() || !formData.mobile.trim() || !formData.email.trim() || !formData.aadhar.trim()) {
+      showToast('Please fill all mandatory personal details (*)', 'error');
+      return;
+    }
+
+    if (formData.mobile.trim().length < 10) {
+      showToast('Please enter a valid 10-digit mobile number', 'error');
+      return;
+    }
+
+    if (formData.aadhar.trim().length < 12) {
+      showToast('Please enter a valid 12-digit Aadhaar number', 'error');
+      return;
+    }
+
+    if (role === 'shopkeeper' && (!formData.shop_address.trim() || !formData.shop_landmark.trim())) {
+      showToast('Shop address and landmark are required for retail partners (*)', 'error');
+      return;
+    }
+
+    if (role === 'rider' && !formData.vehicle_no.trim()) {
+      showToast('Vehicle registration number is required for delivery partners (*)', 'error');
+      return;
+    }
+
+    if (!formData.agreed_terms) {
+      showToast('Please agree to the Quickly Partner Terms & Conditions', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Generate unique application tracking code
+      const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const appCode = `APP-${randomSuffix}`;
+
+      const payload = {
+        code: appCode,
+        role: role,
+        name: formData.name.trim(),
+        mobile: formData.mobile.trim(),
+        email: formData.email.trim(),
+        aadhar: formData.aadhar.trim(),
+        fssai: role === 'shopkeeper' ? (formData.fssai.trim() || null) : null,
+        vehicle_no: role === 'rider' ? (formData.vehicle_no.trim() || null) : null,
+        shop_address: role === 'shopkeeper' 
+          ? `${formData.shop_name ? `[${formData.shop_name}] ` : ''}${formData.shop_address.trim()}`
+          : (formData.delivery_area.trim() || null),
+        shop_landmark: role === 'shopkeeper' 
+          ? formData.shop_landmark.trim() 
+          : (formData.vehicle_type ? `${formData.vehicle_type} (DL: ${formData.license_no || 'Pending'})` : null),
+        label: 'Online Application - Pending Review',
+        is_active: false, // Locked until Admin verifies in Partners section
+        agreed_terms: true
+      };
+
+      const { error } = await supabase.from('access_codes').insert([payload]);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setSubmittedApp({
+        code: appCode,
+        name: formData.name,
+        role: role,
+        mobile: formData.mobile
+      });
+
+      showToast('Application successfully submitted! Admin will review shortly.', 'success');
+    } catch (err) {
+      console.error('Partner registration error:', err);
+      showToast('Submission error: ' + err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="partner-reg-container">
+      {/* Top Bar */}
+      <div className="partner-reg-topbar">
+        <button onClick={() => navigate ? navigate('/') : window.history.back()} className="partner-back-btn">
+          <ArrowLeft size={18} /> Back to Shopping
+        </button>
+        <span className="partner-brand-tag">
+          <Sparkles size={14} /> Quickly Partner Network
+        </span>
+      </div>
+
+      {submittedApp ? (
+        /* SUCCESS RECEIPT VIEW */
+        <div className="partner-success-card">
+          <div className="success-icon-badge">
+            <CheckCircle2 size={48} color="#0c831f" />
+          </div>
+          <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--color-text)', margin: '16px 0 8px' }}>
+            Application Submitted!
+          </h2>
+          <p style={{ color: 'var(--color-text-light)', fontSize: '14.5px', lineHeight: '1.5', maxWidth: '440px', margin: '0 auto 20px' }}>
+            Thank you, <strong>{submittedApp.name}</strong>! Your application to become a <strong>{submittedApp.role === 'shopkeeper' ? 'Retail Partner (Shopkeeper)' : 'Delivery Partner (Rider)'}</strong> in Quickly has been registered.
+          </p>
+
+          <div className="partner-ref-box">
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Application Reference ID
+            </span>
+            <div style={{ fontSize: '22px', fontWeight: 900, fontFamily: 'monospace', color: '#0c831f', marginTop: '4px' }}>
+              {submittedApp.code}
+            </div>
+            <span style={{ fontSize: '11.5px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+              Keep this ID for tracking your onboarding status
+            </span>
+          </div>
+
+          <div className="partner-steps-list">
+            <div className="step-item">
+              <span className="step-num">1</span>
+              <div>
+                <strong>Admin Review (24-48 Hours)</strong>
+                <p>Quickly team reviews your Aadhaar and location details in our Partners portal.</p>
+              </div>
+            </div>
+            <div className="step-item">
+              <span className="step-num">2</span>
+              <div>
+                <strong>Partner Code Activation</strong>
+                <p>Upon verification, your official Access Code will be authorized for instant login.</p>
+              </div>
+            </div>
+            <div className="step-item">
+              <span className="step-num">3</span>
+              <div>
+                <strong>Start Earning</strong>
+                <p>Fulfill orders or start delivery drops with weekly digital settlements.</p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button 
+              onClick={() => navigate ? navigate('/') : (window.location.href = '/')} 
+              className="partner-primary-btn"
+            >
+              Return to Homepage
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* REGISTRATION FORM VIEW */
+        <div className="partner-form-wrapper">
+          {/* Hero Banner */}
+          <div className="partner-hero-banner">
+            <h1>Partner with Quickly</h1>
+            <p>Grow your business or earn with every delivery across rural and semi-urban India.</p>
+            
+            {/* Perks Cards */}
+            <div className="partner-perks-row">
+              <div className="perk-badge">
+                <IndianRupee size={15} /> Daily Settlements
+              </div>
+              <div className="perk-badge">
+                <Award size={15} /> Zero Joining Fee
+              </div>
+              <div className="perk-badge">
+                <Clock size={15} /> Flexible Schedule
+              </div>
+              <div className="perk-badge">
+                <ShieldCheck size={15} /> Verified Local Network
+              </div>
+            </div>
+          </div>
+
+          {/* Role Switcher */}
+          <div className="partner-role-switch">
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'shopkeeper' ? 'active' : ''}`}
+              onClick={() => setRole('shopkeeper')}
+            >
+              <Store size={20} />
+              <div>
+                <span className="role-btn-title">Retail Partner (Shopkeeper)</span>
+                <span className="role-btn-sub">दुकानदार / सेलर पार्टनर बनें</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={`role-tab-btn ${role === 'rider' ? 'active' : ''}`}
+              onClick={() => setRole('rider')}
+            >
+              <Bike size={20} />
+              <div>
+                <span className="role-btn-title">Delivery Partner (Rider)</span>
+                <span className="role-btn-sub">राइडर / डिलीवरी पार्टनर बनें</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="partner-main-form">
+            <div className="form-section-title">
+              <User size={18} /> Personal Identification (व्यक्तिगत जानकारी)
+            </div>
+
+            <div className="form-grid-2">
+              <div className="form-field">
+                <label>Full Name (पूरा नाम) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ramesh Kumar"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+
+              <div className="form-field">
+                <label>Mobile Number (मोबाइल नंबर) *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="10-digit phone"
+                  value={formData.mobile}
+                  onChange={e => setFormData({ ...formData, mobile: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-grid-2">
+              <div className="form-field">
+                <label>Email Address (ईमेल) *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div className="form-field">
+                <label>Aadhaar Card Number (आधार नंबर) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="12-digit Aadhaar"
+                  value={formData.aadhar}
+                  onChange={e => setFormData({ ...formData, aadhar: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* SHOPKEEPER SPECIFIC FIELDS */}
+            {role === 'shopkeeper' && (
+              <>
+                <div className="form-section-title" style={{ marginTop: '20px' }}>
+                  <Building size={18} /> Retail Store & Location Details (दुकान का विवरण)
+                </div>
+
+                <div className="form-field">
+                  <label>Store / Business Name (दुकान का नाम)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Shri Balaji Kirana Store"
+                    value={formData.shop_name}
+                    onChange={e => setFormData({ ...formData, shop_name: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Complete Shop Address with Village / Town (दुकान का पूरा पता) *</label>
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Village, Post, Block, Market name..."
+                    value={formData.shop_address}
+                    onChange={e => setFormData({ ...formData, shop_address: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label>Nearest Landmark (नजदीकी लैंडमार्क) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Opposite Primary School, near temple..."
+                      value={formData.shop_landmark}
+                      onChange={e => setFormData({ ...formData, shop_landmark: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label>FSSAI / Shop Registration (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="FSSAI certificate number if any"
+                      value={formData.fssai}
+                      onChange={e => setFormData({ ...formData, fssai: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* RIDER SPECIFIC FIELDS */}
+            {role === 'rider' && (
+              <>
+                <div className="form-section-title" style={{ marginTop: '20px' }}>
+                  <Truck size={18} /> Delivery Fleet & Vehicle Information (वाहन विवरण)
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label>Vehicle Type (वाहन का प्रकार) *</label>
+                    <select
+                      value={formData.vehicle_type}
+                      onChange={e => setFormData({ ...formData, vehicle_type: e.target.value })}
+                    >
+                      <option value="Motorcycle">Motorcycle / Bike (मोटरसाइकिल)</option>
+                      <option value="Scooter">Scooter (स्कूटर)</option>
+                      <option value="EV Bike">Electric Two-Wheeler (ई-बाइक)</option>
+                      <option value="Bicycle">Bicycle (साइकिल)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-field">
+                    <label>Vehicle Reg. Number (गाड़ी का नंबर) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. UP61AY1234"
+                      value={formData.vehicle_no}
+                      onChange={e => setFormData({ ...formData, vehicle_no: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label>Driving License No. (ड्राइविंग लाइसेंस)</label>
+                    <input
+                      type="text"
+                      placeholder="DL number (Optional for bicycle)"
+                      value={formData.license_no}
+                      onChange={e => setFormData({ ...formData, license_no: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label>Preferred Delivery Village / Area (कार्य क्षेत्र)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Pahetiya, Ghazipur Bazar..."
+                      value={formData.delivery_area}
+                      onChange={e => setFormData({ ...formData, delivery_area: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Terms Agreement */}
+            <div className="terms-checkbox-box">
+              <label>
+                <input
+                  type="checkbox"
+                  required
+                  checked={formData.agreed_terms}
+                  onChange={e => setFormData({ ...formData, agreed_terms: e.target.checked })}
+                />
+                <span>
+                  I confirm that all provided details and documents are authentic. I agree to adhere to Quickly's Partner Operating Guidelines and service standards.
+                </span>
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="partner-submit-btn"
+            >
+              {loading ? 'Submitting Application...' : (
+                <>
+                  <Send size={18} /> Submit Application for Admin Verification
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -6,7 +6,7 @@ import AdminLayout from './components/AdminLayout';
 import Overview from './pages/Overview';
 import Settings from './pages/Settings';
 import AdminDashboard from './components/AdminDashboard';
-import AccessCodesManager from './components/AccessCodesManager';
+import PartnersCodesManager from './components/PartnersCodesManager';
 import SectionsManager from './pages/SectionsManager';
 import RevenuesPage from './pages/RevenuesPage';
 import { ToastProvider } from './context/ToastContext';
@@ -90,7 +90,8 @@ function App() {
               <Route path="coupons" element={<AdminDashboard key="coupons" initialTab="coupons" />} />
               <Route path="users" element={<AdminDashboard key="users" initialTab="users" />} />
               <Route path="sections" element={<SectionsManager />} />
-              <Route path="access-codes" element={<AccessCodesManager />} />
+              <Route path="partners-codes" element={<PartnersCodesManager />} />
+              <Route path="access-codes" element={<Navigate to="/partners-codes" replace />} />
               <Route path="settings" element={<Settings profile={profile} setProfile={setProfile} />} />
               <Route path="*" element={<Navigate to="/orders" replace />} />
             </Route>

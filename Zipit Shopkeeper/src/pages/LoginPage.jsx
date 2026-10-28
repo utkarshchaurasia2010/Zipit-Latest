@@ -66,6 +66,18 @@ export default function LoginPage() {
             {loading ? 'Verifying...' : 'Access Portal'}
           </button>
         </form>
+
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', fontSize: '13px', color: '#64748b' }}>
+          <span>New Retailer? </span>
+          <a 
+            href="https://zipity.vercel.app/partner-register" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#0c831f', fontWeight: '700', textDecoration: 'none' }}
+          >
+            Apply Online as Partner
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
-import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle } from 'lucide-react';
+import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, Store } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -180,6 +180,19 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
                 <CreditCard size={18} color={theme === 'dark' ? '#86efac' : '#15803d'} />
               </div>
               <span>Payment Methods</span>
+            </div>
+            <ChevronRight size={20} color="var(--color-text-light)" />
+          </div>
+
+          <div className="menu-item" onClick={() => navigate('/partner-register')}>
+            <div className="menu-item-left">
+              <div className="menu-icon-box" style={{ background: theme === 'dark' ? 'rgba(12, 131, 31, 0.2)' : '#ecfdf5' }}>
+                <Store size={18} color="#0c831f" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 600 }}>Partner with Quickly</span>
+                <span style={{ fontSize: '11px', color: '#0c831f', fontWeight: 700 }}>Become a Seller or Delivery Rider</span>
+              </div>
             </div>
             <ChevronRight size={20} color="var(--color-text-light)" />
           </div>

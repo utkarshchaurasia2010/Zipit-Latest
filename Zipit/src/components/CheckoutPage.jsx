@@ -265,17 +265,33 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       // Invisible Bot Protection verification for checkout
       await executeInvisibleTurnstile('checkout_place_order');
 
-      // 0. Check store open status set by Admin
+      // 0. Check store open status set by Admin & Schedule
       try {
-        const { data: adminProf } = await supabase
-          .from('profiles')
-          .select('store_open')
-          .eq('is_admin', true)
-          .limit(1)
-          .single();
+        const [adminRes, branding] = await Promise.all([
+          supabase.from('profiles').select('store_open').eq('is_admin', true).limit(1).single(),
+          db.branding.get()
+        ]);
 
-        if (adminProf && adminProf.store_open === false) {
-          showToast('The store is currently paused and not taking new orders. Please check back shortly!', 'Store Paused');
+        const adminProf = adminRes?.data;
+        const openTime = branding?.store_open_time || '07:00';
+        const closeTime = branding?.store_close_time || '23:00';
+
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const [oH, oM] = openTime.split(':').map(Number);
+        const [cH, cM] = closeTime.split(':').map(Number);
+        const openMins = (oH || 0) * 60 + (oM || 0);
+        const closeMins = (cH || 0) * 60 + (cM || 0);
+
+        let isWithinHours = false;
+        if (openMins < closeMins) {
+          isWithinHours = currentMins >= openMins && currentMins < closeMins;
+        } else {
+          isWithinHours = currentMins >= openMins || currentMins < closeMins;
+        }
+
+        if (adminProf?.store_open === false || !isWithinHours) {
+          showToast(`Store is currently offline (Operating hours: ${openTime} to ${closeTime}). Orders will resume at ${openTime}!`, 'Store Offline');
           setProcessing(false);
           return;
         }

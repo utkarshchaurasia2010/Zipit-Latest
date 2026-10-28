@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers, IndianRupee, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers, IndianRupee, ArrowUpCircle, ArrowDownCircle, Users } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import './AdminLayout.css';
 
@@ -25,9 +25,63 @@ const AdminLayout = ({ profile, setProfile }) => {
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('admin_theme') || 'dark');
 
-  // Store Open / Close Master Switch State
+  // Store Open / Close Master Switch & Auto-Schedule State
   const [isStoreOpen, setIsStoreOpen] = useState(profile?.store_open ?? true);
   const [togglingStore, setTogglingStore] = useState(false);
+  const [storeSchedule, setStoreSchedule] = useState({ open: '07:00', close: '23:00' });
+  const [isWithinHours, setIsWithinHours] = useState(true);
+
+  // Auto Store Offline Scheduler based on Admin Settings Opening & Closing Times
+  useEffect(() => {
+    let timer = null;
+
+    const checkSchedule = (openTime = '07:00', closeTime = '23:00') => {
+      const now = new Date();
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      const [oH, oM] = openTime.split(':').map(Number);
+      const [cH, cM] = closeTime.split(':').map(Number);
+      const openMins = (oH || 0) * 60 + (oM || 0);
+      const closeMins = (cH || 0) * 60 + (cM || 0);
+
+      let inHours = false;
+      if (openMins < closeMins) {
+        // Standard daytime operating hours (e.g. 07:00 to 23:00)
+        inHours = currentMins >= openMins && currentMins < closeMins;
+      } else {
+        // Overnight operating hours
+        inHours = currentMins >= openMins || currentMins < closeMins;
+      }
+
+      setIsWithinHours(inHours);
+
+      // If current time is outside operating hours and store is open, auto go offline!
+      if (!inHours && isStoreOpen) {
+        setIsStoreOpen(false);
+        supabase.from('profiles').update({ store_open: false }).eq('is_admin', true).then(() => {
+          if (setProfile && profile) setProfile(prev => ({ ...prev, store_open: false }));
+        });
+      }
+    };
+
+    const loadAndCheck = async () => {
+      try {
+        const branding = await db.branding.get();
+        const oTime = branding?.store_open_time || '07:00';
+        const cTime = branding?.store_close_time || '23:00';
+        setStoreSchedule({ open: oTime, close: cTime });
+        checkSchedule(oTime, cTime);
+      } catch (_) {
+        checkSchedule('07:00', '23:00');
+      }
+    };
+
+    loadAndCheck();
+    timer = setInterval(() => {
+      checkSchedule(storeSchedule.open, storeSchedule.close);
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(timer);
+  }, [isStoreOpen, storeSchedule.open, storeSchedule.close]);
 
   useEffect(() => {
     if (profile && typeof profile.store_open === 'boolean') {
@@ -181,8 +235,29 @@ const AdminLayout = ({ profile, setProfile }) => {
     { name: 'Sections', path: '/sections', icon: <Layers size={20} /> },
     { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
     { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
-    { name: 'Access Codes', path: '/access-codes', icon: <Key size={20} /> },
+    { name: 'Partners Codes', path: '/partners-codes', icon: <Users size={20} /> },
   ];
+
+  // Pending Applications Badge State
+  const [pendingAppsCount, setPendingAppsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchAppsCount = async () => {
+      const { data } = await supabase.from('access_codes').select('code, label');
+      const apps = (data || []).filter(c => (c.code && c.code.startsWith('APP-')) || (c.label && (c.label.includes('Application') || c.label.includes('Pending'))));
+      setPendingAppsCount(apps.length);
+    };
+
+    fetchAppsCount();
+
+    const channel = supabase.channel('partners-nav-badge-listener')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'access_codes' }, () => {
+        fetchAppsCount();
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   // Pending Refund Badge State
   const [pendingRefundCount, setPendingRefundCount] = useState(0);
@@ -281,6 +356,11 @@ const AdminLayout = ({ profile, setProfile }) => {
               {item.path === '/refunds' && pendingRefundCount > 0 && (
                 <span className="sidebar-refund-badge">
                   {pendingRefundCount > 9 ? '9+' : pendingRefundCount}
+                </span>
+              )}
+              {item.path === '/partners-codes' && pendingAppsCount > 0 && (
+                <span className="sidebar-refund-badge" style={{ background: '#dc2626', color: '#ffffff' }}>
+                  {pendingAppsCount > 9 ? '9+' : pendingAppsCount}
                 </span>
               )}
             </NavLink>
@@ -514,22 +594,22 @@ const AdminLayout = ({ profile, setProfile }) => {
               </a>
             </div>
 
-            {/* Store Open / Close Master Switch */}
+            {/* Store Open / Close Master Switch with Auto-Schedule indicator */}
             <button
               onClick={handleToggleStoreOpen}
               disabled={togglingStore}
               role="switch"
               aria-checked={isStoreOpen}
-              title={isStoreOpen ? 'Store is live: click to pause taking orders' : 'Store is paused: click to resume taking orders'}
+              title={isStoreOpen ? `Store is live (${storeSchedule.open} - ${storeSchedule.close}): click to pause` : `Store is offline: click to toggle`}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '6px 14px',
                 borderRadius: '999px',
-                border: isStoreOpen ? '1px solid #10b981' : '1px solid #cbd5e1',
-                background: isStoreOpen ? '#ecfdf5' : 'var(--color-surface)',
-                color: isStoreOpen ? '#047857' : 'var(--color-text-light)',
+                border: isStoreOpen ? '1px solid #10b981' : (!isWithinHours ? '1px solid #f59e0b' : '1px solid #cbd5e1'),
+                background: isStoreOpen ? '#ecfdf5' : (!isWithinHours ? '#fffbeb' : 'var(--color-surface)'),
+                color: isStoreOpen ? '#047857' : (!isWithinHours ? '#b45309' : 'var(--color-text-light)'),
                 fontWeight: 700,
                 fontSize: '12.5px',
                 cursor: togglingStore ? 'not-allowed' : 'pointer',
@@ -543,12 +623,18 @@ const AdminLayout = ({ profile, setProfile }) => {
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  background: isStoreOpen ? '#10b981' : '#94a3b8',
+                  background: isStoreOpen ? '#10b981' : (!isWithinHours ? '#f59e0b' : '#94a3b8'),
                   boxShadow: isStoreOpen ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : 'none',
                   transition: 'all 0.2s ease'
                 }}
               />
-              <span>{togglingStore ? 'Updating...' : (isStoreOpen ? 'Store Online' : 'Store Paused')}</span>
+              <span>
+                {togglingStore 
+                  ? 'Updating...' 
+                  : (isStoreOpen 
+                      ? `Store Online (${storeSchedule.close} close)` 
+                      : (!isWithinHours ? `Auto-Closed (Opens ${storeSchedule.open})` : 'Store Paused'))}
+              </span>
             </button>
 
             <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">
