@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { supabase } from '../services/db';
 
@@ -8,7 +9,10 @@ import { supabase } from '../services/db';
  * without requiring the user to reinstall or update APK.
  */
 
+export const OFFICIAL_OTA_URL = 'https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip';
+
 let isUpdating = false;
+let isInitialized = false;
 let realtimeChannel = null;
 
 export const initLiveUpdater = async () => {
@@ -16,40 +20,58 @@ export const initLiveUpdater = async () => {
     return;
   }
 
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true;
+
   try {
     // 1. Notify native layer that current bundle booted successfully.
     // This is Capgo's safety latch - confirms the bundle works so it doesn't roll back.
     await CapacitorUpdater.notifyAppReady();
-    console.log('[LiveUpdater] Current bundle verified as ready');
+    console.log('[LiveOTA] Current bundle verified as ready');
 
     // 2. Check for updates on startup after a short delay for smooth first render
     setTimeout(() => {
       checkForLiveBundleUpdate(true);
     }, 2500);
 
-    // 3. Realtime Supabase listener: when Admin saves a new OTA version, download & apply immediately!
+    // 3. Check for updates whenever the app is brought back to foreground from background
+    try {
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          console.log('[LiveOTA] App foregrounded, checking for OTA updates...');
+          checkForLiveBundleUpdate(true);
+        }
+      });
+    } catch (_) {}
+
+    // 4. Realtime Supabase listener: when Admin saves a new OTA version, download & apply immediately!
     if (!realtimeChannel) {
       realtimeChannel = supabase.channel('realtime-ota-listener')
         .on('postgres_changes', {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'profiles',
           filter: 'id=eq.00000000-0000-0000-0000-000000000001'
         }, async (payload) => {
-          if (payload.new?.address) {
+          const rawAddress = payload.new?.address;
+          if (rawAddress) {
             try {
-              const data = typeof payload.new.address === 'string' ? JSON.parse(payload.new.address) : payload.new.address;
-              if (data.ota_bundle_version && data.ota_bundle_url) {
-                console.log('[LiveUpdater] New OTA version published in admin:', data.ota_bundle_version);
+              const data = typeof rawAddress === 'string' ? JSON.parse(rawAddress) : rawAddress;
+              if (data.ota_bundle_version) {
+                console.log('[LiveOTA] Realtime signal received for version:', data.ota_bundle_version);
                 await checkForLiveBundleUpdate(true);
               }
             } catch (_) {}
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('[LiveOTA] Realtime listener status:', status);
+        });
     }
   } catch (err) {
-    console.warn('[LiveUpdater] init failed:', err);
+    console.warn('[LiveOTA] init failed:', err);
   }
 };
 
@@ -82,24 +104,31 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
     }
 
     const latestVersion = (branding.ota_bundle_version || '').trim();
-    const latestUrl = (branding.ota_bundle_url || '').trim();
+    let latestUrl = (branding.ota_bundle_url || '').trim();
 
-    if (!latestVersion || !latestUrl) {
+    if (!latestVersion) {
       isUpdating = false;
       return null;
+    }
+
+    // Failsafe auto-sanitization: GitHub Actions artifact links require web login and 404 on mobile devices.
+    // If detected or missing, automatically use the permanent public GitHub Release asset.
+    if (!latestUrl || latestUrl.includes('actions/runs') || latestUrl.includes('/artifacts/')) {
+      console.warn('[LiveOTA] Redirecting private or empty artifact URL to official public release asset');
+      latestUrl = OFFICIAL_OTA_URL;
     }
 
     // Get current bundle version
     const current = await CapacitorUpdater.current();
-    console.log('[LiveUpdater] Current bundle version:', current?.version, 'Latest available:', latestVersion);
+    console.log('[LiveOTA] Current bundle version:', current?.version, 'Latest available:', latestVersion);
 
     if (current?.version === latestVersion) {
-      console.log('[LiveUpdater] Already running latest version:', latestVersion);
+      console.log('[LiveOTA] Already running latest version:', latestVersion);
       isUpdating = false;
       return null;
     }
 
-    console.log(`[LiveUpdater] Downloading OTA bundle update ${latestVersion} from ${latestUrl}...`);
+    console.log(`[LiveOTA] Downloading OTA bundle update ${latestVersion} from ${latestUrl}...`);
 
     // Download and extract zip package in background
     const bundle = await CapacitorUpdater.download({
@@ -107,11 +136,11 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
       version: latestVersion,
     });
 
-    console.log('[LiveUpdater] Downloaded and unpacked bundle:', bundle.id);
+    console.log('[LiveOTA] Downloaded and unpacked bundle:', bundle.id);
 
     if (immediateApply) {
       // Instantly switch WebView to the new bundle and reload UI
-      console.log('[LiveUpdater] Applying bundle immediately via CapacitorUpdater.set...');
+      console.log('[LiveOTA] Applying bundle immediately via CapacitorUpdater.set...');
       await CapacitorUpdater.set({ id: bundle.id });
     } else {
       // Stage bundle to load automatically on next launch/restart
@@ -121,9 +150,10 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
     isUpdating = false;
     return bundle;
   } catch (err) {
-    console.warn('[LiveUpdater] Error downloading OTA bundle:', err);
+    console.warn('[LiveOTA] Error downloading or applying OTA bundle:', err);
     isUpdating = false;
     return null;
   }
 };
+
 

@@ -15,11 +15,27 @@ import {
   ShieldCheck,
   CheckCircle2,
   Smartphone,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react';
 import { db } from '../services/db';
 import { useToast } from '../context/ToastContext';
 import './Settings.css';
+
+export const OFFICIAL_OTA_URL = 'https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip';
+
+export const getNextOtaVersion = (current) => {
+  if (!current) return '1.0.34';
+  const match = current.match(/^(.*?)(\d+)$/);
+  if (match) {
+    const prefix = match[1];
+    const num = parseInt(match[2], 10) + 1;
+    return `${prefix}${num}`;
+  }
+  return `${current}.1`;
+};
 
 const LOGO_CONFIGS = [
   { key: 'customer_logo', title: 'Customer App', role: 'PWA & Splash' },
@@ -45,7 +61,31 @@ const Settings = ({ profile, setProfile }) => {
   const loadBranding = async () => {
     const data = await db.branding.get();
     if (data) {
+      if (!data.ota_bundle_url) {
+        data.ota_bundle_url = OFFICIAL_OTA_URL;
+      }
       setBranding(data);
+    } else {
+      setBranding({ ota_bundle_url: OFFICIAL_OTA_URL, ota_bundle_version: '1.0.33' });
+    }
+  };
+
+  const handleAutoDeployOTA = async () => {
+    const nextVer = getNextOtaVersion(branding.ota_bundle_version || '1.0.33');
+    const updated = {
+      ...branding,
+      ota_bundle_version: nextVer,
+      ota_bundle_url: branding.ota_bundle_url || OFFICIAL_OTA_URL
+    };
+    setSaving(true);
+    try {
+      await db.branding.update(updated);
+      setBranding(updated);
+      showToast(`🚀 Live OTA Update v${nextVer} deployed to all user devices!`, 'success');
+    } catch (err) {
+      showToast('Failed to deploy OTA update: ' + err.message, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -603,38 +643,97 @@ const Settings = ({ profile, setProfile }) => {
         <div className="card-title-row">
           <div className="card-title-icon"><Smartphone size={18} /></div>
           <h3>Mobile App Live OTA Updates (Capgo)</h3>
+          <span className="ota-live-pill">
+            <span className="ota-pulse-dot"></span>
+            Realtime Active
+          </span>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--color-text-light)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-light)', marginBottom: '8px' }}>
           Push JavaScript, CSS, and UI updates directly to installed customer Android devices in real-time without requiring APK reinstallation or app store review delays.
         </p>
 
-        <div className="form-grid-2">
+        {/* Warning if private artifact URL is entered */}
+        {branding.ota_bundle_url && (branding.ota_bundle_url.includes('actions/runs') || branding.ota_bundle_url.includes('/artifacts/')) && (
+          <div className="ota-warning-box">
+            <AlertTriangle size={18} className="ota-warning-icon" />
+            <div className="ota-warning-content">
+              <strong>Private GitHub Actions Artifact Link Detected!</strong>
+              <p>GitHub Actions artifact links require browser login and cause 404 download errors on mobile devices. Use the official public release URL instead.</p>
+              <button 
+                type="button" 
+                className="ota-fix-btn"
+                onClick={() => setBranding(prev => ({ ...prev, ota_bundle_url: OFFICIAL_OTA_URL }))}
+              >
+                Reset to Official Public Release URL
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="ota-status-card">
+          <div className="ota-status-info">
+            <div className="ota-status-label">Currently Broadcasted Version</div>
+            <div className="ota-status-val">
+              <code>{branding.ota_bundle_version || '1.0.33'}</code>
+              <span className="ota-active-tag">Active on Customer Devices</span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={handleAutoDeployOTA} 
+            disabled={saving} 
+            className="ota-deploy-btn"
+          >
+            <Zap size={15} />
+            <span>{saving ? 'Broadcasting...' : `Deploy v${getNextOtaVersion(branding.ota_bundle_version || '1.0.33')} Now`}</span>
+          </button>
+        </div>
+
+        <div className="form-grid-2" style={{ marginTop: '12px' }}>
           <div className="form-group">
             <label>Live OTA Bundle Version</label>
             <input 
               type="text" 
               value={branding.ota_bundle_version || ''} 
               onChange={e => setBranding(prev => ({ ...prev, ota_bundle_version: e.target.value }))}
-              placeholder="e.g. 1.0.1 or commit hash"
+              placeholder="e.g. 1.0.34"
               className="clean-input"
             />
           </div>
 
           <div className="form-group">
-            <label>Live Bundle Package URL (.zip)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label>Live Bundle Package URL (.zip)</label>
+              <button 
+                type="button" 
+                onClick={() => setBranding(prev => ({ ...prev, ota_bundle_url: OFFICIAL_OTA_URL }))} 
+                className="ota-text-btn"
+              >
+                Set Default
+              </button>
+            </div>
             <input 
               type="url" 
               value={branding.ota_bundle_url || ''} 
               onChange={e => setBranding(prev => ({ ...prev, ota_bundle_url: e.target.value }))}
-              placeholder="https://.../Quickly-OTA-Bundle.zip"
+              placeholder={OFFICIAL_OTA_URL}
               className="clean-input"
             />
           </div>
         </div>
 
-        <div className="form-actions" style={{ marginTop: '16px' }}>
+        <div className="ota-footer-actions">
+          <button 
+            type="button" 
+            onClick={() => window.open(branding.ota_bundle_url || OFFICIAL_OTA_URL, '_blank')} 
+            className="ota-outline-btn"
+          >
+            <ExternalLink size={14} />
+            <span>Test Direct Download Link</span>
+          </button>
+
           <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
-            <span>{saving ? 'Saving...' : 'Deploy Live OTA Update'}</span>
+            <span>{saving ? 'Saving...' : 'Save OTA Settings'}</span>
           </button>
         </div>
       </div>
