@@ -49,11 +49,9 @@ jobs:
         working-directory: Quickly
         run: npm run build
 
-      - name: Copy Web Assets into Android App
+      - name: Sync Capacitor Android
         working-directory: Quickly
-        run: |
-          mkdir -p android/app/src/main/assets/public
-          cp -rf dist/* android/app/src/main/assets/public/
+        run: npx cap sync android
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
