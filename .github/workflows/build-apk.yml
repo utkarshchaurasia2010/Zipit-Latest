@@ -57,21 +57,7 @@ jobs:
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
-        shell: bash
-        run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../../build.log
-        continue-on-error: true
-
-      - name: Annotate Gradle Failure
-        shell: bash
-        run: |
-          if grep -q "BUILD FAILED" build.log; then
-            CAUSE=$(grep -A 10 "What went wrong:" build.log | head -n 10 | tr '\r\n' ' -- ')
-            echo "::error title=GradleWhatWentWrong::$CAUSE"
-            EXCEPTION=$(grep -A 10 "* Exception is:" build.log | head -n 10 | tr '\r\n' ' -- ')
-            echo "::error title=GradleException::$EXCEPTION"
-            exit 1
-          fi
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
