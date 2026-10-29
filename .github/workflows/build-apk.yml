@@ -23,15 +23,16 @@ jobs:
       - name: Make Gradlew Executable
         run: chmod +x Quickly/android/gradlew
 
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
+
+      - name: Install Android Platform 35
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,16 +57,27 @@ jobs:
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
-
-      - name: Locate Generated APKs
+        shell: bash
         run: |
-          echo "=== Searching for generated APK files ==="
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Check Build Output
+        working-directory: Quickly/android
+        shell: bash
+        run: |
+          echo "=== APK Search ==="
           find . -name "*.apk" -ls
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: Quickly-Debug-APK
-          path: '**/*.apk'
+          path: 'Quickly/android/**/*.apk'
           if-no-files-found: error
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-failure-log
+          path: Quickly/android/build.log
