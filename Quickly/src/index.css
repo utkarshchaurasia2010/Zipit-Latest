@@ -408,3 +408,22 @@ button:active {
 .order-card:active {
   transform: scale(0.98);
 }
+
+/* Universal Top Safe Area Inset Support for Edge-to-Edge Android / iOS screens */
+.page-header,
+.substitute-page-header {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 12px) !important;
+}
+
+.checkout-header {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 12px) !important;
+}
+
+.track-header {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 16px) !important;
+}
+
+.categories-page-container:not(.embedded) .categories-scroll-area {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 20px) !important;
+}
+

@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { supabase } from '../services/db';
 
 let isChannelCreated = false;
@@ -29,6 +28,7 @@ export const setupNotificationChannels = async () => {
 };
 
 // Request runtime notification permissions (required on Android 13+)
+// Safe and crash-proof: Uses Android LocalNotifications permission prompt
 export const requestAppNotificationPermission = async () => {
   if (!Capacitor.isNativePlatform()) {
     if ('Notification' in window && Notification.permission !== 'granted') {
@@ -41,13 +41,21 @@ export const requestAppNotificationPermission = async () => {
 
   try {
     await setupNotificationChannels();
+    // This prompts Android's native runtime POST_NOTIFICATIONS permission dialog
     const localPerm = await LocalNotifications.requestPermissions();
-    console.log('Local notifications permission:', localPerm.display);
+    console.log('[Notifications] Permission status:', localPerm.display);
 
-    const pushPerm = await PushNotifications.requestPermissions();
-    if (pushPerm.receive === 'granted') {
-      await PushNotifications.register();
-    }
+    // Safely attempt push registration only if available (never crash app)
+    try {
+      const { PushNotifications } = await import('@capacitor/push-notifications');
+      if (PushNotifications && typeof PushNotifications.checkPermissions === 'function') {
+        const check = await PushNotifications.checkPermissions();
+        if (check.receive === 'granted') {
+          // Wrap in try-catch to avoid native Firebase initialization crash
+          PushNotifications.register().catch(e => console.warn('Push register skipped:', e));
+        }
+      }
+    } catch (_) {}
   } catch (err) {
     console.warn('Error requesting notification permissions:', err);
   }
@@ -99,53 +107,69 @@ export const initPushNotificationListeners = (navigate, showToast) => {
 
   setupNotificationChannels();
 
-  // Push registration token listener
-  const pushRegHandle = PushNotifications.addListener('registration', async (token) => {
-    console.log('Native Push Registration Token:', token.value);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', user.id);
-      }
-    } catch (_) {}
-  });
-
-  // Push notification received while in foreground
-  const pushRecvHandle = PushNotifications.addListener('pushNotificationReceived', (notification) => {
-    sendNativeAppNotification({
-      title: notification.title,
-      body: notification.body,
-      extra: notification.data
-    });
-    if (showToast) {
-      showToast(notification.title || 'Quickly Notification', notification.body || '', 'info');
-    }
-  });
-
-  // Action performed on push notification tap
-  const pushActionHandle = PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-    const data = notification.notification?.data || {};
-    if (data.route && navigate) {
-      navigate(data.route);
-    } else if (data.order_id && navigate) {
-      navigate('/track');
-    }
-  });
-
   // Action performed on local notification tap
-  const localActionHandle = LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
-    const extra = notification.notification?.extra || {};
-    if (extra.route && navigate) {
-      navigate(extra.route);
-    } else if (navigate) {
-      navigate('/track');
-    }
-  });
+  let localActionHandle = null;
+  try {
+    LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
+      const extra = notification.notification?.extra || {};
+      if (extra.route && navigate) {
+        navigate(extra.route);
+      } else if (navigate) {
+        navigate('/track');
+      }
+    }).then(h => { localActionHandle = h; }).catch(() => {});
+  } catch (_) {}
+
+  // Safe Push Notifications listeners (guarded so it never crashes)
+  let pushRegHandle = null;
+  let pushRecvHandle = null;
+  let pushActionHandle = null;
+
+  import('@capacitor/push-notifications').then(({ PushNotifications }) => {
+    try {
+      PushNotifications.addListener('registration', async (token) => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id && token?.value) {
+            await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', user.id);
+          }
+        } catch (_) {}
+      }).then(h => { pushRegHandle = h; }).catch(() => {});
+
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        sendNativeAppNotification({
+          title: notification.title,
+          body: notification.body,
+          extra: notification.data
+        });
+        if (showToast) {
+          showToast(notification.title || 'Quickly Notification', notification.body || '', 'info');
+        }
+      }).then(h => { pushRecvHandle = h; }).catch(() => {});
+
+      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+        const data = notification.notification?.data || {};
+        if (data.route && navigate) {
+          navigate(data.route);
+        } else if (data.order_id && navigate) {
+          navigate('/track');
+        }
+      }).then(h => { pushActionHandle = h; }).catch(() => {});
+    } catch (_) {}
+  }).catch(() => {});
 
   return () => {
-    pushRegHandle.then(h => h.remove()).catch(() => {});
-    pushRecvHandle.then(h => h.remove()).catch(() => {});
-    pushActionHandle.then(h => h.remove()).catch(() => {});
-    localActionHandle.then(h => h.remove()).catch(() => {});
+    if (localActionHandle && typeof localActionHandle.remove === 'function') {
+      localActionHandle.remove();
+    }
+    if (pushRegHandle && typeof pushRegHandle.remove === 'function') {
+      pushRegHandle.remove();
+    }
+    if (pushRecvHandle && typeof pushRecvHandle.remove === 'function') {
+      pushRecvHandle.remove();
+    }
+    if (pushActionHandle && typeof pushActionHandle.remove === 'function') {
+      pushActionHandle.remove();
+    }
   };
 };

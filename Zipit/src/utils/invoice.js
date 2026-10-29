@@ -469,10 +469,49 @@ export const downloadInvoice = (order, onToast = null) => {
   modalOverlay.onclick = (e) => {
     if (e.target === modalOverlay) modalOverlay.remove();
   };
-  modalHeader.querySelector('#invoice-print-btn').onclick = () => {
+  modalHeader.querySelector('#invoice-print-btn').onclick = async () => {
     try {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    } catch (_) {}
+      const blob = new Blob([html], { type: 'text/html' });
+      const safeFilename = `Quickly_Invoice_${invoiceNo.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`;
+
+      // 1. On Android / mobile platforms, Web Share API lets users Print or Save to Drive / Files
+      if (navigator.canShare) {
+        try {
+          const file = new File([blob], safeFilename, { type: 'text/html' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `Tax Invoice - ${invoiceNo}`,
+              text: `Tax Invoice for order ${invoiceNo} from Quickly.`
+            });
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') return; // User simply closed the share sheet
+        }
+      }
+
+      // 2. Direct browser download fallback
+      try {
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = safeFilename;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(downloadUrl);
+        }, 1000);
+      } catch (_) {}
+
+      // 3. For Desktop browsers or web views with print spooler support
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (_) {}
+    } catch (err) {
+      console.error('Invoice action error:', err);
+    }
   };
 };
