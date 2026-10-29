@@ -120,21 +120,41 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
 
     // Get current bundle version
     const current = await CapacitorUpdater.current();
-    console.log('[LiveOTA] Current bundle version:', current?.version, 'Latest available:', latestVersion);
+    const activeVersion = current?.bundle?.version || current?.native || current?.version || '';
+    console.log('[LiveOTA] Active bundle version:', activeVersion, 'Latest available:', latestVersion);
 
-    if (current?.version === latestVersion) {
+    if (activeVersion && activeVersion === latestVersion) {
       console.log('[LiveOTA] Already running latest version:', latestVersion);
       isUpdating = false;
       return null;
     }
 
-    console.log(`[LiveOTA] Downloading OTA bundle update ${latestVersion} from ${latestUrl}...`);
+    // Retrieve or fetch SHA-256 checksum (strictly required by Capgo v8 on Android)
+    let checksum = (branding.ota_bundle_checksum || '').trim();
+    if (!checksum && latestUrl.includes('github.com')) {
+      try {
+        const shaUrl = latestUrl.replace(/\.zip$/i, '.zip.sha256');
+        const shaRes = await fetch(shaUrl, { cache: 'no-store' });
+        if (shaRes.ok) {
+          const shaText = await shaRes.text();
+          checksum = shaText.trim().split(/\s+/)[0];
+          console.log('[LiveOTA] Retrieved checksum from release:', checksum);
+        }
+      } catch (_) {}
+    }
+
+    console.log(`[LiveOTA] Downloading OTA bundle update ${latestVersion} from ${latestUrl} with checksum: ${checksum || 'auto'}`);
 
     // Download and extract zip package in background
-    const bundle = await CapacitorUpdater.download({
+    const downloadOptions = {
       url: latestUrl,
       version: latestVersion,
-    });
+    };
+    if (checksum) {
+      downloadOptions.checksum = checksum;
+    }
+
+    const bundle = await CapacitorUpdater.download(downloadOptions);
 
     console.log('[LiveOTA] Downloaded and unpacked bundle:', bundle.id);
 

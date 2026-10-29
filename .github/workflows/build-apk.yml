@@ -55,17 +55,24 @@ jobs:
         working-directory: Quickly
         run: npx cap sync android
 
-      - name: Create Live OTA Bundle ZIP
+      - name: Create Live OTA Bundle ZIP and Compute SHA256 Checksum
         working-directory: Quickly
         run: |
           cd dist
           zip -r ../Quickly-OTA-Bundle.zip .
+          cd ..
+          CHECKSUM=$(sha256sum Quickly-OTA-Bundle.zip | awk '{print $1}')
+          echo "OTA_CHECKSUM=$CHECKSUM" >> $GITHUB_ENV
+          echo "$CHECKSUM" > Quickly-OTA-Bundle.zip.sha256
+          echo "Generated SHA-256 Checksum: $CHECKSUM"
 
       - name: Upload Live OTA Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Quickly-OTA-Bundle
-          path: Quickly/Quickly-OTA-Bundle.zip
+          path: |
+            Quickly/Quickly-OTA-Bundle.zip
+            Quickly/Quickly-OTA-Bundle.zip.sha256
           if-no-files-found: error
 
       - name: Publish Live OTA Release Asset
@@ -74,7 +81,9 @@ jobs:
         with:
           tag_name: live-ota
           name: "Quickly Live OTA Release (Auto-Deploy)"
-          files: Quickly/Quickly-OTA-Bundle.zip
+          files: |
+            Quickly/Quickly-OTA-Bundle.zip
+            Quickly/Quickly-OTA-Bundle.zip.sha256
           draft: false
           prerelease: false
         env:
@@ -83,6 +92,8 @@ jobs:
       - name: Auto-Sync OTA Version to Supabase
         if: github.ref == 'refs/heads/main'
         working-directory: Quickly
+        env:
+          OTA_CHECKSUM: ${{ env.OTA_CHECKSUM }}
         run: |
           node -e "
             const { createClient } = require('@supabase/supabase-js');
@@ -90,17 +101,19 @@ jobs:
             async function update() {
               const version = '1.0.${{ github.run_number }}';
               const downloadUrl = 'https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip';
+              const checksum = process.env.OTA_CHECKSUM || '';
               const { data: profile } = await client.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').single();
               const parsed = profile?.address ? JSON.parse(profile.address) : {};
               parsed.ota_bundle_version = version;
               parsed.ota_bundle_url = downloadUrl;
+              parsed.ota_bundle_checksum = checksum;
               parsed.ota_last_published_at = new Date().toISOString();
               const { error } = await client.from('profiles').update({ address: JSON.stringify(parsed) }).eq('id', '00000000-0000-0000-0000-000000000001');
               if (error) {
                 console.error('Failed to update Supabase:', error);
                 process.exit(1);
               }
-              console.log('Successfully pushed OTA version ' + version + ' to Supabase!');
+              console.log('Successfully pushed OTA version ' + version + ' with checksum ' + checksum + ' to Supabase!');
             }
             update();
           "
