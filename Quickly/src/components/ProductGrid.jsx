@@ -6,6 +6,7 @@ import { getProductDeliveryTime } from '../utils/time';
 import { useWishlist } from '../context/WishlistContext';
 import CategoriesPage from './CategoriesPage';
 import LazySection from './LazySection';
+import SkeletonLoader from './SkeletonLoader';
 import './ProductGrid.css';
 import './ProductListPage.css';
 
@@ -21,6 +22,8 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
       return [];
     }
   });
+
+  const [isLoading, setIsLoading] = useState(() => allProducts.length === 0);
 
   const [gridProducts, setGridProducts] = useState(() => {
     try {
@@ -49,31 +52,37 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
     let currentOrder = [];
 
     const fetchProds = async () => {
-      const all = await db.products.getAll();
-      setAllProducts(all || []);
+      try {
+        const all = await db.products.getAll();
+        setAllProducts(all || []);
 
-      const gridProds = all.filter(p => p.is_grid);
-      
-      if (initialLoad) {
-        for (let i = gridProds.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [gridProds[i], gridProds[j]] = [gridProds[j], gridProds[i]];
+        const gridProds = (all || []).filter(p => p.is_grid);
+        
+        if (initialLoad) {
+          for (let i = gridProds.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [gridProds[i], gridProds[j]] = [gridProds[j], gridProds[i]];
+          }
+          currentOrder = gridProds.map(p => p.id);
+          initialLoad = false;
+        } else {
+          gridProds.sort((a, b) => {
+            const indexA = currentOrder.indexOf(a.id);
+            const indexB = currentOrder.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+          });
         }
-        currentOrder = gridProds.map(p => p.id);
-        initialLoad = false;
-      } else {
-        gridProds.sort((a, b) => {
-          const indexA = currentOrder.indexOf(a.id);
-          const indexB = currentOrder.indexOf(b.id);
-          if (indexA === -1 && indexB === -1) return 0;
-          if (indexA === -1) return 1;
-          if (indexB === -1) return -1;
-          return indexA - indexB;
-        });
+        
+        setGridProducts(gridProds);
+        setBestsellerProducts((all || []).filter(p => p.is_bestseller));
+      } catch (err) {
+        console.warn('Failed to load products in grid:', err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setGridProducts(gridProds);
-      setBestsellerProducts(all.filter(p => p.is_bestseller));
     };
     fetchProds();
 
@@ -650,6 +659,10 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
     { id: 'sec_cleaning', title: 'Bath, Body & Cleaning', subtitle: 'Soaps, detergents, hair oils & daily care', badge: 'Daily Clean', categories: ['Soaps', 'Detergents', 'Hair Oils', 'Medications'], enabled: true },
     { id: 'sec_categories', enabled: true }
   ];
+
+  if (isLoading && allProducts.length === 0) {
+    return <SkeletonLoader />;
+  }
 
   return (
     <main className="product-grid-container">

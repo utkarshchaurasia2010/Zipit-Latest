@@ -431,6 +431,10 @@ function AppContent() {
   }, [viewName, theme, showSplash]);
 
   useEffect(() => {
+    // Pre-warm product catalogue and branding in background during splash screen
+    db.products.getAll().catch(() => {});
+    db.branding.get().catch(() => {});
+
     // Elegant splash display time to imprint brand identity in user mind
     const timer = setTimeout(() => {
       setShowSplash(false);
