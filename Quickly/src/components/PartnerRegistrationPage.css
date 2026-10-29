@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: var(--color-background, #f8fafc);
   color: var(--color-text, #0f172a);
-  padding: 16px;
+  padding: calc(max(env(safe-area-inset-top, 0px), 0px) + 14px) 16px 40px;
   font-family: inherit;
 }
 
@@ -12,7 +12,7 @@
   align-items: center;
   max-width: 760px;
   margin: 0 auto 16px;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .partner-back-btn {

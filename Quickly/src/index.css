@@ -411,8 +411,14 @@ button:active {
 
 /* Universal Top Safe Area Inset Support for Edge-to-Edge Android / iOS screens */
 .page-header,
-.substitute-page-header {
+.substitute-page-header,
+.legal-header,
+.terms-header {
   padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 12px) !important;
+}
+
+.partner-reg-container {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 14px) !important;
 }
 
 .checkout-header {
