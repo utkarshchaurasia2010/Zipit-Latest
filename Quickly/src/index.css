@@ -84,9 +84,9 @@ input, textarea {
 html, body {
   /* Prevent browser pull-to-refresh spinner and rubber-band bounce void */
   overscroll-behavior-y: none;
-  scroll-behavior: smooth;
   touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 *:focus {
@@ -103,6 +103,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 
@@ -119,8 +120,16 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
   transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* GPU Rendering Containment for silky 60fps/120fps scrolling on budget phones */
+.grid-products-section,
+.category-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
 }
 
 @media (min-width: 768px) {
@@ -149,10 +158,8 @@ body {
 .back-btn {
   color: var(--color-text);
   cursor: pointer;
-  background-color: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px) saturate(190%);
-  -webkit-backdrop-filter: blur(16px) saturate(190%);
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.94);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
   border-radius: 50%;
   width: 40px !important;
   height: 40px !important;
@@ -163,10 +170,10 @@ body {
   display: inline-flex !important;
   justify-content: center !important;
   align-items: center !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px rgba(255, 255, 255, 0.9);
   position: relative;
   overflow: hidden;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
 
@@ -188,12 +195,12 @@ body {
 }
 
 body[data-theme="dark"] .back-btn {
-  background-color: rgba(255, 255, 255, 0.12);
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  background-color: rgba(38, 38, 42, 0.94);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* ── Universal Glassmorphism Icons (No Overlap, No Overflow, 1.3x Active Magnification) ── */
+/* ── Universal Fast-Compositing Glass Icons (Optimized for Mobile GPUs) ── */
 .glass-icon-box {
   width: 44px;
   height: 44px;
@@ -202,19 +209,14 @@ body[data-theme="dark"] .back-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px) saturate(190%);
-  -webkit-backdrop-filter: blur(16px) saturate(190%);
+  background: rgba(255, 255, 255, 0.94);
   border: 1.5px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.06),
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
-    inset 0 -1.5px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 1.3x Magnification on Interactive / Active Hover without overflow */
@@ -230,12 +232,9 @@ body[data-theme="dark"] .back-btn {
 }
 
 body[data-theme="dark"] .glass-icon-box {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.45),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.25),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.5);
+  background: rgba(36, 36, 40, 0.94);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* Premium App Action Buttons */

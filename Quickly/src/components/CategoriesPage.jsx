@@ -123,4 +123,4 @@ const CategoriesPage = ({ navigate, isEmbedded }) => {
     </div>
   );
 };
-export default CategoriesPage;
+export default React.memo(CategoriesPage);

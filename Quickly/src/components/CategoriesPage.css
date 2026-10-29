@@ -36,6 +36,8 @@
 
 .category-section {
   margin-bottom: 24px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
 }
 
 .category-section-title {
@@ -64,7 +66,6 @@
   align-items: center;
   cursor: pointer;
   transition: transform 0.15s ease;
-  will-change: transform;
 }
 
 .category-card:active {
@@ -89,7 +90,6 @@
     0 2px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.06);
   transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease, border-color 0.15s ease;
-  will-change: transform;
 }
 
 body[data-theme="dark"] .category-card-img-wrap {
@@ -127,7 +127,6 @@ body[data-theme="dark"] .category-card-img-wrap {
   height: 100%;
   object-fit: contain;
   transition: transform 0.15s ease;
-  will-change: transform;
 }
 
 .category-card-name {

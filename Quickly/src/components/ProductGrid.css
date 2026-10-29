@@ -3,6 +3,12 @@
   width: 100%;
   box-sizing: border-box;
   background-color: var(--color-background);
+  -webkit-overflow-scrolling: touch;
+}
+
+.grid-products-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
 }
 
 .categories-section {

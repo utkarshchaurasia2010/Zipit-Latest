@@ -27,8 +27,9 @@ const PullToRefresh = ({ onRefresh, children }) => {
 
   const handleStart = (y) => {
     if (status === 'refreshing' || status === 'success') return;
-    // Allow starting pull-to-refresh if at top of page OR if dragging from top header bar (y <= 110)
-    isAtTop.current = getScrollTop() <= 20 || y <= 110;
+    // Allow starting pull-to-refresh ONLY when at the absolute top of the page
+    const top = getScrollTop();
+    isAtTop.current = top <= 5;
     if (isAtTop.current) {
       startY.current = y;
       currentY.current = y;
@@ -39,13 +40,19 @@ const PullToRefresh = ({ onRefresh, children }) => {
   const handleMove = (y) => {
     if (!isDragging || status === 'refreshing' || status === 'success') return;
     currentY.current = y;
+    const currentScroll = getScrollTop();
+
+    // If user has scrolled down into the page, immediately disengage pull-to-refresh
+    if (currentScroll > 5) {
+      setIsDragging(false);
+      setPullDistance(0);
+      setStatus('idle');
+      return;
+    }
+
     const rawDiff = currentY.current - startY.current;
 
-    const currentScroll = getScrollTop();
-    // Enable pull if at top of page or if dragging started from top header area
-    const canPull = currentScroll <= 20 || isAtTop.current;
-
-    if (rawDiff > 5 && canPull) {
+    if (rawDiff > 10 && isAtTop.current) {
       const damped = calculateResistance(rawDiff);
       setPullDistance(damped);
       setStatus(damped >= THRESHOLD ? 'ready' : 'pulling');

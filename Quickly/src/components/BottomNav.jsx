@@ -49,4 +49,4 @@ const BottomNav = ({ activeTab, navigate, openCart, isNavHidden }) => {
   );
 };
 
-export default BottomNav;
+export default React.memo(BottomNav);

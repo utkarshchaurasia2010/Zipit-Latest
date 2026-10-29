@@ -395,7 +395,6 @@ function AppContent() {
   
   const [isNavHidden, setIsNavHidden] = useState(false);
   const navHiddenRef = React.useRef(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const lastScrollY = React.useRef(0);
   
   const { theme } = useTheme();
@@ -518,9 +517,8 @@ function AppContent() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentY = window.scrollY;
-          setIsScrolled(currentY > 80);
 
-          // 1. If at or near very top, always show header cleanly
+          // 1. If at or near very top, always restore header cleanly
           if (currentY <= 30) {
             if (navHiddenRef.current) {
               navHiddenRef.current = false;
@@ -533,11 +531,21 @@ function AppContent() {
             return;
           }
 
+          const now = Date.now();
+          // Lock transition for 300ms to avoid mid-animation jitter and oscillation.
+          // Discard deltas during animation so that header collapse/expand does not trigger reverse toggling.
+          if (now - lastToggleTime < 300) {
+            lastY = currentY;
+            accumulatedDelta = 0;
+            ticking = false;
+            return;
+          }
+
           const diff = currentY - lastY;
           lastY = currentY;
 
           // Ignore tiny sub-pixel tremors (common on touch displays)
-          if (Math.abs(diff) < 3) {
+          if (Math.abs(diff) < 4) {
             ticking = false;
             return;
           }
@@ -549,22 +557,15 @@ function AppContent() {
             accumulatedDelta += diff;
           }
 
-          const now = Date.now();
-          // Lock transition for 280ms to avoid mid-animation jitter and oscillation
-          if (now - lastToggleTime < 280) {
-            ticking = false;
-            return;
-          }
-
-          // Hide: Must be past header height (currentY > 120) and scrolled down > 45px
-          if (!navHiddenRef.current && currentY > 120 && accumulatedDelta > 45) {
+          // Hide: Must be past header height (currentY > 140) and scrolled down > 55px
+          if (!navHiddenRef.current && currentY > 140 && accumulatedDelta > 55) {
             navHiddenRef.current = true;
             setIsNavHidden(true);
             lastToggleTime = now;
             accumulatedDelta = 0;
           }
-          // Reveal: Scrolled up > 30px
-          else if (navHiddenRef.current && accumulatedDelta < -30) {
+          // Reveal: Scrolled up > 35px or returned near top
+          else if (navHiddenRef.current && (accumulatedDelta < -35 || currentY <= 40)) {
             navHiddenRef.current = false;
             setIsNavHidden(false);
             lastToggleTime = now;

@@ -37,4 +37,4 @@ const CartBar = ({ count, total, cart, onOpen, isNavHidden }) => {
   );
 };
 
-export default CartBar;
+export default React.memo(CartBar);

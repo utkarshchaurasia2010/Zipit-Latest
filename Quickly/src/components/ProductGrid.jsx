@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowRight, X, Heart, Tag, Flame, Zap, ShieldCheck, RefreshCw, Star, Sparkles, ShoppingBag, Award } from 'lucide-react';
 import { db, supabase } from '../services/db';
@@ -103,20 +103,22 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
     };
   }, []);
 
-  const groupedBestsellers = {};
-  bestsellerProducts.forEach(p => {
-    const cname = p.categories?.name;
-    if (cname) {
-      if (!groupedBestsellers[cname]) {
-        groupedBestsellers[cname] = {
-          name: cname,
-          products: []
-        };
+  const categoryCards = useMemo(() => {
+    const grouped = {};
+    bestsellerProducts.forEach(p => {
+      const cname = p.categories?.name;
+      if (cname) {
+        if (!grouped[cname]) {
+          grouped[cname] = {
+            name: cname,
+            products: []
+          };
+        }
+        grouped[cname].products.push(p);
       }
-      groupedBestsellers[cname].products.push(p);
-    }
-  });
-  const categoryCards = Object.values(groupedBestsellers).slice(0, 16);
+    });
+    return Object.values(grouped).slice(0, 16);
+  }, [bestsellerProducts]);
 
   // Dynamic Homepage Sections configuration synced live from Admin Panel
   const [sectionsConfig, setSectionsConfig] = useState(() => {
@@ -161,9 +163,9 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
   }, []);
 
   // Live Database Sync for Curated Sections (Fast in-memory sort without scanning orders table)
-  const budgetUnder49 = allProducts.filter(p => p.price <= 49 && !p.is_out_of_stock && p.stock_count !== 0);
-  const budgetUnder99 = allProducts.filter(p => p.price > 49 && p.price <= 99 && !p.is_out_of_stock && p.stock_count !== 0);
-  const trendingProducts = allProducts
+  const budgetUnder49 = useMemo(() => allProducts.filter(p => p.price <= 49 && !p.is_out_of_stock && p.stock_count !== 0), [allProducts]);
+  const budgetUnder99 = useMemo(() => allProducts.filter(p => p.price > 49 && p.price <= 99 && !p.is_out_of_stock && p.stock_count !== 0), [allProducts]);
+  const trendingProducts = useMemo(() => allProducts
     .filter(p => !p.is_out_of_stock && p.stock_count !== 0)
     .sort((a, b) => {
       if (b.is_bestseller && !a.is_bestseller) return 1;
@@ -172,31 +174,37 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
       if (a.is_grid && !b.is_grid) return -1;
       return 0;
     })
-    .slice(0, 6);
+    .slice(0, 6), [allProducts]);
 
   // 1. Dairy, Bakery & Tea Store (Milks & Breads, Tea & Coffee, Biscuits)
-  const breakfastCatNames = ['Milks & Breads', 'Tea & Coffee', 'Biscuits'];
-  const breakfastProducts = allProducts.filter(p => {
-    if (p.is_out_of_stock || p.stock_count === 0) return false;
-    const catName = p.categories?.name || '';
-    return breakfastCatNames.some(c => c.toLowerCase() === catName.trim().toLowerCase());
-  }).slice(0, 8);
+  const breakfastProducts = useMemo(() => {
+    const names = ['Milks & Breads', 'Tea & Coffee', 'Biscuits'];
+    return allProducts.filter(p => {
+      if (p.is_out_of_stock || p.stock_count === 0) return false;
+      const catName = p.categories?.name || '';
+      return names.some(c => c.toLowerCase() === catName.trim().toLowerCase());
+    }).slice(0, 8);
+  }, [allProducts]);
 
   // 2. Kitchen Staples & Cooking Essentials (Atta , Dal  & Rice, Oil , Ghee & Masala)
-  const kitchenCatNames = ['Atta , Dal  & Rice', 'Oil , Ghee & Masala'];
-  const kitchenStaples = allProducts.filter(p => {
-    if (p.is_out_of_stock || p.stock_count === 0) return false;
-    const catName = p.categories?.name || '';
-    return kitchenCatNames.some(c => c.toLowerCase() === catName.trim().toLowerCase());
-  }).slice(0, 8);
+  const kitchenStaples = useMemo(() => {
+    const names = ['Atta , Dal  & Rice', 'Oil , Ghee & Masala'];
+    return allProducts.filter(p => {
+      if (p.is_out_of_stock || p.stock_count === 0) return false;
+      const catName = p.categories?.name || '';
+      return names.some(c => c.toLowerCase() === catName.trim().toLowerCase());
+    }).slice(0, 8);
+  }, [allProducts]);
 
   // 3. Bath, Body & Home Cleaning (Soaps, Detergents, Hair Oils, Medications)
-  const personalCareCatNames = ['Soaps', 'Detergents', 'Hair Oils', 'Medications'];
-  const personalCare = allProducts.filter(p => {
-    if (p.is_out_of_stock || p.stock_count === 0) return false;
-    const catName = p.categories?.name || '';
-    return personalCareCatNames.some(c => c.toLowerCase() === catName.trim().toLowerCase());
-  }).slice(0, 8);
+  const personalCare = useMemo(() => {
+    const names = ['Soaps', 'Detergents', 'Hair Oils', 'Medications'];
+    return allProducts.filter(p => {
+      if (p.is_out_of_stock || p.stock_count === 0) return false;
+      const catName = p.categories?.name || '';
+      return names.some(c => c.toLowerCase() === catName.trim().toLowerCase());
+    }).slice(0, 8);
+  }, [allProducts]);
 
   const [activeBudgetTab, setActiveBudgetTab] = useState('under49');
 
@@ -771,4 +779,4 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
   );
 };
 
-export default ProductGrid;
+export default React.memo(ProductGrid);
