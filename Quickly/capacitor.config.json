@@ -7,6 +7,12 @@
     "hostname": "quickly.app",
     "cleartext": true
   },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "resetWhenUpdate": false
+    }
+  },
   "android": {
     "buildOptions": {
       "keystorePath": "",

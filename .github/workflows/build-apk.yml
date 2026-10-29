@@ -53,6 +53,19 @@ jobs:
         working-directory: Quickly
         run: npx cap sync android
 
+      - name: Create Live OTA Bundle ZIP
+        working-directory: Quickly
+        run: |
+          cd dist
+          zip -r ../Quickly-OTA-Bundle.zip .
+
+      - name: Upload Live OTA Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quickly-OTA-Bundle
+          path: Quickly/Quickly-OTA-Bundle.zip
+          if-no-files-found: error
+
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
@@ -63,3 +76,4 @@ jobs:
           name: Quickly-Debug-APK
           path: 'Quickly/android/**/*.apk'
           if-no-files-found: error
+

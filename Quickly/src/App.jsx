@@ -44,6 +44,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import { useToast } from './context/ToastContext';
 import { playNotificationSound, triggerHapticFeedback } from './utils/audio';
 import { requestAppNotificationPermission, sendNativeAppNotification, initPushNotificationListeners } from './utils/notifications';
+import { initLiveUpdater } from './utils/liveUpdater';
 import { db, supabase } from './services/db';
 import { getFirebaseMessaging } from './services/firebase';
 import { onMessage } from 'firebase/messaging';
@@ -434,6 +435,11 @@ function AppContent() {
       setShowSplash(false);
     }, 1600);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Initialize native Live OTA Bundle Updater (Capgo Over-The-Air updates)
+  useEffect(() => {
+    initLiveUpdater();
   }, []);
 
   useEffect(() => {

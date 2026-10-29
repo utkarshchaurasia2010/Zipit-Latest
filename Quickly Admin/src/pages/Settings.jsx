@@ -13,7 +13,9 @@ import {
   Store, 
   Bike, 
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone,
+  RefreshCw
 } from 'lucide-react';
 import { db } from '../services/db';
 import { useToast } from '../context/ToastContext';
@@ -592,6 +594,47 @@ const Settings = ({ profile, setProfile }) => {
         <div className="form-actions">
           <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
             <span>{saving ? 'Saving...' : 'Save Fleet Controls'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 6. Mobile App Live Over-the-Air (OTA) Updates */}
+      <div className="settings-card">
+        <div className="card-title-row">
+          <div className="card-title-icon"><Smartphone size={18} /></div>
+          <h3>Mobile App Live OTA Updates (Capgo)</h3>
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-light)', marginBottom: '16px' }}>
+          Push JavaScript, CSS, and UI updates directly to installed customer Android devices in real-time without requiring APK reinstallation or app store review delays.
+        </p>
+
+        <div className="form-grid-2">
+          <div className="form-group">
+            <label>Live OTA Bundle Version</label>
+            <input 
+              type="text" 
+              value={branding.ota_bundle_version || ''} 
+              onChange={e => setBranding(prev => ({ ...prev, ota_bundle_version: e.target.value }))}
+              placeholder="e.g. 1.0.1 or commit hash"
+              className="clean-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Live Bundle Package URL (.zip)</label>
+            <input 
+              type="url" 
+              value={branding.ota_bundle_url || ''} 
+              onChange={e => setBranding(prev => ({ ...prev, ota_bundle_url: e.target.value }))}
+              placeholder="https://.../Quickly-OTA-Bundle.zip"
+              className="clean-input"
+            />
+          </div>
+        </div>
+
+        <div className="form-actions" style={{ marginTop: '16px' }}>
+          <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
+            <span>{saving ? 'Saving...' : 'Deploy Live OTA Update'}</span>
           </button>
         </div>
       </div>
