@@ -62,14 +62,14 @@ jobs:
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../../build.log
         continue-on-error: true
 
-      - name: Publish Build Summary
+      - name: Annotate Gradle Failure
         shell: bash
         run: |
-          echo "## Gradle Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 120 build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
           if grep -q "BUILD FAILED" build.log; then
+            CAUSE=$(grep -A 10 "What went wrong:" build.log | head -n 10 | tr '\r\n' ' -- ')
+            echo "::error title=GradleWhatWentWrong::$CAUSE"
+            EXCEPTION=$(grep -A 10 "* Exception is:" build.log | head -n 10 | tr '\r\n' ' -- ')
+            echo "::error title=GradleException::$EXCEPTION"
             exit 1
           fi
 
