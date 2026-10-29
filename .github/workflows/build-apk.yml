@@ -60,13 +60,20 @@ jobs:
         shell: bash
         run: |
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+        continue-on-error: true
 
-      - name: Check Build Output
+      - name: Inspect Build Output
         working-directory: Quickly/android
         shell: bash
         run: |
-          echo "=== APK Search ==="
+          echo "=== SEARCH FOR APK ==="
           find . -name "*.apk" -ls
+          echo "=== CHECK FOR FAILURE IN LOG ==="
+          if grep -q "BUILD FAILED" build.log; then
+            echo "Gradle failed with the following details:"
+            grep -C 5 -E "FAILURE|Error|FAILED" build.log | head -n 100
+            exit 1
+          fi
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -74,10 +81,3 @@ jobs:
           name: Quickly-Debug-APK
           path: 'Quickly/android/**/*.apk'
           if-no-files-found: error
-
-      - name: Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-failure-log
-          path: Quickly/android/build.log
