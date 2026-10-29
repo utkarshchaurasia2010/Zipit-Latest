@@ -1,7 +1,7 @@
 .product-grid-container {
-  padding: 20px 20px 140px;
-  overflow-y: auto;
-  flex: 1;
+  padding: 16px 20px 140px;
+  width: 100%;
+  box-sizing: border-box;
   background-color: var(--color-background);
 }
 

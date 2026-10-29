@@ -95,6 +95,7 @@ function AppContent() {
 
   // Scroll to top on route change
   useEffect(() => {
+    navHiddenRef.current = false;
     setIsNavHidden(false);
     setTimeout(() => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -393,6 +394,7 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   
   const [isNavHidden, setIsNavHidden] = useState(false);
+  const navHiddenRef = React.useRef(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const lastScrollY = React.useRef(0);
   
@@ -510,16 +512,21 @@ function AppContent() {
     let ticking = false;
     let accumulatedDelta = 0;
     let lastY = window.scrollY;
+    let lastToggleTime = 0;
 
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentY = window.scrollY;
-          setIsScrolled(currentY > 100);
+          setIsScrolled(currentY > 80);
 
-          // Always reveal header when near top of the page
-          if (currentY <= 25) {
-            setIsNavHidden(false);
+          // 1. If at or near very top, always show header cleanly
+          if (currentY <= 30) {
+            if (navHiddenRef.current) {
+              navHiddenRef.current = false;
+              setIsNavHidden(false);
+              lastToggleTime = Date.now();
+            }
             accumulatedDelta = 0;
             lastY = currentY;
             ticking = false;
@@ -527,22 +534,43 @@ function AppContent() {
           }
 
           const diff = currentY - lastY;
+          lastY = currentY;
 
-          // If scroll direction reverses, reset accumulator
+          // Ignore tiny sub-pixel tremors (common on touch displays)
+          if (Math.abs(diff) < 3) {
+            ticking = false;
+            return;
+          }
+
+          // Accumulate directional movement
           if ((accumulatedDelta > 0 && diff < 0) || (accumulatedDelta < 0 && diff > 0)) {
             accumulatedDelta = diff;
           } else {
             accumulatedDelta += diff;
           }
 
-          // Smooth hysteresis thresholds: scrolling down > 30px after passing 60px hides, scrolling up > 20px reveals
-          if (accumulatedDelta > 30 && currentY > 60) {
-            setIsNavHidden(true);
-          } else if (accumulatedDelta < -20) {
-            setIsNavHidden(false);
+          const now = Date.now();
+          // Lock transition for 280ms to avoid mid-animation jitter and oscillation
+          if (now - lastToggleTime < 280) {
+            ticking = false;
+            return;
           }
 
-          lastY = currentY;
+          // Hide: Must be past header height (currentY > 120) and scrolled down > 45px
+          if (!navHiddenRef.current && currentY > 120 && accumulatedDelta > 45) {
+            navHiddenRef.current = true;
+            setIsNavHidden(true);
+            lastToggleTime = now;
+            accumulatedDelta = 0;
+          }
+          // Reveal: Scrolled up > 30px
+          else if (navHiddenRef.current && accumulatedDelta < -30) {
+            navHiddenRef.current = false;
+            setIsNavHidden(false);
+            lastToggleTime = now;
+            accumulatedDelta = 0;
+          }
+
           ticking = false;
         });
         ticking = true;
@@ -937,8 +965,7 @@ function AppContent() {
           {viewName === '/' && (
             <HeroSection onImageChange={setHeaderBgColor} cart={cart} updateCartQty={updateCartQty} navigate={navigate} />
           )}
-          
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <React.Suspense fallback={<SkeletonLoader />}>
               <Routes>
                 <Route path="/" element={<ProductGrid cart={cart} updateCartQty={updateCartQty} navigate={navigate} onProductClick={openProductSheet} />} />

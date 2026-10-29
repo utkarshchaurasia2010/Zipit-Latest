@@ -429,7 +429,3 @@ button:active {
   padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 16px) !important;
 }
 
-.categories-page-container:not(.embedded) .categories-scroll-area {
-  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 20px) !important;
-}
-
