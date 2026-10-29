@@ -9,6 +9,7 @@ ext {
     androidxFragmentVersion = '1.8.6'
     coreSplashScreenVersion = '1.0.1'
     androidxWebkitVersion = '1.13.0'
+    androidxBrowserVersion = '1.8.0'
     junitVersion = '4.13.2'
     androidxJunitVersion = '1.2.1'
     androidxEspressoCoreVersion = '3.6.1'
