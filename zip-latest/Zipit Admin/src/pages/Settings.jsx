@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Edit2, Shield, Save, KeyRound, Upload, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, Edit2, Shield, Save, KeyRound, Upload, Image as ImageIcon, CheckCircle, Smartphone } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { useToast } from '../context/ToastContext';
 import './Settings.css';
@@ -501,6 +501,79 @@ const Settings = ({ profile, setProfile }) => {
           >
             <Save size={16} color="#ffffff" strokeWidth={2.2} />
             <span>{saving ? 'Saving...' : 'Save Fee Settings'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 5. Mobile App Live Over-the-Air (OTA) Updates */}
+      <div className="settings-card" style={{ marginTop: '24px' }}>
+        <div className="card-title-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <div className="card-title-icon" style={{ display: 'flex', alignItems: 'center', color: '#0c831f' }}><Smartphone size={20} /></div>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700' }}>Mobile App Live OTA Updates (Capgo)</h3>
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-light, #64748b)', marginBottom: '16px' }}>
+          Push JavaScript, CSS, and UI updates directly to installed customer Android devices in real-time without requiring APK reinstallation or app store review delays.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '12.5px', fontWeight: '600' }}>Live OTA Bundle Version</label>
+            <input 
+              type="text" 
+              value={branding.ota_bundle_version || ''} 
+              onChange={e => setBranding(prev => ({ ...prev, ota_bundle_version: e.target.value }))}
+              placeholder="e.g. 1.0.1 or commit hash"
+              className="form-input"
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border, #cbd5e1)' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '12.5px', fontWeight: '600' }}>Live Bundle Package URL (.zip)</label>
+            <input 
+              type="url" 
+              value={branding.ota_bundle_url || ''} 
+              onChange={e => setBranding(prev => ({ ...prev, ota_bundle_url: e.target.value }))}
+              placeholder="https://.../Quickly-OTA-Bundle.zip"
+              className="form-input"
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border, #cbd5e1)' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <button 
+            type="button" 
+            onClick={async () => {
+              try {
+                setSaving(true);
+                await db.branding.update(branding);
+                showToast('Live OTA Update settings published to all devices!', 'success');
+              } catch (err) {
+                showToast('Failed to deploy OTA update: ' + err.message, 'error');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="save-settings-btn"
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '11px 24px',
+              background: '#0c831f',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer'
+            }}
+          >
+            <Smartphone size={16} color="#ffffff" strokeWidth={2.2} />
+            <span>{saving ? 'Publishing...' : 'Deploy Live OTA Update'}</span>
           </button>
         </div>
       </div>
