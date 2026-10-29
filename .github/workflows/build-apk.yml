@@ -44,11 +44,11 @@ jobs:
         working-directory: Quickly
         run: npm run build
 
-      - name: Copy Web Assets to Android
+      - name: Copy Web Assets into Android App
         working-directory: Quickly
         run: |
-          npx cap copy android
-          npx cap update android || echo "Capacitor update skipped, native config intact"
+          mkdir -p android/app/src/main/assets/public
+          cp -rf dist/* android/app/src/main/assets/public/
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
