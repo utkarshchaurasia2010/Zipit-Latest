@@ -43,7 +43,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { useToast } from './context/ToastContext';
 import { playNotificationSound, triggerHapticFeedback } from './utils/audio';
-import { requestAppNotificationPermission, sendNativeAppNotification, initPushNotificationListeners } from './utils/notifications';
+import { requestAppNotificationPermission, sendNativeAppNotification, initPushNotificationListeners, getOrderStatusNotification } from './utils/notifications';
 import { initLiveUpdater } from './utils/liveUpdater';
 import { db, supabase } from './services/db';
 import { getFirebaseMessaging } from './services/firebase';
@@ -452,13 +452,14 @@ function AppContent() {
         
         if (newStatus && previousStatus && newStatus !== previousStatus) {
           playNotificationSound();
-          showToast(`Your order status changed to: ${newStatus}`, 'Order Update');
+          const notif = getOrderStatusNotification(newStatus, payload.new.id);
+          showToast(notif.body, notif.title);
 
-          // Send real native Android notification with sound, vibration, and banner
+          // Real immediate native notification with custom text and smart destination route
           sendNativeAppNotification({
-            title: `Order Update: ${newStatus} 🛍️`,
-            body: `Your Quickly order #${payload.new.id.slice(0, 8).toUpperCase()} is now ${newStatus}. Tap to track live!`,
-            extra: { order_id: payload.new.id, route: '/track' }
+            title: notif.title,
+            body: notif.body,
+            extra: { order_id: payload.new.id, route: notif.route }
           });
         }
         
@@ -503,11 +504,14 @@ function AppContent() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      setIsScrolled(currentScrollY > 150);
+      setIsScrolled(currentScrollY > 120);
       
-      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+      const delta = currentScrollY - lastScrollY.current;
+      if (Math.abs(delta) < 8) return; // Prevent micro-jitter on touch screens
+      
+      if (delta > 0 && currentScrollY > 60) {
         setIsNavHidden(true);
-      } else if (currentScrollY < lastScrollY.current) {
+      } else if (delta < -10 || currentScrollY <= 40) {
         setIsNavHidden(false);
       }
       lastScrollY.current = currentScrollY;

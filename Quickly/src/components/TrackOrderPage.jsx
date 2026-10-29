@@ -524,14 +524,16 @@ const TrackOrderPage = ({ navigate }) => {
       };
     }
 
+    const norm = (status || '').toLowerCase().trim();
+
     if (isPickup) {
       const pickupSteps = ['Confirmed', 'Packing', 'Ready for Pickup', 'Picked Up'];
       let idx = 0;
-      if (status === 'Delivered') {
+      if (norm === 'picked up' || norm === 'delivered') {
         idx = 3;
-      } else if (status === 'Ready for Pickup' || status === 'Out for Delivery') {
+      } else if (norm === 'ready for pickup' || norm.includes('ready') || norm === 'out for delivery') {
         idx = 2;
-      } else if (status === 'Preparing' || status?.toLowerCase() === 'preparing' || order?.accepted_by_shopkeeper) {
+      } else if (norm === 'preparing' || norm === 'packing' || norm.includes('pack') || order?.accepted_by_shopkeeper) {
         idx = 1; // Packing status
       } else {
         idx = 0; // Order Confirmed / Placed
@@ -541,16 +543,16 @@ const TrackOrderPage = ({ navigate }) => {
 
     const defaultSteps = ['Confirmed', 'Packing', 'Ready for Rider', 'On the way', 'Delivered'];
     let idx = 0;
-    if (status === 'Placed' || status === 'Payment Pending') {
-      idx = 0;
-    } else if (status === 'Preparing' || status?.toLowerCase() === 'preparing' || order?.accepted_by_shopkeeper) {
-      idx = 1; // Packing status
-    } else if (status === 'Ready for Pickup') {
-      idx = 2; // Packed by store, waiting for rider to pick up & start delivery
-    } else if (status === 'Out for Delivery') {
-      idx = 3; // Rider picked up package and is en route to customer
-    } else if (status === 'Delivered') {
+    if (norm === 'delivered') {
       idx = 4;
+    } else if (norm === 'out for delivery' || norm.includes('way')) {
+      idx = 3; // Rider picked up package and is en route to customer
+    } else if (norm === 'ready for pickup' || norm === 'ready for rider' || norm.includes('ready')) {
+      idx = 2; // Packed by store, waiting for rider to pick up & start delivery
+    } else if (norm === 'preparing' || norm === 'packing' || norm.includes('pack') || order?.accepted_by_shopkeeper) {
+      idx = 1; // Packing status
+    } else {
+      idx = 0; // Placed / Confirmed / Payment Pending
     }
 
     return { steps: defaultSteps, currentIdx: idx };
@@ -616,7 +618,7 @@ const TrackOrderPage = ({ navigate }) => {
 
                 {/* 2. Interactive Map with top-level container */}
                 {!(order.delivery_address?.is_pickup || order.delivery_address?.order_type === 'PICKUP') && 
-                  (order.status === 'Placed' || order.status === 'Out for Delivery' || order.status === 'Ready for Pickup' || order.status === 'Preparing' || order.status === 'Payment Pending') && 
+                  !['delivered', 'cancelled', 'refunded'].includes((order.status || '').toLowerCase().trim()) && 
                   order.delivery_address && (
                   <MapErrorBoundary key={order.id}>
                     <DeliveryMap status={order.status} order={order} />
@@ -672,7 +674,7 @@ const TrackOrderPage = ({ navigate }) => {
                       </div>
                     </div>
                     <div className="partner-actions">
-                      {(order.status === 'Ready for Pickup' || order.status === 'Out for Delivery') && order.accepted_by_rider ? (
+                      {((order.status || '').toLowerCase().includes('ready') || (order.status || '').toLowerCase().includes('out') || (order.status || '').toLowerCase().includes('way')) && order.accepted_by_rider ? (
                         <a href="tel:9651568829" className="modern-call-btn">
                           <Phone size={14} />
                           <span>Call</span>

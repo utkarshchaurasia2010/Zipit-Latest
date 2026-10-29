@@ -39,8 +39,7 @@ export const requestAppNotificationPermission = async () => {
   }
 
   try {
-    await setupNotificationChannels();
-    // This prompts Android's native runtime POST_NOTIFICATIONS permission dialog safely
+    setupNotificationChannels();
     const localPerm = await LocalNotifications.requestPermissions();
     console.log('[Notifications] Native permission status:', localPerm.display);
     return localPerm.display === 'granted';
@@ -50,7 +49,69 @@ export const requestAppNotificationPermission = async () => {
   }
 };
 
-// Dispatch high-priority native notification like Blinkit / WhatsApp
+// Map order statuses to custom user-friendly notifications and target routes
+export const getOrderStatusNotification = (status, orderId) => {
+  const shortId = (orderId || '').slice(0, 8).toUpperCase();
+  const norm = (status || '').toLowerCase().trim();
+
+  if (norm.includes('deliver')) {
+    return {
+      title: 'Order Delivered! 🎉',
+      body: `Your order #${shortId} is delivered. Enjoy your day !`,
+      route: '/past-orders'
+    };
+  }
+  if (norm.includes('refund')) {
+    return {
+      title: 'Refund Processed 💰',
+      body: `Refund for order #${shortId} has been initiated. Tap to view your orders.`,
+      route: '/past-orders'
+    };
+  }
+  if (norm.includes('cancel')) {
+    return {
+      title: 'Order Cancelled ❌',
+      body: `Order #${shortId} was cancelled. Tap to view details.`,
+      route: '/past-orders'
+    };
+  }
+  if (norm.includes('ready') || norm.includes('pickup')) {
+    return {
+      title: 'Ready for Pickup! 🛵',
+      body: `Order #${shortId} is packed and waiting for delivery partner pickup.`,
+      route: '/track'
+    };
+  }
+  if (norm.includes('out') || norm.includes('way')) {
+    return {
+      title: 'Out for Delivery! 🚀',
+      body: `Your delivery partner is on the way with order #${shortId}!`,
+      route: '/track'
+    };
+  }
+  if (norm.includes('pack') || norm.includes('prepar')) {
+    return {
+      title: 'Order Being Packed! 📦',
+      body: `Items in order #${shortId} are being packed fresh at the store.`,
+      route: '/track'
+    };
+  }
+  if (norm.includes('accept') || norm.includes('confirm')) {
+    return {
+      title: 'Order Confirmed! 👨‍🍳',
+      body: `Store has accepted order #${shortId} and started preparing.`,
+      route: '/track'
+    };
+  }
+
+  return {
+    title: `Order Update: ${status} 🛍️`,
+    body: `Your Quickly order #${shortId} is now ${status}.`,
+    route: '/track'
+  };
+};
+
+// Dispatch high-priority native notification with zero artificial delay
 export const sendNativeAppNotification = async ({ title, body, extra = {} }) => {
   // If running in browser, try Web Notification API
   if (!Capacitor.isNativePlatform()) {
@@ -67,9 +128,12 @@ export const sendNativeAppNotification = async ({ title, body, extra = {} }) => 
   }
 
   try {
-    await setupNotificationChannels();
+    if (!isChannelCreated) {
+      setupNotificationChannels();
+    }
     const notifId = Math.floor(Math.random() * 2147483647);
 
+    // Immediate dispatch without artificial delay
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -79,7 +143,6 @@ export const sendNativeAppNotification = async ({ title, body, extra = {} }) => 
           channelId: 'orders',
           smallIcon: 'ic_launcher',
           iconColor: '#F8CB46',
-          schedule: { at: new Date(Date.now() + 50) },
           sound: 'default',
           extra
         }

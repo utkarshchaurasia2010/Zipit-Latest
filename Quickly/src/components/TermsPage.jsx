@@ -75,7 +75,7 @@ const TermsPage = ({ navigate, onBack }) => {
       <div className="terms-content">
         <div className="terms-intro-card">
           <h2>Quickly Consumer Agreement</h2>
-          <div className="effective-date">Effective Date: July 28, 2026</div>
+          <div className="effective-date">Effective Date: October 2026 (Version 2.0)</div>
           <p>
             Welcome to Quickly! These Terms and Conditions govern your use of our instant grocery delivery platform and mobile application. Please read them carefully before placing an order.
           </p>
