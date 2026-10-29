@@ -1,0 +1,1027 @@
+import React, { useEffect, useRef, useState, Component } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase, db } from '../services/db';
+import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound, AlertTriangle, RefreshCw } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import SlideToAccept from '../components/SlideToAccept';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default icon issues in bundlers
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+});
+
+// Resilient Map Error Boundary so any map/tile crash doesn't blank the entire screen
+class MapErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('MapErrorBoundary caught an error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          height: '100%',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f8fafc',
+          padding: '24px',
+          textAlign: 'center'
+        }}>
+          <AlertTriangle size={40} color="#f59e0b" style={{ marginBottom: '12px' }} />
+          <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
+            Interactive Map Temporarily Unavailable
+          </h4>
+          <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748b', maxWidth: '300px' }}>
+            Live location is still broadcasting to customer. You can use external Google Maps navigation below.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '10px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#0f172a',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={14} /> Retry Map
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Helper component to fix Leaflet 0-height / gray tile sizing bug
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch (e) {
+        console.warn('Map resize error:', e);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+// Auto-fit bounds between Rider and Destination so both are always visible
+function MapBoundsFitter({ positions }) {
+  const map = useMap();
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    if (!fittedRef.current && positions && positions.length > 1) {
+      const valid = positions.filter(p => Array.isArray(p) && !isNaN(p[0]) && !isNaN(p[1]));
+      if (valid.length > 1) {
+        try {
+          const bounds = L.latLngBounds(valid);
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+          fittedRef.current = true;
+        } catch (e) {
+          console.warn('Bounds fitter error:', e);
+        }
+      }
+    }
+  }, [map, positions]);
+  return null;
+}
+
+// Crisp SVG Icon generator
+const createSvgIcon = (svgContent, width = 36, height = 36) => {
+  try {
+    return new L.DivIcon({
+      className: 'custom-map-icon',
+      html: `<div style="width: ${width}px; height: ${height}px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">${svgContent}</div>`,
+      iconSize: [width, height],
+      iconAnchor: [width / 2, height / 2]
+    });
+  } catch (err) {
+    console.warn('Failed to create DivIcon:', err);
+    return undefined;
+  }
+};
+
+const STORE_ICON_HTML = `
+  <div style="background: #0c831f; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #ffffff;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
+  </div>
+`;
+
+const DEST_ICON_HTML = `
+  <div style="background: #ef4444; width: 36px; height: 36px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  </div>
+`;
+
+const OLA_MAPS_API_KEY = 'cb1_4fid_1_1354e75ad3dae085ce92fc8f';
+const DEFAULT_STORE_LOCATION = [25.5788, 83.5780]; // Store location fallback
+
+export default function OrderMapPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  // Memoize icons safely inside component lifecycle
+  const storeIcon = React.useMemo(() => createSvgIcon(STORE_ICON_HTML, 34, 34), []);
+  const destIcon = React.useMemo(() => createSvgIcon(DEST_ICON_HTML, 36, 36), []);
+  const driverIcon = React.useMemo(() => {
+    try {
+      return L.divIcon({
+        className: 'driver-marker',
+        html: `<div style="width: 20px; height: 20px; background: #2563eb; border: 4px solid #fff; border-radius: 50%; box-shadow: 0 0 16px rgba(37, 99, 235, 0.6);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+    } catch (e) {
+      return undefined;
+    }
+  }, []);
+
+  const [order, setOrder] = useState(null);
+  const [orderLoading, setOrderLoading] = useState(true);
+  const [orderError, setOrderError] = useState(null);
+  const [storeLocation, setStoreLocation] = useState(DEFAULT_STORE_LOCATION);
+  const [myLocation, setMyLocation] = useState(DEFAULT_STORE_LOCATION);
+  const [showUpiQr, setShowUpiQr] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [sliderResetKey, setSliderResetKey] = useState(0);
+  const [routePolyline, setRoutePolyline] = useState(null);
+  const watchIdRef = useRef(null);
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (db?.branding?.get) {
+      db.branding.get().then(b => {
+        if (b && b.store_lat && b.store_lng) {
+          const storeCoords = [Number(b.store_lat), Number(b.store_lng)];
+          setStoreLocation(storeCoords);
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrder();
+
+    const lastReportTimeRef = { current: 0 };
+    const lastDbPersistTimeRef = { current: 0 };
+    const lastCoordsRef = { current: null };
+    const riderCode = localStorage.getItem('zipit_sales_code') || 'RIDER';
+
+    // Realtime in-memory broadcast channel for 0-database-write live GPS streaming
+    const broadcastChannel = id ? supabase.channel(`tracking_order_${id}`, {
+      config: { broadcast: { self: false } }
+    }) : null;
+
+    let isChannelSubscribed = false;
+    if (broadcastChannel) {
+      broadcastChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          isChannelSubscribed = true;
+          // Trigger immediate location send on successful subscription
+          if (lastCoordsRef.current) {
+            broadcastChannel.send({
+              type: 'broadcast',
+              event: 'rider_location',
+              payload: { ...lastCoordsRef.current, timestamp: Date.now() }
+            }).catch(() => {});
+          }
+        }
+      });
+    }
+
+    // Distance calculation helper (Haversine formula in meters)
+    const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
+      const R = 6371e3;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const handleNewLocation = (lat, lng, heading = null, speed = null) => {
+      setMyLocation([lat, lng]);
+      const now = Date.now();
+      const lastCoords = lastCoordsRef.current;
+      const distanceMoved = lastCoords ? getDistanceMeters(lastCoords.lat, lastCoords.lng, lat, lng) : 999;
+
+      if (now - lastReportTimeRef.current >= 4000 || distanceMoved >= 8) {
+        lastReportTimeRef.current = now;
+        lastCoordsRef.current = { lat, lng };
+
+        if (broadcastChannel) {
+          broadcastChannel.send({
+            type: 'broadcast',
+            event: 'rider_location',
+            payload: { lat, lng, heading, speed, timestamp: now }
+          }).catch(() => {});
+        }
+
+        if (now - lastDbPersistTimeRef.current >= 12000) {
+          supabase.from('rider_status').upsert({
+            rider_code: riderCode,
+            lat: lat,
+            lng: lng,
+            is_online: true,
+            last_ping: new Date().toISOString()
+          }, { onConflict: 'rider_code' }).then();
+        }
+
+        if (now - lastDbPersistTimeRef.current >= 35000 && id) {
+          lastDbPersistTimeRef.current = now;
+          db.orders.updateLocation(id, lat, lng);
+        }
+      }
+    };
+
+    if ('geolocation' in navigator) {
+      // Immediate position capture on load
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          handleNewLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.heading, pos.coords.speed);
+        },
+        (err) => console.warn('Initial geolocation error:', err),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          handleNewLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.heading, pos.coords.speed);
+        },
+        (err) => console.warn('Geolocation Error:', err),
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+      );
+    }
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (broadcastChannel) {
+        supabase.removeChannel(broadcastChannel);
+      }
+    };
+  }, [id]);
+
+  const lastDirectionFetchCoordsRef = useRef(null);
+  useEffect(() => {
+    const fetchDirections = async () => {
+      if (!order || !order.delivery_address) return;
+      const destLat = Number(order.delivery_address?.lat) || 25.5900;
+      const destLng = Number(order.delivery_address?.lng) || 83.5850;
+      const curLat = Number(myLocation[0]);
+      const curLng = Number(myLocation[1]);
+
+      if (isNaN(curLat) || isNaN(curLng)) return;
+
+      // Avoid re-fetching every 4 seconds if rider hasn't moved more than ~25 meters
+      if (lastDirectionFetchCoordsRef.current) {
+        const dLat = Math.abs(lastDirectionFetchCoordsRef.current[0] - curLat);
+        const dLng = Math.abs(lastDirectionFetchCoordsRef.current[1] - curLng);
+        if (dLat < 0.00025 && dLng < 0.00025) return;
+      }
+      lastDirectionFetchCoordsRef.current = [curLat, curLng];
+
+      try {
+        const url = `https://api.olamaps.io/routing/v1/directions?origin=${curLat},${curLng}&destination=${destLat},${destLng}&api_key=${OLA_MAPS_API_KEY}`;
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (data && data.routes && data.routes[0]) {
+          const legs = data.routes[0].legs || [];
+          const points = [];
+          legs.forEach(leg => {
+            (leg.steps || []).forEach(step => {
+              if (step.start_location && !isNaN(Number(step.start_location.lat)) && !isNaN(Number(step.start_location.lng))) {
+                points.push([Number(step.start_location.lat), Number(step.start_location.lng)]);
+              }
+              if (step.end_location && !isNaN(Number(step.end_location.lat)) && !isNaN(Number(step.end_location.lng))) {
+                points.push([Number(step.end_location.lat), Number(step.end_location.lng)]);
+              }
+            });
+          });
+          if (points.length > 1) {
+            setRoutePolyline(points);
+          }
+        }
+      } catch (e) {
+        console.warn('Ola Maps directions fallback:', e);
+      }
+    };
+    fetchDirections();
+  }, [order?.id, myLocation[0], myLocation[1]]);
+
+  const fetchOrder = async () => {
+    try {
+      setOrderLoading(true);
+      setOrderError(null);
+      if (!id) {
+        setOrderError('No order ID provided in URL');
+        setOrderLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
+      if (error || !data) {
+        setOrderError(error?.message || 'Order not found or has been removed');
+      } else {
+        setOrder(data);
+      }
+    } catch (err) {
+      console.error('Error fetching order:', err);
+      setOrderError(err?.message || 'Failed to load order');
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (status) => {
+    await db.orders.updateStatus(id, status);
+    fetchOrder();
+    if (status === 'Delivered') {
+      navigate('/');
+    }
+  };
+
+  const handleMarkDelivered = async (ord) => {
+    let otp = ord?.delivery_otp;
+    if (!otp && ord?.id) {
+      const { data } = await supabase.from('orders').select('delivery_otp').eq('id', ord.id).single();
+      if (data?.delivery_otp) {
+        otp = data.delivery_otp;
+        setOrder(prev => prev ? { ...prev, delivery_otp: otp } : prev);
+      }
+    }
+
+    if (otp) {
+      setShowOtpModal(true);
+      setEnteredOtp('');
+      setOtpError('');
+    } else {
+      const isPickup = ord?.delivery_address?.is_pickup || ord?.delivery_address?.order_type === 'PICKUP';
+      if (!isPickup) {
+        setShowOtpModal(true);
+        setEnteredOtp('');
+        setOtpError('');
+      } else {
+        handleUpdateStatus('Delivered');
+      }
+    }
+  };
+
+  const handleVerifyOtpAndDeliver = async (e) => {
+    e?.preventDefault();
+    if (!order) return;
+    const expectedOtp = String(order.delivery_otp || '').trim();
+    const cleanEntered = enteredOtp.trim();
+
+    if (cleanEntered !== expectedOtp) {
+      setOtpError('Invalid OTP! Please check with customer.');
+      return;
+    }
+
+    setShowOtpModal(false);
+    setEnteredOtp('');
+    setOtpError('');
+    await handleUpdateStatus('Delivered');
+  };
+
+  if (orderLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', gap: '14px' }}>
+        <div style={{
+          width: '36px',
+          height: '36px',
+          border: '3.5px solid #e2e8f0',
+          borderTopColor: '#2563eb',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <div style={{ fontWeight: '700', fontSize: '14px', color: '#64748b' }}>Loading Map Route...</div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (orderError || !order) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc', padding: '24px', textAlign: 'center' }}>
+        <AlertTriangle size={48} color="#ef4444" style={{ marginBottom: '16px' }} />
+        <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px' }}>
+          Unable to Load Order
+        </h2>
+        <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '320px', margin: '0 0 20px', lineHeight: '1.4' }}>
+          {orderError || 'This order does not exist or may have already been completed.'}
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => fetchOrder()}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '12px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#0f172a',
+              fontWeight: '700',
+              fontSize: '13.5px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <RefreshCw size={15} /> Retry
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: '#2563eb',
+              color: '#ffffff',
+              fontWeight: '800',
+              fontSize: '13.5px',
+              cursor: 'pointer'
+            }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const rawLat = parseFloat(order.delivery_address?.lat);
+  const rawLng = parseFloat(order.delivery_address?.lng);
+  const destLocation = (!isNaN(rawLat) && !isNaN(rawLng))
+    ? [rawLat, rawLng]
+    : [25.5900, 83.5850];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-bg)', position: 'relative' }}>
+      
+      {/* Floating Top Header */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '16px', 
+        left: '16px', 
+        right: '16px', 
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
+        <button 
+          onClick={() => navigate('/')} 
+          style={{ 
+            background: 'var(--color-surface)', 
+            border: 'none', 
+            cursor: 'pointer', 
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}
+        >
+          <ArrowLeft size={24} color="var(--color-text)" />
+        </button>
+        <div style={{ 
+          background: 'var(--color-surface)', 
+          padding: '12px 20px', 
+          borderRadius: '100px', 
+          fontWeight: '700', 
+          color: 'var(--color-text)', 
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          flex: 1,
+          textAlign: 'center'
+        }}>
+          Order #{order.id ? String(order.id).slice(0,6).toUpperCase() : ''}
+        </div>
+      </div>
+
+      {/* Map View wrapped in MapErrorBoundary */}
+      <div style={{ flex: '1 1 45vh', minHeight: '260px', position: 'relative', width: '100%', overflow: 'hidden' }}>
+        <MapErrorBoundary>
+          <MapContainer 
+            center={myLocation} 
+            zoom={15} 
+            style={{ height: '100%', width: '100%', minHeight: '260px' }}
+            zoomControl={false}
+            attributionControl={false}
+            ref={mapRef}
+          >
+            <MapResizer />
+            <MapBoundsFitter positions={[myLocation, destLocation, ...(routePolyline || [])]} />
+
+            {/* Primary Google Maps Roadmap Tiles */}
+            <TileLayer 
+              url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+              subdomains={['0', '1', '2', '3']}
+              maxZoom={20} 
+            />
+            
+            {storeIcon && <Marker position={storeLocation} icon={storeIcon} />}
+            {destIcon && <Marker position={destLocation} icon={destIcon} />}
+            {driverIcon && <Marker position={myLocation} icon={driverIcon} />}
+
+            {/* Verified numerical positions only to prevent leaflet canvas crash */}
+            {(() => {
+              const pts = (routePolyline && routePolyline.length > 1) 
+                ? routePolyline.filter(p => Array.isArray(p) && !isNaN(p[0]) && !isNaN(p[1]))
+                : [myLocation, destLocation];
+              return (
+                <Polyline 
+                  positions={pts} 
+                  color="#2563eb" 
+                  weight={5} 
+                  opacity={0.8} 
+                  dashArray={routePolyline ? undefined : "8, 10"} 
+                />
+              );
+            })()}
+          </MapContainer>
+        </MapErrorBoundary>
+        
+        {/* Recenter Button */}
+        <button 
+          onClick={() => {
+            if (mapRef.current) {
+              mapRef.current.flyTo(myLocation, 16, { animate: true });
+            }
+          }}
+          style={{ 
+            position: 'absolute', 
+            bottom: '24px', 
+            right: '16px', 
+            zIndex: 1000, 
+            background: 'var(--color-surface)', 
+            width: '52px',
+            height: '52px', 
+            borderRadius: '50%', 
+            border: 'none', 
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)', 
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Navigation size={24} color="#2563eb" />
+        </button>
+      </div>
+
+      {/* Bottom Action Sheet */}
+      <div style={{ 
+        background: 'var(--color-surface)', 
+        borderTopLeftRadius: '28px', 
+        borderTopRightRadius: '28px', 
+        marginTop: '-20px', 
+        zIndex: 1000, 
+        position: 'relative', 
+        boxShadow: '0 -8px 24px rgba(0,0,0,0.08)',
+        padding: '20px 20px 32px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: '55vh',
+        overflowY: 'auto'
+      }}>
+        {/* Drag Handle */}
+        <div style={{ width: '40px', height: '5px', background: 'var(--color-border)', borderRadius: '10px', margin: '0 auto 20px' }} />
+
+        {/* Customer Info */}
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '4px' }}>
+                Deliver To Customer
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', lineHeight: '1.4' }}>
+                {order.delivery_address?.name || 'Customer'}
+              </div>
+              <div style={{ fontSize: '13.5px', fontWeight: '500', color: '#334155', marginTop: '4px', lineHeight: '1.4' }}>
+                {order.delivery_address?.details?.split('\n---TAG:')[0] || order.delivery_address?.address || 'Customer Address'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              {order.delivery_address?.phone && (
+                <a href={`tel:${order.delivery_address.phone}`} style={{
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                  boxShadow: '0 2px 6px rgba(37,99,235,0.15)'
+                }} title="Call Customer">
+                  <Phone size={18} />
+                </a>
+              )}
+              {(() => {
+                const altPhone = order.delivery_address?.alt_phone || order.delivery_address?.details?.match(/---TAG:ALT_PHONE:(.*?)---/)?.[1];
+                return altPhone ? (
+                  <a href={`tel:${altPhone}`} style={{
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 6px rgba(5,150,105,0.15)'
+                  }} title="Call Alternate Number">
+                    <Phone size={18} />
+                  </a>
+                ) : null;
+              })()}
+            </div>
+          </div>
+
+          {/* Detailed tags: Landmark, Village/Area, Family Head */}
+          {(() => {
+            const addr = order.delivery_address || {};
+            const details = addr.details || '';
+            const landmark = addr.landmark || details.match(/---TAG:LANDMARK:(.*?)---/)?.[1];
+            const village = addr.village_area || details.match(/---TAG:VILLAGE:(.*?)---/)?.[1];
+            const familyHead = addr.family_head || details.match(/---TAG:FAMILY_HEAD:(.*?)---/)?.[1];
+            const altPhone = addr.alt_phone || details.match(/---TAG:ALT_PHONE:(.*?)---/)?.[1];
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1', fontSize: '12.5px' }}>
+                {landmark && (
+                  <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Landmark:</span>
+                    <span>{landmark}</span>
+                  </div>
+                )}
+                {village && (
+                  <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Area / Village:</span>
+                    <span>{village}</span>
+                  </div>
+                )}
+                {familyHead && (
+                  <div style={{ background: '#fef3c7', color: '#92400e', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>House / Family Head:</span>
+                    <span>{familyHead}</span>
+                  </div>
+                )}
+                {altPhone && (
+                  <div style={{ color: '#475467', fontWeight: '600', padding: '2px 4px' }}>
+                    Alt Phone: <strong>{altPhone}</strong>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Action Button */}
+        {order.status !== 'Out for Delivery' && order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+          <button 
+            onClick={() => handleUpdateStatus('Out for Delivery')}
+            style={{ 
+              width: '100%', 
+              background: 'var(--color-primary)', 
+              color: '#000', 
+              padding: '18px', 
+              borderRadius: '16px', 
+              border: 'none', 
+              fontWeight: '800', 
+              fontSize: '17px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '10px',
+              boxShadow: '0 8px 20px rgba(248, 203, 70, 0.3)'
+            }}
+          >
+            <PackageOpen size={22} />
+            Pick Up Order & Start Delivery
+          </button>
+        )}
+        
+        {order.status === 'Out for Delivery' && (
+          <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Google Maps Turn-by-Turn External Bike Navigation */}
+            {destLocation[0] && destLocation[1] && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${destLocation[0]},${destLocation[1]}&travelmode=two-wheeler`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  padding: '12px 16px',
+                  borderRadius: '14px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                  border: '1px solid #bfdbfe'
+                }}
+              >
+                Open Turn-by-Turn (Google Maps)
+              </a>
+            )}
+
+            <SlideToAccept
+              onAccept={() => handleMarkDelivered(order)}
+              label="Slide to Mark Delivered"
+              resetTrigger={sliderResetKey}
+            />
+
+            <button 
+              onClick={() => setShowUpiQr(true)}
+              style={{
+                width: '100%',
+                background: '#ecfdf5',
+                color: '#047857',
+                border: '1.5px solid #a7f3d0',
+                padding: '12px',
+                borderRadius: '14px',
+                fontWeight: '800',
+                fontSize: '14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <QrCode size={18} /> Show Doorstep UPI QR (₹{order.total})
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Doorstep UPI QR Modal in Map View */}
+      {showUpiQr && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '24px 20px',
+            width: '100%',
+            maxWidth: '350px',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => setShowUpiQr(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: '#f1f5f9',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={18} color="#475569" />
+            </button>
+
+            <div style={{ fontSize: '12px', fontWeight: '800', color: '#047857', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+              Doorstep Payment Collection
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '0 0 4px' }}>
+              Order #{order.id.slice(0, 6).toUpperCase()}
+            </h2>
+            <div style={{ fontSize: '28px', fontWeight: '900', color: '#15803d', margin: '8px 0 16px' }}>
+              ₹{order.total}
+            </div>
+
+            <div style={{
+              background: '#f8fafc',
+              border: '2px solid #e2e8f0',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'inline-block',
+              marginBottom: '16px'
+            }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(`upi://pay?pa=9651568829@upi&pn=Zipit%20Store&am=${order.total}&cu=INR&tn=Order%20${order.id.slice(0,6)}`)}`}
+                alt="UPI QR Code"
+                style={{ width: '180px', height: '180px', display: 'block' }}
+              />
+            </div>
+
+            <p style={{ fontSize: '13px', color: '#475569', fontWeight: '600', margin: '0 0 16px', lineHeight: 1.4 }}>
+              Customer can scan with GPay, PhonePe, or Paytm
+            </p>
+
+            <button
+              onClick={() => {
+                setShowUpiQr(false);
+                handleMarkDelivered(order);
+              }}
+              style={{
+                width: '100%',
+                background: '#15803d',
+                color: '#ffffff',
+                border: 'none',
+                padding: '14px',
+                borderRadius: '14px',
+                fontWeight: '800',
+                fontSize: '15px',
+                cursor: 'pointer'
+              }}
+            >
+              Payment Collected · Proceed to Delivery
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Doorstep Handover OTP Verification Modal */}
+      {showOtpModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 10000
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '26px 22px',
+            width: '100%',
+            maxWidth: '350px',
+            textAlign: 'center',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => {
+                setShowOtpModal(false);
+                setEnteredOtp('');
+                setOtpError('');
+                setSliderResetKey(prev => prev + 1);
+              }}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: '#f1f5f9',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={18} color="#475569" />
+            </button>
+
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <KeyRound size={28} color="#059669" />
+            </div>
+
+            <h3 style={{ fontSize: '19px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px' }}>
+              Customer Handover PIN
+            </h3>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px', lineHeight: 1.4 }}>
+              Ask the customer for the 4-digit PIN shown on their Zipit app tracking screen:
+            </p>
+
+            <form onSubmit={handleVerifyOtpAndDeliver}>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                value={enteredOtp}
+                onChange={(e) => {
+                  setEnteredOtp(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setOtpError('');
+                }}
+                autoFocus
+                style={{
+                  width: '100%',
+                  fontSize: '32px',
+                  fontWeight: '900',
+                  letterSpacing: '12px',
+                  textAlign: 'center',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: otpError ? '2px solid #ef4444' : '2px solid #cbd5e1',
+                  background: '#f8fafc',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace'
+                }}
+              />
+
+              {otpError && (
+                <div style={{ color: '#dc2626', fontSize: '12px', fontWeight: '700', marginTop: '8px' }}>
+                  {otpError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={enteredOtp.length !== 4}
+                style={{
+                  width: '100%',
+                  background: enteredOtp.length === 4 ? '#16a34a' : '#cbd5e1',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  fontWeight: '800',
+                  fontSize: '15px',
+                  cursor: enteredOtp.length === 4 ? 'pointer' : 'not-allowed',
+                  marginTop: '18px',
+                  transition: 'background 0.2s ease'
+                }}
+              >
+                Verify PIN & Complete Delivery
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

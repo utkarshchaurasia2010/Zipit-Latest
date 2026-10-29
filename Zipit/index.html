@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Quickly" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="description" content="Quickly - Instant grocery delivery app for rural and semi-urban India. Get groceries, daily essentials, snacks, and dairy delivered in minutes." />
+    
+    <!-- OpenGraph & WhatsApp Rich Social Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Quickly - 10-Minute Grocery Delivery" />
+    <meta property="og:description" content="Instant grocery & daily essentials delivery in minutes across rural and semi-urban India." />
+    <meta property="og:image" content="/logo_full.png" />
+    <meta property="og:site_name" content="Quickly" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Quickly - 10-Minute Grocery Delivery" />
+    <meta name="twitter:description" content="Instant grocery & daily essentials delivery in minutes across rural and semi-urban India." />
+    <meta name="twitter:image" content="/logo_full.png" />
+
+    <title>Quickly - 10-Minute Grocery Delivery</title>
+    <!-- Non-render-blocking Web Fonts & Network Preconnects -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://bbaggauqnlcohrgvsios.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://bbaggauqnlcohrgvsios.supabase.co" />
+    <link 
+      rel="stylesheet" 
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@600;700;800&display=swap" 
+      media="print" 
+      onload="this.media='all'" 
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@600;700;800&display=swap" />
+    </noscript>
+    <!-- Preload splash screen logo to ensure instantaneous rendering without white flash -->
+    <link rel="preload" href="/logo_full.png" as="image" />
+    <style>
+      html, body {
+        background-color: #0a0a0c !important;
+        margin: 0;
+        padding: 0;
+      }
+      #root:empty {
+        background-color: #0a0a0c;
+        height: 100vh;
+        width: 100vw;
+      }
+    </style>
+  </head>
+  <body style="background-color: #0a0a0c;">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,1065 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams, useNavigationType } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Preferences } from '@capacitor/preferences';
+import { Browser } from '@capacitor/browser';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
+import Header from './components/Header';
+import ProductGrid from './components/ProductGrid';
+import CategoriesPage from './components/CategoriesPage';
+import CartBar from './components/CartBar';
+import BottomNav from './components/BottomNav';
+import SkeletonLoader from './components/SkeletonLoader';
+import SplashScreen from './components/SplashScreen';
+import PullToRefresh from './components/PullToRefresh';
+import HeroSection from './components/HeroSection';
+
+// Code-split secondary route components to drastically reduce initial JS payload
+const LoginPage = React.lazy(() => import('./components/LoginPage'));
+const PlacedOrdersPage = React.lazy(() => import('./components/PlacedOrdersPage'));
+const ProfilePage = React.lazy(() => import('./components/ProfilePage'));
+const SavedAddressesPage = React.lazy(() => import('./components/SavedAddressesPage'));
+const PaymentMethodsPage = React.lazy(() => import('./components/PaymentMethodsPage'));
+const ProductListPage = React.lazy(() => import('./components/ProductListPage'));
+const AllProductsPage = React.lazy(() => import('./components/AllProductsPage'));
+const PaymentPage = React.lazy(() => import('./components/PaymentPage'));
+const CheckoutPage = React.lazy(() => import('./components/CheckoutPage'));
+const AddressModal = React.lazy(() => import('./components/AddressModal'));
+const SearchOverlay = React.lazy(() => import('./components/SearchOverlay'));
+const WishlistPage = React.lazy(() => import('./components/WishlistPage'));
+const TrackOrderPage = React.lazy(() => import('./components/TrackOrderPage'));
+const SubstituteSelectionPage = React.lazy(() => import('./components/SubstituteSelectionPage'));
+const PastOrdersPage = React.lazy(() => import('./components/PastOrdersPage'));
+const LegalPoliciesPage = React.lazy(() => import('./components/LegalPoliciesPage'));
+const CustomerSupportPage = React.lazy(() => import('./components/CustomerSupportPage'));
+const ProductDetailsSheet = React.lazy(() => import('./components/ProductDetailsSheet'));
+const OfflineBanner = React.lazy(() => import('./components/OfflineBanner'));
+const UpdatePrompt = React.lazy(() => import('./components/UpdatePrompt'));
+const OnboardingModal = React.lazy(() => import('./components/OnboardingModal'));
+const PartnerRegistrationPage = React.lazy(() => import('./components/PartnerRegistrationPage'));
+import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { WishlistProvider } from './context/WishlistContext';
+import { useToast } from './context/ToastContext';
+import { playNotificationSound, triggerHapticFeedback } from './utils/audio';
+import { requestAppNotificationPermission, sendNativeAppNotification, initPushNotificationListeners } from './utils/notifications';
+import { initLiveUpdater } from './utils/liveUpdater';
+import { db, supabase } from './services/db';
+import { getFirebaseMessaging } from './services/firebase';
+import { onMessage } from 'firebase/messaging';
+import './index.css';
+import './App.css';
+
+// ProductListPage Wrapper to extract URL params
+const ProductListPageWrapper = (props) => {
+  const { categoryId } = useParams();
+  const location = useLocation();
+  const categoryName = location.state?.categoryName || "Products";
+  return <ProductListPage categoryId={categoryId} category={categoryName} {...props} />;
+};
+
+const PaymentPageWrapper = (props) => {
+  // We can pass address from context or default
+  return <PaymentPage address={props.defaultAddress} {...props} />;
+};
+
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const navType = useNavigationType();
+  const viewName = location.pathname;
+  const { showToast } = useToast();
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [cart, setCart] = useState([]);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
+  const [deliveryTime, setDeliveryTime] = useState(16);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Synchronized refs for stable native back button and gestures
+  const isSearchOpenRef = useRef(isSearchOpen);
+  const isAddressModalOpenRef = useRef(isAddressModalOpen);
+  const selectedProductRef = useRef(selectedProduct);
+  const locationRef = useRef(location);
+  const lastBackPressTimeRef = useRef(0);
+
+  useEffect(() => { isSearchOpenRef.current = isSearchOpen; }, [isSearchOpen]);
+  useEffect(() => { isAddressModalOpenRef.current = isAddressModalOpen; }, [isAddressModalOpen]);
+  useEffect(() => { selectedProductRef.current = selectedProduct; }, [selectedProduct]);
+  useEffect(() => { locationRef.current = location; }, [location]);
+
+  // Scroll to top on route change
+  useEffect(() => {
+    setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, 10);
+  }, [location.pathname]);
+
+  // Global Cart Fly Animation
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      const target = e.target.closest('button');
+      if (!target) return;
+      const text = target.textContent?.trim();
+      if (text === 'ADD' || text === '+') {
+        const card = target.closest('.bestseller-card') || target.closest('.product-card') || target.closest('.category-product-card') || target.closest('.hero-product-card') || target.closest('.search-product-item');
+        if (!card) return;
+        const img = card.querySelector('img');
+        if (!img) return;
+
+        const imgRect = img.getBoundingClientRect();
+        
+        let targetX = window.innerWidth / 2;
+        let targetY = window.innerHeight - 80; 
+        
+        // Let React mount CartBar first
+        setTimeout(() => {
+          const cartPill = document.querySelector('.cart-bar-pill-left');
+          const cartContainer = document.querySelector('.cart-bar-container');
+          
+          if (cartPill && cartContainer) {
+            const pillRect = cartPill.getBoundingClientRect();
+            // X is always accurate even during slide-up animation
+            targetX = pillRect.left + 20; 
+            // Y is mathematically predicted because pillRect.top might be mid-animation (100px lower)
+            const isNavHidden = cartContainer.classList.contains('nav-hidden');
+            targetY = window.innerHeight - (isNavHidden ? 42 : 106);
+          }
+
+          const flyer = document.createElement('img');
+          flyer.src = img.src;
+          flyer.style.position = 'fixed';
+          flyer.style.left = `${imgRect.left}px`;
+          flyer.style.top = `${imgRect.top}px`;
+          flyer.style.width = `${imgRect.width}px`;
+          flyer.style.height = `${imgRect.height}px`;
+          flyer.style.borderRadius = '12px';
+          flyer.style.objectFit = 'cover';
+          flyer.style.zIndex = '999999';
+          flyer.style.pointerEvents = 'none';
+          flyer.style.transition = 'all 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
+          document.body.appendChild(flyer);
+
+          flyer.getBoundingClientRect(); 
+
+          flyer.style.left = `${targetX}px`;
+          flyer.style.top = `${targetY}px`;
+          flyer.style.width = '24px';
+          flyer.style.height = '24px';
+          flyer.style.opacity = '0.5';
+          flyer.style.borderRadius = '50%';
+          flyer.style.transform = 'scale(0.5)';
+
+          if (cartPill) {
+            const pillContainer = document.querySelector('.cart-bar-pill');
+            if (pillContainer) {
+              pillContainer.style.transition = 'transform 0.2s';
+              setTimeout(() => {
+                pillContainer.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                  pillContainer.style.transform = 'scale(1)';
+                }, 150);
+              }, 400); 
+            }
+          }
+
+          setTimeout(() => {
+            if (document.body.contains(flyer)) {
+              document.body.removeChild(flyer);
+            }
+          }, 600);
+        }, 10);
+      }
+    };
+    document.addEventListener('click', handleGlobalClick, true); // Use capture phase to bypass stopPropagation
+    return () => document.removeEventListener('click', handleGlobalClick, true);
+  }, []);
+
+  const openSearch = (isVoice = false) => {
+    if (!isSearchOpen) {
+      window.history.pushState({ searchOpen: true }, '');
+    }
+    setIsSearchOpen(true);
+    setIsVoiceSearchOpen(isVoice);
+  };
+
+  const closeSearch = () => {
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      if (window.history.state?.searchOpen) {
+        window.history.back();
+      }
+    }
+  };
+
+  const openProductSheet = (product) => {
+    if (!selectedProduct) {
+      window.history.pushState({ productOpen: true }, '');
+    }
+    setSelectedProduct(product);
+  };
+
+  const closeProductSheet = () => {
+    if (selectedProduct) {
+      setSelectedProduct(null);
+      if (window.history.state?.productOpen) {
+        window.history.back();
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const state = event.state || {};
+      
+      if (state.productOpen) {
+        // Product sheet state
+        setIsSearchOpen(false); // Optional, but usually true if they arrived some other way
+      } else if (state.searchOpen) {
+        // Back to search overlay
+        setSelectedProduct(null);
+        setIsSearchOpen(true);
+      } else {
+        // Base state
+        setSelectedProduct(null);
+        setIsSearchOpen(false);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isSearchOpen, selectedProduct]);
+
+  // Rock-solid Capacitor native hardware/gesture back button handler
+  useEffect(() => {
+    let listenerHandle = null;
+
+    const setupBackHandler = async () => {
+      try {
+        listenerHandle = await CapacitorApp.addListener('backButton', () => {
+          if (isSearchOpenRef.current) {
+            closeSearch();
+          } else if (isAddressModalOpenRef.current) {
+            setIsAddressModalOpen(false);
+          } else if (selectedProductRef.current) {
+            closeProductSheet();
+          } else if (locationRef.current.pathname !== '/') {
+            navigate(-1);
+          } else {
+            const now = Date.now();
+            if (now - lastBackPressTimeRef.current < 2000) {
+              CapacitorApp.exitApp();
+            } else {
+              lastBackPressTimeRef.current = now;
+              showToast('Press back again to exit', 'info');
+            }
+          }
+        });
+      } catch (err) {
+        // Fallback when running on standard browser
+      }
+    };
+
+    setupBackHandler();
+
+    return () => {
+      if (listenerHandle && typeof listenerHandle.remove === 'function') {
+        listenerHandle.remove();
+      }
+    };
+  }, [navigate, showToast]);
+
+  // Handle native deep link callbacks (e.g. Google OAuth redirect)
+  useEffect(() => {
+    let urlListenerHandle = null;
+
+    const setupUrlListener = async () => {
+      try {
+        urlListenerHandle = await CapacitorApp.addListener('appUrlOpen', async (event) => {
+          // Close in-app Chrome Custom Tab browser window if open
+          try {
+            await Browser.close();
+          } catch (_) {}
+
+          const rawUrl = event?.url || '';
+          if (rawUrl.includes('login-callback') || rawUrl.startsWith('quickly://') || rawUrl.startsWith('com.quickly.delivery://')) {
+            // Handle OAuth hash tokens (#access_token=...&refresh_token=...)
+            if (rawUrl.includes('access_token=')) {
+              const hashPart = rawUrl.includes('#') ? rawUrl.split('#')[1] : (rawUrl.includes('?') ? rawUrl.split('?')[1] : rawUrl);
+              const params = new URLSearchParams(hashPart);
+              const accessToken = params.get('access_token');
+              const refreshToken = params.get('refresh_token');
+
+              if (accessToken && refreshToken) {
+                const { data, error } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken
+                });
+                if (!error && data?.session) {
+                  showToast('Welcome to Quickly! Logged in successfully.', 'Success');
+                  setIsLoggedIn(true);
+                  return;
+                }
+              }
+            }
+
+            // Handle OAuth PKCE code flow (?code=...)
+            if (rawUrl.includes('code=')) {
+              const queryPart = rawUrl.includes('?') ? rawUrl.split('?')[1] : rawUrl;
+              const params = new URLSearchParams(queryPart.split('#')[0]);
+              const code = params.get('code');
+              if (code) {
+                const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+                if (!error && data?.session) {
+                  showToast('Welcome to Quickly! Logged in successfully.', 'Success');
+                  setIsLoggedIn(true);
+                  return;
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        // Fallback for browser
+      }
+    };
+
+    setupUrlListener();
+
+    return () => {
+      if (urlListenerHandle && typeof urlListenerHandle.remove === 'function') {
+        urlListenerHandle.remove();
+      }
+    };
+  }, [showToast]);
+
+  const [headerBgColor, setHeaderBgColor] = useState('linear-gradient(to right, #F8CB46, #F9D423)');
+
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_user_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch (_) { return null; }
+  });
+  const [addresses, setAddresses] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zipit_cached_addresses');
+      return cached ? JSON.parse(cached) : [];
+    } catch (_) { return []; }
+  });
+  const [gpsLocation, setGpsLocation] = useState(() => {
+    return localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
+  });
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`, {
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            const data = await res.json();
+            if (data && data.address) {
+              const area = data.address.suburb || data.address.neighbourhood || data.address.road || data.address.city_district || 'Sector 14, MG Road';
+              const city = data.address.city || data.address.state_district || 'Gurugram';
+              const combinedGps = `${area}, ${city}`;
+              setGpsLocation(combinedGps);
+              localStorage.setItem('zipit_gps_area', combinedGps);
+            }
+          } catch (e) {
+            console.log('GPS reverse geocode fallback or timeout');
+          }
+        },
+        (err) => {
+          console.log('GPS default location retained');
+        },
+        { timeout: 6000, maximumAge: 300000 }
+      );
+    }
+  }, []);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  
+  const [isNavHidden, setIsNavHidden] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const lastScrollY = React.useRef(0);
+  
+  const { theme } = useTheme();
+  
+  const knownOrderStatuses = React.useRef({});
+
+  useEffect(() => {
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.name = 'theme-color';
+      document.head.appendChild(metaThemeColor);
+    }
+    
+    let targetColor = '#F3F4F6';
+    if (showSplash) {
+      targetColor = '#0a0a0c';
+    } else if (viewName === '/' || viewName === '/categories') {
+      targetColor = theme === 'dark' ? '#1E1E1E' : '#F8CB46';
+    } else if (viewName === '/profile') {
+      targetColor = theme === 'dark' ? '#4F2F1D' : '#FFEAA7';
+    } else {
+      targetColor = theme === 'dark' ? '#121212' : '#F3F4F6';
+    }
+    metaThemeColor.content = targetColor;
+
+    // Native Android Status Bar handling: Never collide with phone status bar
+    if (Capacitor.isNativePlatform()) {
+      try {
+        StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: targetColor }).catch(() => {});
+        StatusBar.setStyle({ style: (theme === 'dark' || showSplash) ? Style.Dark : Style.Light }).catch(() => {});
+      } catch (_) {}
+    }
+  }, [viewName, theme, showSplash]);
+
+  useEffect(() => {
+    // Elegant splash display time to imprint brand identity in user mind
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Initialize native Live OTA Bundle Updater (Capgo Over-The-Air updates)
+  useEffect(() => {
+    initLiveUpdater();
+  }, []);
+
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    
+    const userChannel = supabase.channel('user-orders-listener')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `profile_id=eq.${userProfile.id}` }, (payload) => {
+        const newStatus = payload.new.status;
+        const previousStatus = knownOrderStatuses.current[payload.new.id];
+        
+        if (newStatus && previousStatus && newStatus !== previousStatus) {
+          playNotificationSound();
+          showToast(`Your order status changed to: ${newStatus}`, 'Order Update');
+
+          // Send real native Android notification with sound, vibration, and banner
+          sendNativeAppNotification({
+            title: `Order Update: ${newStatus} 🛍️`,
+            body: `Your Quickly order #${payload.new.id.slice(0, 8).toUpperCase()} is now ${newStatus}. Tap to track live!`,
+            extra: { order_id: payload.new.id, route: '/track' }
+          });
+        }
+        
+        if (newStatus) {
+          knownOrderStatuses.current[payload.new.id] = newStatus;
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(userChannel);
+    };
+  }, [userProfile]);
+
+  // Initialize native Push and Local Notifications
+  useEffect(() => {
+    if (isLoggedIn) {
+      requestAppNotificationPermission();
+      const cleanupListeners = initPushNotificationListeners(navigate, showToast);
+      return () => cleanupListeners();
+    }
+  }, [isLoggedIn, navigate, showToast]);
+
+  useEffect(() => {
+    const messaging = getFirebaseMessaging();
+    if (messaging) {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log("Foreground message received:", payload);
+        playNotificationSound();
+        showToast(payload.notification?.title || 'Notification', payload.notification?.body || 'New message received', 'success');
+
+        sendNativeAppNotification({
+          title: payload.notification?.title || 'Quickly Alert',
+          body: payload.notification?.body || 'New update received from Quickly.',
+          extra: payload.data || {}
+        });
+      });
+      return () => unsubscribe();
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 150);
+      
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        setIsNavHidden(true);
+      } else if (currentScrollY < lastScrollY.current) {
+        setIsNavHidden(false);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      let hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+      
+      // If localStorage was cleared (e.g. Chrome site data cleared), restore from native Android Preferences
+      if (!hasFirebasePhone) {
+        try {
+          const prefPhone = await Preferences.get({ key: 'zipit_verified_phone' });
+          if (prefPhone?.value) {
+            localStorage.setItem('zipit_verified_phone', prefPhone.value);
+            hasFirebasePhone = true;
+          }
+        } catch (_) {}
+      }
+
+      if (!localStorage.getItem('zipit_active_user_id')) {
+        try {
+          const prefUid = await Preferences.get({ key: 'zipit_active_user_id' });
+          if (prefUid?.value) {
+            localStorage.setItem('zipit_active_user_id', prefUid.value);
+          }
+        } catch (_) {}
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const isNowLoggedIn = !!session || hasFirebasePhone;
+      
+      // Prevent stale user profile flash if signed in with a different account
+      if (session?.user?.id) {
+        setUserProfile(prev => (prev?.id === session.user.id ? prev : null));
+      } else if (!hasFirebasePhone) {
+        setUserProfile(null);
+      }
+      
+      setIsLoggedIn(isNowLoggedIn);
+      setIsInitializingAuth(false);
+    };
+
+    restoreSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      let hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+      if (!hasFirebasePhone) {
+        try {
+          const prefPhone = await Preferences.get({ key: 'zipit_verified_phone' });
+          if (prefPhone?.value) {
+            hasFirebasePhone = true;
+          }
+        } catch (_) {}
+      }
+      const isNowLoggedIn = !!session || hasFirebasePhone;
+      
+      // If user session changed or logged out, clear stale profile data
+      if (session?.user?.id) {
+        setUserProfile(prev => (prev?.id === session.user.id ? prev : null));
+      } else if (!isNowLoggedIn) {
+        setUserProfile(null);
+        setAddresses([]);
+        setCart([]);
+      }
+      
+      setIsLoggedIn(isNowLoggedIn);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    
+    const initDB = async (silent = false) => {
+      if (!silent) setIsLoading(true);
+      try {
+        const [profileRes, addrsRes, ordersRes, savedCartRes] = await Promise.all([
+          db.user.get().catch(e => { console.warn("User get failed:", e); return null; }),
+          db.addresses.getAll().catch(e => { console.warn("Addresses fetch failed:", e); return []; }),
+          db.orders.getAll().catch(e => { console.warn("Orders fetch failed:", e); return []; }),
+          db.carts.get().catch(e => { console.warn("Carts fetch failed:", e); return []; })
+        ]);
+
+        if (profileRes) setUserProfile(profileRes);
+        if (Array.isArray(addrsRes)) setAddresses(addrsRes);
+        if (Array.isArray(ordersRes)) {
+          ordersRes.forEach(o => {
+            if (o?.id) knownOrderStatuses.current[o.id] = o.status;
+          });
+        }
+        if (Array.isArray(savedCartRes) && savedCartRes.length > 0) {
+          setCart(savedCartRes);
+        } else {
+          setCart([]);
+        }
+        localStorage.removeItem('cart'); // Clear any legacy local storage cart
+      } catch (err) {
+        console.error("initDB error:", err);
+      } finally {
+        if (!silent) setIsLoading(false);
+      }
+    };
+    
+    initDB();
+
+    let lastHiddenTime = Date.now();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTime = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        // Only trigger background refresh if user was away for at least 60 seconds
+        if (Date.now() - lastHiddenTime > 60000) {
+          initDB(true);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    const dataChannel = supabase.channel('global-data-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => initDB(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => initDB(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => initDB(true))
+      .subscribe();
+      
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      supabase.removeChannel(dataChannel);
+    };
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    setDeliveryTime(Math.floor(Math.random() * 11) + 8);
+  }, []);
+
+  const updateCartQty = (product, delta) => {
+    if (delta > 0) {
+      // Stock limit check
+      if (product.is_out_of_stock || product.stock_count === 0) {
+        showToast(`The ${product.name} is Out of Stock currently.`, 'warning');
+        triggerHapticFeedback([30, 20]);
+        return;
+      }
+      const stockLimit = product.stock_count;
+      const hasLimit = stockLimit !== undefined && stockLimit !== null && stockLimit > 0;
+      if (hasLimit) {
+        const currentQtyInCart = cart.find(i => i.id === product.id)?.qty || 0;
+        if (currentQtyInCart + delta > stockLimit) {
+          showToast(`Only ${stockLimit} unit${stockLimit !== 1 ? 's' : ''} available for "${product.name}"`, 'warning');
+          triggerHapticFeedback([30, 20]);
+          return;
+        }
+      }
+      triggerHapticFeedback([15]);
+    } else {
+      triggerHapticFeedback([10]);
+    }
+
+    setCart(prev => {
+      let newCart = prev;
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        if (existing.qty + delta <= 0) newCart = prev.filter(item => item.id !== product.id);
+        else newCart = prev.map(item => item.id === product.id ? { ...item, qty: item.qty + delta } : item);
+      } else {
+        if (delta > 0) newCart = [...prev, { ...product, qty: 1 }];
+      }
+      
+      if (userProfile?.id) {
+        db.carts.sync(newCart);
+      }
+      return newCart;
+    });
+  };
+
+  const handleSetDefaultAddress = async (id) => {
+    if (id === 'GPS') {
+      const gpsArea = localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
+      const tempGpsAddr = {
+        id: 'GPS_CURRENT',
+        type: 'Current Location',
+        details: gpsArea,
+        is_default: true,
+        phone: userProfile?.phone || ''
+      };
+      setAddresses(prev => [tempGpsAddr, ...prev.map(a => ({ ...a, is_default: false }))]);
+      showToast('Switched to GPS Location', gpsArea);
+      return;
+    }
+    await db.addresses.setDefault(id);
+    const addrs = await db.addresses.getAll();
+    setAddresses(addrs);
+  };
+
+  // Read initial cached branding synchronously so fee and geofence calculations are immediate without delay
+  const initialCachedBranding = (() => {
+    try {
+      const stored = localStorage.getItem('zipit_cached_branding');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  const [feeConfig, setFeeConfig] = useState(() => ({
+    delivery_fee: Number(initialCachedBranding?.delivery_fee) >= 0 ? Number(initialCachedBranding.delivery_fee) : 20,
+    handling_fee: Number(initialCachedBranding?.handling_fee) >= 0 ? Number(initialCachedBranding.handling_fee) : 9,
+    free_delivery_min_amount: Number(initialCachedBranding?.free_delivery_min_amount) >= 0 ? Number(initialCachedBranding.free_delivery_min_amount) : 149,
+    free_delivery_enabled: initialCachedBranding?.free_delivery_enabled !== false,
+    surge_fee: Number(initialCachedBranding?.surge_fee) || 0,
+    surge_enabled: initialCachedBranding?.surge_enabled === true
+  }));
+
+  const [geofenceConfig, setGeofenceConfig] = useState(() => ({
+    store_lat: Number(initialCachedBranding?.store_lat) || 25.5788,
+    store_lng: Number(initialCachedBranding?.store_lng) || 83.5780,
+    max_delivery_radius_km: Number(initialCachedBranding?.max_delivery_radius_km) || 8.5
+  }));
+
+  useEffect(() => {
+    const loadFeesAndGeofence = async () => {
+      try {
+        const b = await db.branding.get();
+        if (b) {
+          setFeeConfig({
+            delivery_fee: Number(b.delivery_fee) >= 0 ? Number(b.delivery_fee) : 20,
+            handling_fee: Number(b.handling_fee) >= 0 ? Number(b.handling_fee) : 9,
+            free_delivery_min_amount: Number(b.free_delivery_min_amount) >= 0 ? Number(b.free_delivery_min_amount) : 149,
+            free_delivery_enabled: b.free_delivery_enabled !== false,
+            surge_fee: Number(b.surge_fee) || 0,
+            surge_enabled: b.surge_enabled === true
+          });
+          setGeofenceConfig({
+            store_lat: Number(b.store_lat) || 25.5788,
+            store_lng: Number(b.store_lng) || 83.5780,
+            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+          });
+        }
+      } catch (_) {}
+    };
+
+    loadFeesAndGeofence();
+
+    // Instant Realtime sync when Admin updates branding/fees
+    const brandingChannel = supabase.channel('customer-branding-fees-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+      }, () => {
+        loadFeesAndGeofence();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(brandingChannel);
+    };
+  }, []);
+
+  const safeCart = Array.isArray(cart) ? cart : [];
+  const totalItems = safeCart.reduce((sum, item) => sum + (item?.qty || 0), 0);
+  const itemTotal = safeCart.reduce((sum, item) => sum + ((item?.price || 0) * (item?.qty || 0)), 0);
+  
+  // Dynamic handling and delivery fees synced with Admin settings
+  const smallCartCharge = itemTotal > 0 ? (Number(feeConfig.handling_fee) || 0) : 0;
+  const surgeCharge = (itemTotal > 0 && feeConfig.surge_enabled) ? (Number(feeConfig.surge_fee) || 0) : 0;
+  
+  const isFreeDeliveryEligible = feeConfig.free_delivery_enabled && itemTotal >= feeConfig.free_delivery_min_amount;
+  const baseDeliveryCharge = Number(feeConfig.delivery_fee) || 0;
+  const deliveryCharge = (itemTotal > 0 && !isFreeDeliveryEligible) ? baseDeliveryCharge : 0;
+  
+  const discountAmount = appliedCoupon 
+    ? (appliedCoupon.discount_type === 'PERCENTAGE' 
+        ? (itemTotal * appliedCoupon.discount_value / 100) 
+        : appliedCoupon.discount_type === 'FREE_DELIVERY' 
+            ? deliveryCharge 
+            : appliedCoupon.discount_value)
+    : 0;
+    
+  const grandTotal = itemTotal > 0 ? Math.max(0, itemTotal + smallCartCharge + deliveryCharge + surgeCharge - discountAmount) : 0;
+
+  // Clear coupon if item total falls below minimum order amount
+  useEffect(() => {
+    if (appliedCoupon && itemTotal < appliedCoupon.min_order_amount) {
+      setAppliedCoupon(null);
+    }
+  }, [itemTotal, appliedCoupon]);
+
+  // Whenever user navigates to /checkout or /payment, ensure all modal/overlay states and body locks are cleaned up
+  useEffect(() => {
+    if (viewName === '/checkout' || viewName === '/payment') {
+      setIsSearchOpen(false);
+      setSelectedProduct(null);
+      setIsAddressModalOpen(false);
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+  }, [viewName]);
+
+  if (showSplash || isInitializingAuth) {
+    return <SplashScreen />;
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <React.Suspense fallback={<SplashScreen />}>
+        <LoginPage onLogin={() => setIsLoggedIn(true)} />
+      </React.Suspense>
+    );
+  }
+
+  const showBottomNav = ['/', '/categories'].includes(viewName);
+  const activeTab = viewName === '/' ? 'home' : viewName === '/categories' ? 'categories' : '';
+  const showCartBar = totalItems > 0 && !viewName.includes('/checkout') && !viewName.includes('/payment') && !selectedProduct;
+
+  const safeAddresses = Array.isArray(addresses) ? addresses : [];
+  const defaultAddress = safeAddresses.find(a => a?.is_default) || safeAddresses[0] || null;
+
+  const handleOpenCart = () => {
+    setIsSearchOpen(false);
+    setSelectedProduct(null);
+    setIsAddressModalOpen(false);
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    navigate('/checkout');
+  };
+
+  const handleRefreshApp = async () => {
+    try {
+      // 1. Invalidate locally cached products, banners, and categories so fresh data is loaded
+      try {
+        localStorage.removeItem('zipit_cached_products');
+        localStorage.removeItem('zipit_cached_banners');
+        localStorage.removeItem('zipit_cached_categories');
+      } catch (_) {}
+
+      // 2. Dispatch custom app:refresh event for active components
+      window.dispatchEvent(new CustomEvent('app:refresh'));
+
+      // 3. Fetch latest live products
+      await db.products.getAll();
+
+      // 4. Refresh addresses and profile if user is logged in
+      if (userProfile?.id || userProfile?.phone) {
+        const [freshUser, freshAddrs] = await Promise.all([
+          db.user.get().catch(() => null),
+          db.addresses.getAll().catch(() => [])
+        ]);
+        if (freshUser) setUserProfile(freshUser);
+        if (Array.isArray(freshAddrs)) setAddresses(freshAddrs);
+      }
+
+      setRefreshKey(prev => prev + 1);
+      showToast('Inventory & prices updated', 'Refreshed');
+    } catch (e) {
+      console.error('Refresh error', e);
+      showToast('Refresh completed', 'Refreshed');
+    }
+  };
+
+  return (
+    <>
+      <PullToRefresh onRefresh={handleRefreshApp}>
+        <div key={`${location.pathname}-${refreshKey}`} className="page-transition" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {(viewName === '/' || viewName === '/categories') && (
+            <Header 
+              time={deliveryTime} 
+              onAddressClick={() => setIsAddressModalOpen(true)}
+              onSearchClick={(isVoice) => openSearch(isVoice === true)}
+              onProfileClick={() => navigate('/profile')}
+              defaultAddress={defaultAddress}
+              gpsLocation={gpsLocation}
+              isHome={viewName === '/'}
+              isNavHidden={isNavHidden}
+              bgColor="var(--color-header-bg)"
+              cart={cart}
+              userProfile={userProfile}
+              setUserProfile={setUserProfile}
+              navigate={navigate}
+              openCart={handleOpenCart}
+            />
+          )}
+          {viewName === '/' && (
+            <HeroSection onImageChange={setHeaderBgColor} cart={cart} updateCartQty={updateCartQty} navigate={navigate} />
+          )}
+          
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
+            <React.Suspense fallback={<SkeletonLoader />}>
+              <Routes>
+                <Route path="/" element={<ProductGrid cart={cart} updateCartQty={updateCartQty} navigate={navigate} onProductClick={openProductSheet} />} />
+                <Route path="/categories" element={<CategoriesPage navigate={navigate} />} />
+                <Route path="/orders" element={<PlacedOrdersPage navigate={navigate} />} />
+                <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
+                <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} editId={location.state?.editId} />} />
+                <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
+                <Route path="/customer-support" element={<CustomerSupportPage navigate={navigate} />} />
+                <Route path="/support" element={<CustomerSupportPage navigate={navigate} />} />
+                <Route path="/terms" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/privacy" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/refund" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/legal" element={<LegalPoliciesPage navigate={navigate} />} />
+                <Route path="/category/:categoryId" element={<ProductListPageWrapper navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
+                <Route path="/all-products" element={<AllProductsPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} onSearchClick={() => openSearch(false)} onProductClick={openProductSheet} />} />
+                <Route path="/wishlist" element={<WishlistPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} />} />
+                <Route path="/track" element={<TrackOrderPage navigate={navigate} />} />
+                <Route path="/substitute-selection" element={<SubstituteSelectionPage navigate={navigate} />} />
+                <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
+                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} initialGeofence={geofenceConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
+                <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
+                <Route path="/partner-register" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="/partner" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="/sell" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="/join-partner" element={<PartnerRegistrationPage navigate={navigate} />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </React.Suspense>
+          </div>
+        </div>
+      </PullToRefresh>
+      
+      {showCartBar && (
+        <CartBar 
+          count={totalItems} 
+          total={itemTotal} 
+          cart={cart} 
+          onOpen={handleOpenCart} 
+          isNavHidden={(!showBottomNav || isNavHidden) && !selectedProduct} 
+        />
+      )}
+      
+      {showBottomNav && (
+        <BottomNav
+          activeTab={activeTab}
+          navigate={navigate}
+          openCart={handleOpenCart}
+          isNavHidden={isNavHidden}
+        />
+      )}
+      <React.Suspense fallback={null}>
+        {isAddressModalOpen && (
+          <AddressModal 
+            isOpen={isAddressModalOpen} 
+            onClose={() => setIsAddressModalOpen(false)} 
+            addresses={addresses}
+            navigate={navigate}
+            onSelectAddress={handleSetDefaultAddress}
+            currentRoute={viewName}
+          />
+        )}
+        {isSearchOpen && (
+          <SearchOverlay 
+            isOpen={isSearchOpen} 
+            onClose={closeSearch} 
+            cart={cart}
+            updateCartQty={updateCartQty}
+            initialVoiceSearch={isVoiceSearchOpen}
+            onProductClick={openProductSheet}
+          />
+        )}
+        {selectedProduct && (
+          <ProductDetailsSheet 
+            product={selectedProduct} 
+            cart={cart}
+            updateCartQty={updateCartQty}
+            onClose={closeProductSheet} 
+          />
+        )}
+        {(!userProfile?.name || userProfile?.name === 'New User' || userProfile?.name.startsWith('User ') || userProfile?.name.trim() === '') && (
+          <OnboardingModal 
+            userProfile={userProfile} 
+            onComplete={(newData) => {
+              setUserProfile(prev => ({ ...prev, ...newData }));
+            }} 
+            onCancel={() => {
+              setUserProfile(null);
+              setIsLoggedIn(false);
+            }}
+          />
+        )}
+        <OfflineBanner />
+        <UpdatePrompt />
+      </React.Suspense>
+    </>
+  );
+}
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught error:", error, errorInfo);
+    // If a new production build was deployed and user has old HTML requesting stale chunk hashes:
+    const isChunkError = error?.message?.includes('dynamically imported module') ||
+                         error?.message?.includes('Failed to fetch') ||
+                         error?.message?.includes('Loading chunk');
+    if (isChunkError) {
+      const lastReload = sessionStorage.getItem('zipit_last_chunk_reload');
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem('zipit_last_chunk_reload', String(now));
+        window.location.reload();
+      }
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', color: '#0F172A' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Unable to display page</h2>
+          <p style={{ fontSize: 13, color: '#64748B', maxWidth: 320, marginBottom: 20 }}>
+            {this.state.error?.message || 'A render issue occurred.'}
+          </p>
+          <button 
+            onClick={() => { localStorage.removeItem('cart'); window.location.reload(); }} 
+            style={{ padding: '12px 28px', backgroundColor: '#F8CB46', border: 'none', borderRadius: 24, fontWeight: 700, cursor: 'pointer', fontSize: 15 }}
+          >
+            Refresh App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <WishlistProvider>
+          <ToastProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </ToastProvider>
+        </WishlistProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default App;
