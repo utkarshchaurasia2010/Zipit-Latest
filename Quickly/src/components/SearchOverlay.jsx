@@ -313,34 +313,65 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
     setQuery(transliteratedQuery);
   };
 
-  const startVoiceSearch = () => {
+  const startVoiceSearch = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      showToast('Voice search not supported in this browser.', 'Error');
+      showToast('Voice search not supported on this device.', 'Error');
       return;
     }
     if (isListening) return;
 
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    // Use hi-IN with automatic bilingual English fallback
-    recognition.lang = 'hi-IN';
-    recognition.interimResults = false;
-    recognition.onstart = () => { setIsListening(true); setVoiceTranscript(''); };
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setIsListening(false);
-      handleVoiceIntentProcessing(transcript);
-    };
-    recognition.onerror = (event) => {
-      console.error(event.error);
-      setIsListening(false);
-      if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        showToast('Voice search failed. Please try again.', 'Error');
+    // Explicitly request microphone permission to ensure Android OS prompts the user
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.warn("Microphone permission denied:", err);
+        showToast('Please allow microphone permission to use voice search', 'Permission Required');
+        return;
       }
-    };
-    recognition.onend = () => { setIsListening(false); };
-    recognition.start();
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      // Indian English & Hinglish transcription so results match English product names
+      recognition.lang = 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => { 
+        setIsListening(true); 
+        setVoiceTranscript('Listening...'); 
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setIsListening(false);
+        handleVoiceIntentProcessing(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("SpeechRecognition error:", event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          showToast('Microphone access denied. Please grant permission in device settings.', 'Error');
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          showToast('Voice search failed. Please try again.', 'Error');
+        }
+      };
+
+      recognition.onend = () => { 
+        setIsListening(false); 
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error("Failed to start speech recognition:", e);
+      setIsListening(false);
+      showToast('Could not start voice search', 'Error');
+    }
   };
 
   const cancelVoiceSearch = () => {

@@ -1,5 +1,5 @@
 .app-header {
-  padding: 8px 20px 14px;
+  padding: calc(max(env(safe-area-inset-top, 0px), 0px) + 8px) 20px 14px;
   background-color: var(--color-primary);
   display: flex;
   flex-direction: column;

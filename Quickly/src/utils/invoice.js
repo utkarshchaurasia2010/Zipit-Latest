@@ -1,6 +1,4 @@
 export const downloadInvoice = (order, onToast = null) => {
-  const printWindow = window.open('', '_blank', 'width=650,height=900');
-  if (!printWindow) return;
 
   const orderDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -366,22 +364,115 @@ export const downloadInvoice = (order, onToast = null) => {
         </div>
         </div>
 
-        <script>
-          var hasPrinted = false;
-          window.addEventListener('load', function() {
-            if (!hasPrinted) {
-              hasPrinted = true;
-              setTimeout(function() {
-                window.focus();
-                window.print();
-              }, 150);
-            }
-          });
-        </script>
       </body>
     </html>
   `;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+  // Render in-app modal viewer
+  const existingModal = document.getElementById('quickly-in-app-invoice-modal');
+  if (existingModal) existingModal.remove();
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.id = 'quickly-in-app-invoice-modal';
+  modalOverlay.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0;
+  `;
+
+  const modalBox = document.createElement('div');
+  modalBox.style.cssText = `
+    background: #F8F9FA;
+    width: 100%;
+    max-width: 600px;
+    height: 92vh;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
+  `;
+
+  const modalHeader = document.createElement('div');
+  modalHeader.style.cssText = `
+    padding: 16px 20px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  `;
+  modalHeader.innerHTML = `
+    <div>
+      <div style="font-weight: 800; font-size: 16px; color: #0F172A;">Tax Invoice</div>
+      <div style="font-size: 12px; color: #64748B;">${invoiceNo}</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button id="invoice-print-btn" style="
+        background: #F8CB46;
+        color: #0F172A;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+      ">Print / Save</button>
+      <button id="invoice-close-btn" style="
+        background: #F1F5F9;
+        color: #475569;
+        border: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">✕</button>
+    </div>
+  `;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = `
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #F8F9FA;
+  `;
+
+  modalBox.appendChild(modalHeader);
+  modalBox.appendChild(iframe);
+  modalOverlay.appendChild(modalBox);
+  document.body.appendChild(modalOverlay);
+
+  // Write content into iframe
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Wire controls
+  modalHeader.querySelector('#invoice-close-btn').onclick = () => modalOverlay.remove();
+  modalOverlay.onclick = (e) => {
+    if (e.target === modalOverlay) modalOverlay.remove();
+  };
+  modalHeader.querySelector('#invoice-print-btn').onclick = () => {
+    try {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch (_) {}
+  };
 };

@@ -173,10 +173,10 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
             left: 0, 
             right: 0, 
             bottom: 0, 
-            backgroundColor: 'rgba(0,0,0,0.55)', 
+            backgroundColor: 'rgba(0,0,0,0.65)', 
             backdropFilter: 'blur(6px)',
             WebkitBackdropFilter: 'blur(6px)',
-            zIndex: 10000, 
+            zIndex: 99999, 
             display: 'flex', 
             flexDirection: 'column', 
             justifyContent: 'flex-end',
@@ -192,10 +192,10 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
               borderTopRightRadius: '24px', 
               width: '100%',
               maxWidth: '540px',
-              maxHeight: '85vh',
+              maxHeight: '82vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 -10px 30px rgba(0,0,0,0.2)',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.3)',
               border: '1px solid var(--color-border)',
               animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
               overflow: 'hidden'
@@ -307,7 +307,13 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
             </div>
 
             {/* Footer with Apply Button */}
-            <div style={{ padding: '14px 20px 20px', borderTop: '1px solid var(--color-border)', flexShrink: 0, background: 'var(--color-surface)' }}>
+            <div style={{ 
+              padding: '16px 20px calc(max(env(safe-area-inset-bottom, 24px), 24px) + 12px)', 
+              borderTop: '1px solid var(--color-border)', 
+              flexShrink: 0, 
+              background: 'var(--color-surface)',
+              boxShadow: '0 -4px 16px rgba(0,0,0,0.06)'
+            }}>
               <button 
                 onClick={() => setIsFilterOpen(false)} 
                 style={{ 

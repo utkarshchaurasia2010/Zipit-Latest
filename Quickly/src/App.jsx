@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, usePa
 import { App as CapacitorApp } from '@capacitor/app';
 import { Preferences } from '@capacitor/preferences';
 import { Browser } from '@capacitor/browser';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import CategoriesPage from './components/CategoriesPage';
@@ -403,14 +405,25 @@ function AppContent() {
       document.head.appendChild(metaThemeColor);
     }
     
+    let targetColor = '#F3F4F6';
     if (showSplash) {
-      metaThemeColor.content = '#0a0a0c';
+      targetColor = '#0a0a0c';
     } else if (viewName === '/' || viewName === '/categories') {
-      metaThemeColor.content = theme === 'dark' ? '#1E1E1E' : '#F8CB46';
+      targetColor = theme === 'dark' ? '#1E1E1E' : '#F8CB46';
     } else if (viewName === '/profile') {
-      metaThemeColor.content = theme === 'dark' ? '#4F2F1D' : '#FFEAA7';
+      targetColor = theme === 'dark' ? '#4F2F1D' : '#FFEAA7';
     } else {
-      metaThemeColor.content = theme === 'dark' ? '#121212' : '#F3F4F6';
+      targetColor = theme === 'dark' ? '#121212' : '#F3F4F6';
+    }
+    metaThemeColor.content = targetColor;
+
+    // Native Android Status Bar handling: Never collide with phone status bar
+    if (Capacitor.isNativePlatform()) {
+      try {
+        StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: targetColor }).catch(() => {});
+        StatusBar.setStyle({ style: (theme === 'dark' || showSplash) ? Style.Dark : Style.Light }).catch(() => {});
+      } catch (_) {}
     }
   }, [viewName, theme, showSplash]);
 
