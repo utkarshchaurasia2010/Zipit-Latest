@@ -12,8 +12,6 @@ jobs:
   build:
     name: Build Quickly Android APK
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -21,8 +19,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Make Gradlew Executable
         run: chmod +x Quickly/android/gradlew
@@ -64,17 +60,18 @@ jobs:
         shell: bash
         run: |
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../../build.log
+        continue-on-error: true
 
-      - name: Commit Build Log if Failed
-        if: failure()
+      - name: Publish Build Summary
+        shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B build-debug-log
-          cp build.log ./latest-build.log
-          git add latest-build.log
-          git commit -m "chore: save build log"
-          git push -f origin build-debug-log
+          echo "## Gradle Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 120 build.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if grep -q "BUILD FAILED" build.log; then
+            exit 1
+          fi
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
