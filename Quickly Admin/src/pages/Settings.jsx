@@ -418,10 +418,42 @@ const Settings = ({ profile, setProfile }) => {
               className="clean-input"
             />
           </div>
+
+          <div className="form-group">
+            <label>Surge / Rain / Peak Fee (₹)</label>
+            <input 
+              type="number" 
+              min="0"
+              step="5"
+              value={branding.surge_fee ?? 0} 
+              onChange={e => setBranding(prev => ({ ...prev, surge_fee: parseFloat(e.target.value) || 0 }))}
+              className="clean-input"
+              placeholder="e.g. 15"
+            />
+          </div>
         </div>
 
         {/* Toggles */}
         <div className="toggles-grid">
+          <div className="clean-toggle-box">
+            <div>
+              <span className="toggle-label">⚡ Surge Pricing (Bad Weather / High Demand)</span>
+              <span className="toggle-subtext">
+                {branding.surge_enabled === true 
+                  ? `Active (+₹${branding.surge_fee || 0} applied to customer orders)` 
+                  : 'Disabled (Normal delivery rates)'}
+              </span>
+            </div>
+            <label className="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={branding.surge_enabled === true} 
+                onChange={e => setBranding(prev => ({ ...prev, surge_enabled: e.target.checked }))} 
+              />
+              <span className="slider round"></span>
+            </label>
+          </div>
+
           <div className="clean-toggle-box">
             <div>
               <span className="toggle-label">Cash on Delivery (COD)</span>

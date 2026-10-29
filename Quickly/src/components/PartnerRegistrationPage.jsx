@@ -228,9 +228,6 @@ export default function PartnerRegistrationPage({ navigate }) {
         <button onClick={() => navigate ? navigate('/') : window.history.back()} className="partner-back-btn">
           <ArrowLeft size={18} /> Back to Shopping
         </button>
-        <span className="partner-brand-tag">
-          <Sparkles size={14} /> Quickly Partner Network
-        </span>
       </div>
 
       {submittedApp ? (

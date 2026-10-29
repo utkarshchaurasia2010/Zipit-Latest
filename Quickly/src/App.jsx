@@ -43,6 +43,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { useToast } from './context/ToastContext';
 import { playNotificationSound, triggerHapticFeedback } from './utils/audio';
+import { requestAppNotificationPermission, sendNativeAppNotification, initPushNotificationListeners } from './utils/notifications';
 import { db, supabase } from './services/db';
 import { getFirebaseMessaging } from './services/firebase';
 import { onMessage } from 'firebase/messaging';
@@ -446,6 +447,13 @@ function AppContent() {
         if (newStatus && previousStatus && newStatus !== previousStatus) {
           playNotificationSound();
           showToast(`Your order status changed to: ${newStatus}`, 'Order Update');
+
+          // Send real native Android notification with sound, vibration, and banner
+          sendNativeAppNotification({
+            title: `Order Update: ${newStatus} 🛍️`,
+            body: `Your Quickly order #${payload.new.id.slice(0, 8).toUpperCase()} is now ${newStatus}. Tap to track live!`,
+            extra: { order_id: payload.new.id, route: '/track' }
+          });
         }
         
         if (newStatus) {
@@ -459,6 +467,15 @@ function AppContent() {
     };
   }, [userProfile]);
 
+  // Initialize native Push and Local Notifications
+  useEffect(() => {
+    if (isLoggedIn) {
+      requestAppNotificationPermission();
+      const cleanupListeners = initPushNotificationListeners(navigate, showToast);
+      return () => cleanupListeners();
+    }
+  }, [isLoggedIn, navigate, showToast]);
+
   useEffect(() => {
     const messaging = getFirebaseMessaging();
     if (messaging) {
@@ -466,6 +483,12 @@ function AppContent() {
         console.log("Foreground message received:", payload);
         playNotificationSound();
         showToast(payload.notification?.title || 'Notification', payload.notification?.body || 'New message received', 'success');
+
+        sendNativeAppNotification({
+          title: payload.notification?.title || 'Quickly Alert',
+          body: payload.notification?.body || 'New update received from Quickly.',
+          extra: payload.data || {}
+        });
       });
       return () => unsubscribe();
     }
