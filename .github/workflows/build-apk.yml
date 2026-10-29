@@ -44,9 +44,11 @@ jobs:
         working-directory: Quickly
         run: npm run build
 
-      - name: Sync Capacitor Android
+      - name: Copy Web Assets to Android
         working-directory: Quickly
-        run: npx cap sync android --inline
+        run: |
+          npx cap copy android
+          npx cap update android || echo "Capacitor update skipped, native config intact"
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
