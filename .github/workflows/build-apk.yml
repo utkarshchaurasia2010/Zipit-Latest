@@ -38,9 +38,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Sync Capacitor Android
         working-directory: Quickly
         run: npx cap sync android
@@ -51,6 +48,8 @@ jobs:
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload Debug APK
