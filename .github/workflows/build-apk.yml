@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build Quickly Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -19,6 +21,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Make Gradlew Executable
         run: chmod +x Quickly/android/gradlew
@@ -37,7 +41,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: Quickly/package-lock.json
 
@@ -59,21 +63,18 @@ jobs:
         working-directory: Quickly/android
         shell: bash
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-        continue-on-error: true
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../../build.log
 
-      - name: Inspect Build Output
-        working-directory: Quickly/android
-        shell: bash
+      - name: Commit Build Log if Failed
+        if: failure()
         run: |
-          echo "=== SEARCH FOR APK ==="
-          find . -name "*.apk" -ls
-          echo "=== CHECK FOR FAILURE IN LOG ==="
-          if grep -q "BUILD FAILED" build.log; then
-            echo "Gradle failed with the following details:"
-            grep -C 5 -E "FAILURE|Error|FAILED" build.log | head -n 100
-            exit 1
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B build-debug-log
+          cp build.log ./latest-build.log
+          git add latest-build.log
+          git commit -m "chore: save build log"
+          git push -f origin build-debug-log
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
