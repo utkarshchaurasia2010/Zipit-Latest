@@ -4,7 +4,14 @@ import App from './App.jsx'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
-import './index.css'
+import { initLiveUpdater } from './utils/liveUpdater';
+import './index.css';
+
+// Initialize Capgo Live OTA bundle updater for native Android / iOS
+try {
+  initLiveUpdater();
+} catch (_) {}
+
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

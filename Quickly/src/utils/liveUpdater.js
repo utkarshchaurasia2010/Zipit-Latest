@@ -9,6 +9,7 @@ import { supabase } from '../services/db';
  */
 
 let isUpdating = false;
+let realtimeChannel = null;
 
 export const initLiveUpdater = async () => {
   if (!Capacitor.isNativePlatform()) {
@@ -16,22 +17,43 @@ export const initLiveUpdater = async () => {
   }
 
   try {
-    // 1. Notify native layer that the current bundle booted successfully.
-    // This is Capgo's safety latch - if an update crashes before this line,
-    // the native app automatically rolls back to the built-in factory bundle.
+    // 1. Notify native layer that current bundle booted successfully.
+    // This is Capgo's safety latch - confirms the bundle works so it doesn't roll back.
     await CapacitorUpdater.notifyAppReady();
     console.log('[LiveUpdater] Current bundle verified as ready');
 
-    // 2. Check for updates after a brief delay so initial render is smooth
+    // 2. Check for updates on startup after a short delay for smooth first render
     setTimeout(() => {
-      checkForLiveBundleUpdate();
-    }, 4000);
+      checkForLiveBundleUpdate(true);
+    }, 2500);
+
+    // 3. Realtime Supabase listener: when Admin saves a new OTA version, download & apply immediately!
+    if (!realtimeChannel) {
+      realtimeChannel = supabase.channel('realtime-ota-listener')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: 'id=eq.00000000-0000-0000-0000-000000000001'
+        }, async (payload) => {
+          if (payload.new?.address) {
+            try {
+              const data = typeof payload.new.address === 'string' ? JSON.parse(payload.new.address) : payload.new.address;
+              if (data.ota_bundle_version && data.ota_bundle_url) {
+                console.log('[LiveUpdater] New OTA version published in admin:', data.ota_bundle_version);
+                await checkForLiveBundleUpdate(true);
+              }
+            } catch (_) {}
+          }
+        })
+        .subscribe();
+    }
   } catch (err) {
     console.warn('[LiveUpdater] init failed:', err);
   }
 };
 
-export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
+export const checkForLiveBundleUpdate = async (immediateApply = true) => {
   if (!Capacitor.isNativePlatform() || isUpdating) {
     return null;
   }
@@ -39,7 +61,7 @@ export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
   try {
     isUpdating = true;
 
-    // Check platform settings in Supabase profiles (address column stores branding JSON)
+    // Fetch latest OTA config from Supabase profiles (address column stores branding JSON)
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('address')
@@ -59,8 +81,8 @@ export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
       return null;
     }
 
-    const latestVersion = branding.ota_bundle_version; // e.g. "1.0.12"
-    const latestUrl = branding.ota_bundle_url; // Direct HTTPS URL to Quickly-OTA-Bundle.zip
+    const latestVersion = (branding.ota_bundle_version || '').trim();
+    const latestUrl = (branding.ota_bundle_url || '').trim();
 
     if (!latestVersion || !latestUrl) {
       isUpdating = false;
@@ -72,8 +94,9 @@ export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
     console.log('[LiveUpdater] Current bundle version:', current?.version, 'Latest available:', latestVersion);
 
     if (current?.version === latestVersion) {
+      console.log('[LiveUpdater] Already running latest version:', latestVersion);
       isUpdating = false;
-      return null; // Already up to date
+      return null;
     }
 
     console.log(`[LiveUpdater] Downloading OTA bundle update ${latestVersion} from ${latestUrl}...`);
@@ -86,11 +109,13 @@ export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
 
     console.log('[LiveUpdater] Downloaded and unpacked bundle:', bundle.id);
 
-    // Stage bundle to load automatically on next launch/restart (seamless, non-disruptive)
-    await CapacitorUpdater.next({ id: bundle.id });
-
-    if (onUpdateFound) {
-      onUpdateFound({ version: latestVersion, id: bundle.id });
+    if (immediateApply) {
+      // Instantly switch WebView to the new bundle and reload UI
+      console.log('[LiveUpdater] Applying bundle immediately via CapacitorUpdater.set...');
+      await CapacitorUpdater.set({ id: bundle.id });
+    } else {
+      // Stage bundle to load automatically on next launch/restart
+      await CapacitorUpdater.next({ id: bundle.id });
     }
 
     isUpdating = false;
@@ -101,3 +126,4 @@ export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
     return null;
   }
 };
+
