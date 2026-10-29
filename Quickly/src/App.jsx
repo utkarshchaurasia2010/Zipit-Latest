@@ -95,6 +95,7 @@ function AppContent() {
 
   // Scroll to top on route change
   useEffect(() => {
+    setIsNavHidden(false);
     setTimeout(() => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }, 10);
@@ -502,19 +503,46 @@ function AppContent() {
   }, [showToast]);
 
   useEffect(() => {
+    let ticking = false;
+    let accumulatedDelta = 0;
+    let lastY = window.scrollY;
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      setIsScrolled(currentScrollY > 120);
-      
-      const delta = currentScrollY - lastScrollY.current;
-      if (Math.abs(delta) < 8) return; // Prevent micro-jitter on touch screens
-      
-      if (delta > 0 && currentScrollY > 60) {
-        setIsNavHidden(true);
-      } else if (delta < -10 || currentScrollY <= 40) {
-        setIsNavHidden(false);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          setIsScrolled(currentY > 100);
+
+          // Always reveal header when near top of the page
+          if (currentY <= 25) {
+            setIsNavHidden(false);
+            accumulatedDelta = 0;
+            lastY = currentY;
+            ticking = false;
+            return;
+          }
+
+          const diff = currentY - lastY;
+
+          // If scroll direction reverses, reset accumulator
+          if ((accumulatedDelta > 0 && diff < 0) || (accumulatedDelta < 0 && diff > 0)) {
+            accumulatedDelta = diff;
+          } else {
+            accumulatedDelta += diff;
+          }
+
+          // Smooth hysteresis thresholds: scrolling down > 30px after passing 60px hides, scrolling up > 20px reveals
+          if (accumulatedDelta > 30 && currentY > 60) {
+            setIsNavHidden(true);
+          } else if (accumulatedDelta < -20) {
+            setIsNavHidden(false);
+          }
+
+          lastY = currentY;
+          ticking = false;
+        });
+        ticking = true;
       }
-      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

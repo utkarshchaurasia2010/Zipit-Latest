@@ -337,116 +337,118 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
 
       {/* ── MOBILE / TABLET HEADER BAR (<1024px) ── */}
       <div className="mobile-header-wrapper">
-        <div className="header-top" style={{ color: textColor }}>
-          <div className="location-info" onClick={onAddressClick}>
-            <div className="delivery-time">
-              <strong>{brandingConfig?.app_name || 'Quickly'} in</strong>
-              <h1>{getCartDeliveryTime(cart) || brandingConfig?.default_eta_mins || time} minutes</h1>
+        <div className="header-top-collapse-wrapper">
+          <div className="header-top" style={{ color: textColor }}>
+            <div className="location-info" onClick={onAddressClick}>
+              <div className="delivery-time">
+                <strong>{brandingConfig?.app_name || 'Quickly'} in</strong>
+                <h1>{getCartDeliveryTime(cart) || brandingConfig?.default_eta_mins || time} minutes</h1>
+              </div>
+              <div className="address" style={{ display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '240px', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                {defaultAddress && typeof defaultAddress.details === 'string' && defaultAddress.details.trim() ? (
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      fontSize: '13px', 
+                      color: textColor, 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      width: '100%'
+                    }}
+                    title={defaultAddress.details}
+                  >
+                    <span style={{ fontWeight: 800, flexShrink: 0, fontSize: '13px' }}>
+                      {defaultAddress.type || 'Home'}
+                    </span>
+                    <span style={{ fontWeight: 450, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.9, fontSize: '12.5px' }}>
+                      {` - ${(defaultAddress.details.split(',')[0] || '').trim()}`}
+                    </span>
+                    <ChevronDown size={15} style={{ flexShrink: 0, marginLeft: '3px' }} strokeWidth={2.5} />
+                  </div>
+                ) : (
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      fontSize: '13px', 
+                      color: textColor, 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontWeight: 800, flexShrink: 0, fontSize: '13px' }}>
+                      Current location
+                    </span>
+                    <span style={{ fontWeight: 450, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.9, fontSize: '12.5px' }}>
+                      {` - ${(String(gpsLocation || localStorage.getItem('zipit_gps_area') || 'Detecting...').split(',')[0] || '').trim()}`}
+                    </span>
+                    <ChevronDown size={15} style={{ flexShrink: 0, marginLeft: '3px' }} strokeWidth={2.5} />
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="address" style={{ display: 'flex', alignItems: 'center', gap: '3px', maxWidth: '240px', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>
-              {defaultAddress && typeof defaultAddress.details === 'string' && defaultAddress.details.trim() ? (
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    fontSize: '13px', 
-                    color: textColor, 
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    width: '100%'
-                  }}
-                  title={defaultAddress.details}
-                >
-                  <span style={{ fontWeight: 800, flexShrink: 0, fontSize: '13px' }}>
-                    {defaultAddress.type || 'Home'}
-                  </span>
-                  <span style={{ fontWeight: 450, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.9, fontSize: '12.5px' }}>
-                    {` - ${(defaultAddress.details.split(',')[0] || '').trim()}`}
-                  </span>
-                  <ChevronDown size={15} style={{ flexShrink: 0, marginLeft: '3px' }} strokeWidth={2.5} />
-                </div>
-              ) : (
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    fontSize: '13px', 
-                    color: textColor, 
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    width: '100%'
-                  }}
-                >
-                  <span style={{ fontWeight: 800, flexShrink: 0, fontSize: '13px' }}>
-                    Current location
-                  </span>
-                  <span style={{ fontWeight: 450, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.9, fontSize: '12.5px' }}>
-                    {` - ${(String(gpsLocation || localStorage.getItem('zipit_gps_area') || 'Detecting...').split(',')[0] || '').trim()}`}
-                  </span>
-                  <ChevronDown size={15} style={{ flexShrink: 0, marginLeft: '3px' }} strokeWidth={2.5} />
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div 
-              className="notification-icon" 
-              onClick={handleEnableNotifications} 
-              title={hasNotificationsEnabled ? "Notifications enabled" : "Click to enable Notifications"}
-              aria-label={hasNotificationsEnabled ? "Notifications enabled" : "Enable order notifications"}
-              role="button"
-              tabIndex={0}
-              style={{ 
-                position: 'relative', 
-                width: 42, 
-                height: 42, 
-                borderRadius: '50%', 
-                backgroundColor: theme === 'dark' ? '#1E1E1E' : 'rgba(255, 255, 255, 0.92)', 
-                backdropFilter: 'blur(8px)',
-                boxShadow: theme === 'dark' 
-                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.7), inset 0 -1px 2px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.4)' 
-                  : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
-                border: theme === 'dark' ? '1px solid #333333' : '1px solid rgba(0, 0, 0, 0.07)',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                cursor: hasNotificationsEnabled ? 'default' : 'pointer',
-                transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease'
-              }}
-            >
-              <Bell size={19} color={hasNotificationsEnabled ? (theme === 'dark' ? '#34c759' : '#0c831f') : (theme === 'dark' ? '#ff3b30' : '#d93025')} strokeWidth={2.4} />
-              {hasNotificationsEnabled && (
-                 <div style={{ position: 'absolute', bottom: 5, right: 5, width: 11, height: 11, backgroundColor: '#0c831f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <Check size={8} color="#fff" strokeWidth={3} />
-                 </div>
-              )}
-            </div>
-            <div 
-              className="profile-pic" 
-              onClick={onProfileClick} 
-              aria-label="User Profile"
-              role="button"
-              tabIndex={0}
-              style={{ 
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                backgroundColor: theme === 'dark' ? '#1E1E1E' : 'rgba(255, 255, 255, 0.92)', 
-                backdropFilter: 'blur(8px)',
-                boxShadow: theme === 'dark' 
-                  ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.7), inset 0 -1px 2px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.4)' 
-                  : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
-                border: theme === 'dark' ? '1px solid #333333' : '1px solid rgba(0, 0, 0, 0.07)',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease'
-              }}
-            >
-              <SolidUserIcon size={21} color={textColor} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div 
+                className="notification-icon" 
+                onClick={handleEnableNotifications} 
+                title={hasNotificationsEnabled ? "Notifications enabled" : "Click to enable Notifications"}
+                aria-label={hasNotificationsEnabled ? "Notifications enabled" : "Enable order notifications"}
+                role="button"
+                tabIndex={0}
+                style={{ 
+                  position: 'relative', 
+                  width: 42, 
+                  height: 42, 
+                  borderRadius: '50%', 
+                  backgroundColor: theme === 'dark' ? '#1E1E1E' : 'rgba(255, 255, 255, 0.92)', 
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: theme === 'dark' 
+                    ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.7), inset 0 -1px 2px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.4)' 
+                    : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
+                  border: theme === 'dark' ? '1px solid #333333' : '1px solid rgba(0, 0, 0, 0.07)',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  cursor: hasNotificationsEnabled ? 'default' : 'pointer',
+                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease'
+                }}
+              >
+                <Bell size={19} color={hasNotificationsEnabled ? (theme === 'dark' ? '#34c759' : '#0c831f') : (theme === 'dark' ? '#ff3b30' : '#d93025')} strokeWidth={2.4} />
+                {hasNotificationsEnabled && (
+                   <div style={{ position: 'absolute', bottom: 5, right: 5, width: 11, height: 11, backgroundColor: '#0c831f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                     <Check size={8} color="#fff" strokeWidth={3} />
+                   </div>
+                )}
+              </div>
+              <div 
+                className="profile-pic" 
+                onClick={onProfileClick} 
+                aria-label="User Profile"
+                role="button"
+                tabIndex={0}
+                style={{ 
+                  width: 42,
+                  height: 42,
+                  borderRadius: '50%',
+                  backgroundColor: theme === 'dark' ? '#1E1E1E' : 'rgba(255, 255, 255, 0.92)', 
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: theme === 'dark' 
+                    ? 'inset 0 1.5px 3px rgba(0, 0, 0, 0.7), inset 0 -1px 2px rgba(255, 255, 255, 0.05), 0 2px 6px rgba(0, 0, 0, 0.4)' 
+                    : 'inset 0 1.5px 3px rgba(0, 0, 0, 0.12), inset 0 -1.5px 2px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.06)',
+                  border: theme === 'dark' ? '1px solid #333333' : '1px solid rgba(0, 0, 0, 0.07)',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease'
+                }}
+              >
+                <SolidUserIcon size={21} color={textColor} />
+              </div>
             </div>
           </div>
         </div>

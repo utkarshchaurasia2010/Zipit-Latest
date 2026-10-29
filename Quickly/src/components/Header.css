@@ -10,22 +10,15 @@
   border-bottom-right-radius: 24px;
   border-bottom: 4px solid var(--color-border);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  transition: padding 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.35s ease;
+  transition: padding 0.35s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.35s ease, background-color 0.3s ease, border-color 0.3s ease;
   overflow: hidden;
+  will-change: padding;
 }
 
 .app-header.nav-hidden {
-  padding-bottom: 10px;
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 0px) + 6px);
+  padding-bottom: 8px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-
-.app-header.nav-hidden .header-top {
-  max-height: 0;
-  opacity: 0;
-  margin-bottom: 0;
-  pointer-events: none;
-  overflow: hidden;
-  transform: translateY(-10px);
 }
 
 /* Translucent Vector Backdrop Decoration */
@@ -45,20 +38,46 @@
   right: 0;
 }
 
-.header-top, .search-container, .desktop-header-row {
+.header-top, .header-top-collapse-wrapper, .search-container, .desktop-header-row {
   position: relative;
   z-index: 1;
+}
+
+/* Smooth CSS-Grid Accordion for Header Top (Address + Delivery time + Action icons) */
+.header-top-collapse-wrapper {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease, margin-bottom 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  margin-bottom: 14px;
+  opacity: 1;
+  will-change: grid-template-rows, opacity;
+}
+
+.header-top-collapse-wrapper > .header-top {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  transform: translateY(0);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.app-header.nav-hidden .header-top-collapse-wrapper {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+.app-header.nav-hidden .header-top-collapse-wrapper > .header-top {
+  transform: translateY(-8px);
 }
 
 .header-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 18px;
-  max-height: 120px;
-  opacity: 1;
-  transform: translateY(0);
-  transition: max-height 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease-in-out, margin-bottom 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 .location-info {
