@@ -75,7 +75,20 @@ jobs:
             Quickly/Quickly-OTA-Bundle.zip.sha256
           if-no-files-found: error
 
-      - name: Publish Live OTA Release Asset
+      - name: Build Debug APK with Gradle
+        working-directory: Quickly/android
+        run: |
+          ./gradlew assembleDebug -PappVersionCode=${{ github.run_number }} -PappVersionName="1.0.${{ github.run_number }}" --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../Quickly-Debug.apk
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quickly-Debug-APK
+          path: Quickly/Quickly-Debug.apk
+          if-no-files-found: error
+
+      - name: Publish Live OTA Release Asset & Direct APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
@@ -84,6 +97,7 @@ jobs:
           files: |
             Quickly/Quickly-OTA-Bundle.zip
             Quickly/Quickly-OTA-Bundle.zip.sha256
+            Quickly/Quickly-Debug.apk
           draft: false
           prerelease: false
         env:
@@ -117,14 +131,3 @@ jobs:
             }
             update();
           "
-
-      - name: Build Debug APK with Gradle
-        working-directory: Quickly/android
-        run: ./gradlew assembleDebug -PappVersionCode=${{ github.run_number }} -PappVersionName="1.0.${{ github.run_number }}" --no-daemon --stacktrace
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Quickly-Debug-APK
-          path: 'Quickly/android/**/*.apk'
-          if-no-files-found: error
