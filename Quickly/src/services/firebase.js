@@ -35,18 +35,17 @@ export const requestFirebaseNotificationPermission = async () => {
       });
       console.log('FCM Token:', token);
       return token;
-    } else {
-      console.log('Notification permission denied.');
-      return null;
     }
   } catch (error) {
-    console.error('Error getting FCM token:', error);
-    alert('FCM Error: ' + error.message);
+    console.warn('[Firebase] Error getting FCM token:', error);
     return null;
   }
 };
 
 export const getFirebaseMessaging = () => {
+  if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+    return null; // Native platform uses LocalNotifications + Supabase Realtime
+  }
   if (!app) return null;
   try {
     return getMessaging(app);

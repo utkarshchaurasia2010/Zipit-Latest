@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, Mic, Bell, Check, Home, LayoutGrid, Navigation, ShoppingCart, Heart } from 'lucide-react';
 import { db, supabase } from '../services/db';
-import { requestFirebaseNotificationPermission } from '../services/firebase';
+import { requestAppNotificationPermission } from '../utils/notifications';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { getCartDeliveryTime } from '../utils/time';
@@ -72,12 +72,12 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
       showToast('Notifications are already enabled!');
       return;
     }
-    const token = await requestFirebaseNotificationPermission();
-    if (token || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) {
+    const granted = await requestAppNotificationPermission();
+    if (granted || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) {
       setNativePerm('granted');
       showToast('Notifications enabled successfully!');
     } else {
-      showToast('Please enable notifications in browser/device settings.');
+      showToast('Please enable notifications in device settings.');
     }
   };
   

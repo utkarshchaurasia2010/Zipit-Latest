@@ -4,7 +4,7 @@ import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, S
 import { Preferences } from '@capacitor/preferences';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
-import { requestFirebaseNotificationPermission } from '../services/firebase';
+import { requestAppNotificationPermission } from '../utils/notifications';
 import Toast from './Toast';
 
 const SolidUserIcon = ({ size = 24, color = "currentColor" }) => (
@@ -55,13 +55,11 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   };
 
   const handleEnableNotifications = async () => {
-    setToast({ visible: true, title: 'Requesting Permission', message: 'Please allow notifications in your browser...' });
-    const token = await requestFirebaseNotificationPermission();
-    if (token) {
-      await db.user.update({ fcm_token: token });
+    const granted = await requestAppNotificationPermission();
+    if (granted || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) {
       setToast({ visible: true, title: 'Notifications Enabled', message: 'You will now receive order updates!' });
     } else {
-      setToast({ visible: true, title: 'Permission Denied', message: 'Could not enable notifications.' });
+      setToast({ visible: true, title: 'Permission Denied', message: 'Could not enable notifications. Please check app settings.' });
     }
   };
 

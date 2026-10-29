@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { supabase } from '../services/db';
 
 let isChannelCreated = false;
 
@@ -23,12 +22,12 @@ export const setupNotificationChannels = async () => {
     });
     isChannelCreated = true;
   } catch (err) {
-    console.warn('Could not create notification channel:', err);
+    console.warn('[Notifications] Could not create notification channel:', err);
   }
 };
 
 // Request runtime notification permissions (required on Android 13+)
-// Safe and crash-proof: Uses Android LocalNotifications permission prompt
+// 100% crash-proof: Uses Android LocalNotifications permission prompt
 export const requestAppNotificationPermission = async () => {
   if (!Capacitor.isNativePlatform()) {
     if ('Notification' in window && Notification.permission !== 'granted') {
@@ -41,23 +40,13 @@ export const requestAppNotificationPermission = async () => {
 
   try {
     await setupNotificationChannels();
-    // This prompts Android's native runtime POST_NOTIFICATIONS permission dialog
+    // This prompts Android's native runtime POST_NOTIFICATIONS permission dialog safely
     const localPerm = await LocalNotifications.requestPermissions();
-    console.log('[Notifications] Permission status:', localPerm.display);
-
-    // Safely attempt push registration only if available (never crash app)
-    try {
-      const { PushNotifications } = await import('@capacitor/push-notifications');
-      if (PushNotifications && typeof PushNotifications.checkPermissions === 'function') {
-        const check = await PushNotifications.checkPermissions();
-        if (check.receive === 'granted') {
-          // Wrap in try-catch to avoid native Firebase initialization crash
-          PushNotifications.register().catch(e => console.warn('Push register skipped:', e));
-        }
-      }
-    } catch (_) {}
+    console.log('[Notifications] Native permission status:', localPerm.display);
+    return localPerm.display === 'granted';
   } catch (err) {
-    console.warn('Error requesting notification permissions:', err);
+    console.warn('[Notifications] Error requesting notification permissions:', err);
+    return false;
   }
 };
 
@@ -97,17 +86,17 @@ export const sendNativeAppNotification = async ({ title, body, extra = {} }) => 
       ]
     });
   } catch (err) {
-    console.warn('Failed to schedule native notification:', err);
+    console.warn('[Notifications] Failed to schedule native notification:', err);
   }
 };
 
-// Initialize listeners for push and local notifications
+// Initialize listeners for notification tap actions
 export const initPushNotificationListeners = (navigate, showToast) => {
   if (!Capacitor.isNativePlatform()) return () => {};
 
   setupNotificationChannels();
 
-  // Action performed on local notification tap
+  // Action performed on notification tap
   let localActionHandle = null;
   try {
     LocalNotifications.addListener('localNotificationActionPerformed', (notification) => {
@@ -120,56 +109,9 @@ export const initPushNotificationListeners = (navigate, showToast) => {
     }).then(h => { localActionHandle = h; }).catch(() => {});
   } catch (_) {}
 
-  // Safe Push Notifications listeners (guarded so it never crashes)
-  let pushRegHandle = null;
-  let pushRecvHandle = null;
-  let pushActionHandle = null;
-
-  import('@capacitor/push-notifications').then(({ PushNotifications }) => {
-    try {
-      PushNotifications.addListener('registration', async (token) => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user?.id && token?.value) {
-            await supabase.from('profiles').update({ fcm_token: token.value }).eq('id', user.id);
-          }
-        } catch (_) {}
-      }).then(h => { pushRegHandle = h; }).catch(() => {});
-
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        sendNativeAppNotification({
-          title: notification.title,
-          body: notification.body,
-          extra: notification.data
-        });
-        if (showToast) {
-          showToast(notification.title || 'Quickly Notification', notification.body || '', 'info');
-        }
-      }).then(h => { pushRecvHandle = h; }).catch(() => {});
-
-      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        const data = notification.notification?.data || {};
-        if (data.route && navigate) {
-          navigate(data.route);
-        } else if (data.order_id && navigate) {
-          navigate('/track');
-        }
-      }).then(h => { pushActionHandle = h; }).catch(() => {});
-    } catch (_) {}
-  }).catch(() => {});
-
   return () => {
     if (localActionHandle && typeof localActionHandle.remove === 'function') {
       localActionHandle.remove();
-    }
-    if (pushRegHandle && typeof pushRegHandle.remove === 'function') {
-      pushRegHandle.remove();
-    }
-    if (pushRecvHandle && typeof pushRecvHandle.remove === 'function') {
-      pushRecvHandle.remove();
-    }
-    if (pushActionHandle && typeof pushActionHandle.remove === 'function') {
-      pushActionHandle.remove();
     }
   };
 };
