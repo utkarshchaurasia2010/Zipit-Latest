@@ -10,8 +10,10 @@ on:
 
 jobs:
   build:
-    name: Build Quickly Android APK
+    name: Build Quickly Android APK & Auto-Deploy Live OTA
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -59,12 +61,49 @@ jobs:
           cd dist
           zip -r ../Quickly-OTA-Bundle.zip .
 
-      - name: Upload Live OTA Bundle
+      - name: Upload Live OTA Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Quickly-OTA-Bundle
           path: Quickly/Quickly-OTA-Bundle.zip
           if-no-files-found: error
+
+      - name: Publish Live OTA Release Asset
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: live-ota
+          name: "Quickly Live OTA Release (Auto-Deploy)"
+          files: Quickly/Quickly-OTA-Bundle.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-Sync OTA Version to Supabase
+        if: github.ref == 'refs/heads/main'
+        working-directory: Quickly
+        run: |
+          node -e "
+            const { createClient } = require('@supabase/supabase-js');
+            const client = createClient('https://bbaggauqnlcohrgvsios.supabase.co', 'sb_publishable_rCjAUoKGrW0u-CCnBb9rQw_ori9Y1dQ');
+            async function update() {
+              const version = '1.0.${{ github.run_number }}';
+              const downloadUrl = 'https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip';
+              const { data: profile } = await client.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').single();
+              const parsed = profile?.address ? JSON.parse(profile.address) : {};
+              parsed.ota_bundle_version = version;
+              parsed.ota_bundle_url = downloadUrl;
+              parsed.ota_last_published_at = new Date().toISOString();
+              const { error } = await client.from('profiles').update({ address: JSON.stringify(parsed) }).eq('id', '00000000-0000-0000-0000-000000000001');
+              if (error) {
+                console.error('Failed to update Supabase:', error);
+                process.exit(1);
+              }
+              console.log('Successfully pushed OTA version ' + version + ' to Supabase!');
+            }
+            update();
+          "
 
       - name: Build Debug APK with Gradle
         working-directory: Quickly/android
@@ -76,4 +115,3 @@ jobs:
           name: Quickly-Debug-APK
           path: 'Quickly/android/**/*.apk'
           if-no-files-found: error
-

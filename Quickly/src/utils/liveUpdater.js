@@ -39,21 +39,28 @@ export const checkForLiveBundleUpdate = async (onUpdateFound = null) => {
   try {
     isUpdating = true;
 
-    // Check platform settings in Supabase for latest OTA bundle release
-    const { data: settings, error } = await supabase
+    // Check platform settings in Supabase profiles (address column stores branding JSON)
+    const { data: profile, error } = await supabase
       .from('profiles')
-      .select('branding')
+      .select('address')
       .eq('id', '00000000-0000-0000-0000-000000000001')
       .maybeSingle();
 
-    if (error || !settings?.branding) {
+    if (error || !profile?.address) {
       isUpdating = false;
       return null;
     }
 
-    const branding = settings.branding;
-    const latestVersion = branding.ota_bundle_version; // e.g. "1.0.4"
-    const latestUrl = branding.ota_bundle_url; // Direct HTTPS URL to dist.zip
+    let branding = {};
+    try {
+      branding = typeof profile.address === 'string' ? JSON.parse(profile.address) : profile.address;
+    } catch (_) {
+      isUpdating = false;
+      return null;
+    }
+
+    const latestVersion = branding.ota_bundle_version; // e.g. "1.0.12"
+    const latestUrl = branding.ota_bundle_url; // Direct HTTPS URL to Quickly-OTA-Bundle.zip
 
     if (!latestVersion || !latestUrl) {
       isUpdating = false;
