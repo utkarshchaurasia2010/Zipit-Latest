@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams, useNavigationType } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Preferences } from '@capacitor/preferences';
+import { Browser } from '@capacitor/browser';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import CategoriesPage from './components/CategoriesPage';
@@ -267,6 +268,70 @@ function AppContent() {
       }
     };
   }, [navigate, showToast]);
+
+  // Handle native deep link callbacks (e.g. Google OAuth redirect)
+  useEffect(() => {
+    let urlListenerHandle = null;
+
+    const setupUrlListener = async () => {
+      try {
+        urlListenerHandle = await CapacitorApp.addListener('appUrlOpen', async (event) => {
+          // Close in-app Chrome Custom Tab browser window if open
+          try {
+            await Browser.close();
+          } catch (_) {}
+
+          const rawUrl = event?.url || '';
+          if (rawUrl.includes('login-callback') || rawUrl.startsWith('quickly://') || rawUrl.startsWith('com.quickly.delivery://')) {
+            // Handle OAuth hash tokens (#access_token=...&refresh_token=...)
+            if (rawUrl.includes('access_token=')) {
+              const hashPart = rawUrl.includes('#') ? rawUrl.split('#')[1] : (rawUrl.includes('?') ? rawUrl.split('?')[1] : rawUrl);
+              const params = new URLSearchParams(hashPart);
+              const accessToken = params.get('access_token');
+              const refreshToken = params.get('refresh_token');
+
+              if (accessToken && refreshToken) {
+                const { data, error } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken
+                });
+                if (!error && data?.session) {
+                  showToast('Welcome to Quickly! Logged in successfully.', 'Success');
+                  setIsLoggedIn(true);
+                  return;
+                }
+              }
+            }
+
+            // Handle OAuth PKCE code flow (?code=...)
+            if (rawUrl.includes('code=')) {
+              const queryPart = rawUrl.includes('?') ? rawUrl.split('?')[1] : rawUrl;
+              const params = new URLSearchParams(queryPart.split('#')[0]);
+              const code = params.get('code');
+              if (code) {
+                const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+                if (!error && data?.session) {
+                  showToast('Welcome to Quickly! Logged in successfully.', 'Success');
+                  setIsLoggedIn(true);
+                  return;
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        // Fallback for browser
+      }
+    };
+
+    setupUrlListener();
+
+    return () => {
+      if (urlListenerHandle && typeof urlListenerHandle.remove === 'function') {
+        urlListenerHandle.remove();
+      }
+    };
+  }, [showToast]);
 
   const [headerBgColor, setHeaderBgColor] = useState('linear-gradient(to right, #F8CB46, #F9D423)');
 

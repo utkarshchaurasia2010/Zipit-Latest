@@ -6,6 +6,8 @@ import { db, supabase } from '../services/db';
 import { Mail, ShieldCheck } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { executeInvisibleTurnstile } from '../utils/turnstile';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 const DEFAULT_bgProducts = [
   "https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/assets/products/sliding_images/jpeg/1c0db977-31ab-4d8e-abf3-d42e4a4b4632.jpg?ts=1706182142",
@@ -110,13 +112,17 @@ const LoginPage = ({ onLogin }) => {
     // Auto-timeout fallback if user taps back from OAuth consent screen
     const fallbackTimer = setTimeout(() => {
       setGoogleLoading(false);
-    }, 8000);
+    }, 20000);
 
     try {
+      const isNative = Capacitor.isNativePlatform();
+      const redirectUri = isNative ? 'quickly://login-callback' : window.location.origin;
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUri,
+          skipBrowserRedirect: isNative,
           queryParams: {
             prompt: 'select_account'
           }
@@ -126,6 +132,11 @@ const LoginPage = ({ onLogin }) => {
         clearTimeout(fallbackTimer);
         showToast(error.message || 'Google sign-in failed', 'Error');
         setGoogleLoading(false);
+        return;
+      }
+
+      if (isNative && data?.url) {
+        await Browser.open({ url: data.url, windowName: '_self' });
       }
     } catch (err) {
       clearTimeout(fallbackTimer);
