@@ -79,6 +79,34 @@ function AppContent() {
     }, 10);
   }, [location.pathname]);
 
+  // Native Android hardware/gesture back button support
+  useEffect(() => {
+    let removeListener = null;
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('backButton', () => {
+        if (isSearchOpen) {
+          setIsSearchOpen(false);
+        } else if (isAddressModalOpen) {
+          setIsAddressModalOpen(false);
+        } else if (selectedProduct) {
+          setSelectedProduct(null);
+        } else if (location.pathname !== '/') {
+          navigate(-1);
+        } else {
+          App.exitApp();
+        }
+      }).then(handle => {
+        removeListener = handle;
+      });
+    }).catch(() => {});
+
+    return () => {
+      if (removeListener && typeof removeListener.remove === 'function') {
+        removeListener.remove();
+      }
+    };
+  }, [isSearchOpen, isAddressModalOpen, selectedProduct, location.pathname, navigate]);
+
   // Global Cart Fly Animation
   useEffect(() => {
     const handleGlobalClick = (e) => {

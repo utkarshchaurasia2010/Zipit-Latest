@@ -1,0 +1,19 @@
+{
+  "appId": "com.quickly.delivery",
+  "appName": "Quickly",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "quickly.app",
+    "cleartext": true
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "",
+      "keystorePassword": "",
+      "keystoreAlias": "",
+      "keystoreAliasPassword": "",
+      "releaseType": "APK"
+    }
+  }
+}
