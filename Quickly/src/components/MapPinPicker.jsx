@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Search, Crosshair, Layers, Navigation, Loader2, X } from 'lucide-react';
+import { getDeviceLocation } from '../utils/geolocation';
 import './MapPinPicker.css';
 
 const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) => {
@@ -522,16 +523,11 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
     }
   };
 
-  // Instant Phone GPS (< 100ms first response via Wi-Fi/Cell + seamless high accuracy refinement)
-  const handleLocateMe = () => {
-    if (!('geolocation' in navigator)) {
-      alert('GPS is not supported by your browser/device.');
-      return;
-    }
+  // Instant Phone GPS with Native Android Geolocation Permission Support
+  const handleLocateMe = async () => {
     setIsLoading(true);
     setAreaTitle('Acquiring live GPS...');
 
-    let isDone = false;
     const updateMapToCoords = (latitude, longitude) => {
       setCoords({ lat: latitude, lng: longitude });
       if (leafletMapRef.current) {
@@ -540,38 +536,25 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
       reverseGeocode(latitude, longitude);
     };
 
-    // 1) Instant location grab (< 100ms via network/cell tower)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        updateMapToCoords(latitude, longitude);
-      },
-      () => {},
-      { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
-    );
-
-    // 2) High accuracy satellite lock
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        updateMapToCoords(latitude, longitude);
-        if (accuracy < 500 || !isDone) {
-          isDone = true;
-          setTimeout(() => navigator.geolocation.clearWatch(watchId), 3500);
-        }
-      },
-      (err) => {
-        console.warn('Watch GPS fallback:', err.message);
-        if (!isDone) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => updateMapToCoords(pos.coords.latitude, pos.coords.longitude),
-            () => setIsLoading(false),
-            { enableHighAccuracy: false, timeout: 12000, maximumAge: 0 }
-          );
-        }
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
+    try {
+      const loc = await getDeviceLocation({ enableHighAccuracy: true, timeout: 10000 });
+      updateMapToCoords(loc.latitude, loc.longitude);
+    } catch (err) {
+      console.warn('Native GPS error, attempting fallback:', err);
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => updateMapToCoords(pos.coords.latitude, pos.coords.longitude),
+          (fallbackErr) => {
+            console.error('All GPS providers failed:', fallbackErr);
+            setIsLoading(false);
+            alert('Please enable location permission on your device to pinpoint your exact address.');
+          },
+          { enableHighAccuracy: false, timeout: 6000 }
+        );
+      } else {
+        setIsLoading(false);
+      }
+    }
   };
 
   // Switch between Google Maps Street View and Satellite View without shifting location
@@ -650,23 +633,16 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
       });
 
       // Automatically fetch current device location on first open
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            if (!isMounted) return;
-            const { latitude, longitude } = position.coords;
-            setCoords({ lat: latitude, lng: longitude });
-            map.setView([latitude, longitude], 18);
-            reverseGeocode(latitude, longitude);
-          },
-          () => {
-            if (isMounted) reverseGeocode(coords.lat, coords.lng);
-          },
-          { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
-        );
-      } else {
-        reverseGeocode(coords.lat, coords.lng);
-      }
+      getDeviceLocation({ enableHighAccuracy: true, timeout: 6000 })
+        .then((loc) => {
+          if (!isMounted) return;
+          setCoords({ lat: loc.latitude, lng: loc.longitude });
+          map.setView([loc.latitude, loc.longitude], 18);
+          reverseGeocode(loc.latitude, loc.longitude);
+        })
+        .catch(() => {
+          if (isMounted) reverseGeocode(coords.lat, coords.lng);
+        });
     });
 
     return () => {

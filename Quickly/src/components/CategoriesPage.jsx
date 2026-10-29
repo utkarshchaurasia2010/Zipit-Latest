@@ -53,6 +53,11 @@ const CategoriesPage = ({ navigate, isEmbedded }) => {
     };
     fetchCats();
 
+    const handleAppRefresh = () => {
+      fetchCats();
+    };
+    window.addEventListener('app:refresh', handleAppRefresh);
+
     const channel = supabase.channel('realtime:categories_page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
         fetchCats();
@@ -62,6 +67,7 @@ const CategoriesPage = ({ navigate, isEmbedded }) => {
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
+      window.removeEventListener('app:refresh', handleAppRefresh);
     };
   }, []);
 

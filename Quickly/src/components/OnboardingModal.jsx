@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Preferences } from '@capacitor/preferences';
 import { db, supabase } from '../services/db';
 import { Mail, User, Phone, CheckCircle2, ArrowLeft } from 'lucide-react';
 import './OnboardingModal.css';
@@ -108,6 +109,7 @@ const OnboardingModal = ({ userProfile, onComplete, onCancel }) => {
     
     if (res?.data) {
       localStorage.setItem('zipit_verified_phone', cleanPhone);
+      try { Preferences.set({ key: 'zipit_verified_phone', value: cleanPhone }); } catch (_) {}
       setClosing(true);
       setTimeout(() => {
         onComplete(res.data);

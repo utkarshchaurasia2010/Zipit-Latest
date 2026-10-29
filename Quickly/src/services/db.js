@@ -1,10 +1,41 @@
 import { createClient } from '@supabase/supabase-js';
+import { Preferences } from '@capacitor/preferences';
 import { preloadImages } from '../utils/imageCache';
 
 const supabaseUrl = 'https://bbaggauqnlcohrgvsios.supabase.co';
 const supabaseAnonKey = 'sb_publishable_rCjAUoKGrW0u-CCnBb9rQw_ori9Y1dQ';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const nativeStorageAdapter = {
+  getItem: async (key) => {
+    try {
+      const local = localStorage.getItem(key);
+      if (local) return local;
+      const { value } = await Preferences.get({ key });
+      if (value) {
+        try { localStorage.setItem(key, value); } catch (_) {}
+        return value;
+      }
+    } catch (_) {}
+    return null;
+  },
+  setItem: async (key, value) => {
+    try { localStorage.setItem(key, value); } catch (_) {}
+    try { await Preferences.set({ key, value: String(value) }); } catch (_) {}
+  },
+  removeItem: async (key) => {
+    try { localStorage.removeItem(key); } catch (_) {}
+    try { await Preferences.remove({ key }); } catch (_) {}
+  }
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: nativeStorageAdapter,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  }
+});
 
 let activeProductsPromise = null;
 let activeCategoriesPromise = null;
@@ -12,8 +43,19 @@ let activeCategoriesPromise = null;
 const getUserId = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user?.id) return session.user.id;
-  const storedId = localStorage.getItem('zipit_active_user_id');
-  return storedId || null;
+  
+  let storedId = localStorage.getItem('zipit_active_user_id');
+  if (storedId) return storedId;
+
+  try {
+    const { value } = await Preferences.get({ key: 'zipit_active_user_id' });
+    if (value) {
+      try { localStorage.setItem('zipit_active_user_id', value); } catch (_) {}
+      return value;
+    }
+  } catch (_) {}
+
+  return null;
 };
 
 export const db = {

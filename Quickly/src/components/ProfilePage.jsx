@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './ProfilePage.css';
 import { LogOut, ChevronRight, BookOpen, CreditCard, ChevronLeft, Edit2, Moon, Sun, Heart, MapPin, Bell, FileText, ShieldCheck, HelpCircle, Handshake } from 'lucide-react';
+import { Preferences } from '@capacitor/preferences';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestFirebaseNotificationPermission } from '../services/firebase';
@@ -45,6 +46,10 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
     localStorage.removeItem('zipit_verified_phone');
     localStorage.removeItem('zipit_active_user_id');
     localStorage.removeItem('cart');
+    try {
+      await Preferences.remove({ key: 'zipit_active_user_id' });
+      await Preferences.remove({ key: 'zipit_verified_phone' });
+    } catch (_) {}
     await supabase.auth.signOut();
     onLogout();
   };

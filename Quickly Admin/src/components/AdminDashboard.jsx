@@ -1102,6 +1102,9 @@ const AdminDashboard = ({ initialTab }) => {
                         } else {
                           updatePayload.status = newSelection;
                           updatePayload.substitution_status = null;
+                          if (newSelection === 'Preparing' && !o.accepted_by_shopkeeper) {
+                            updatePayload.accepted_by_shopkeeper = 'ADMIN';
+                          }
                         }
 
                         setData(prev => prev.map(item => item.id === o.id ? { ...item, ...updatePayload } : item));

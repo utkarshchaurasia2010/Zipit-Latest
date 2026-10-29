@@ -77,6 +77,11 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
     };
     fetchProds();
 
+    const handleAppRefresh = () => {
+      fetchProds();
+    };
+    window.addEventListener('app:refresh', handleAppRefresh);
+
     const channel = supabase.channel('realtime:product_grid')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
         fetchProds();
@@ -85,6 +90,7 @@ const ProductGrid = ({ navigate, cart, updateCartQty, onProductClick }) => {
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('app:refresh', handleAppRefresh);
     };
   }, []);
 

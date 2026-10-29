@@ -41,6 +41,11 @@ const HeroSection = ({ onImageChange, cart, updateCartQty, navigate }) => {
     };
     fetchBannersAndProducts();
 
+    const handleAppRefresh = () => {
+      fetchBannersAndProducts();
+    };
+    window.addEventListener('app:refresh', handleAppRefresh);
+
     // Realtime subscription for banners (products table rows with ---TAG:BANNER---)
     const channel = supabase.channel('realtime:hero_banners')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
@@ -53,6 +58,7 @@ const HeroSection = ({ onImageChange, cart, updateCartQty, navigate }) => {
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('app:refresh', handleAppRefresh);
     };
   }, [onImageChange]);
 

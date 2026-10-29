@@ -526,15 +526,15 @@ const TrackOrderPage = ({ navigate }) => {
 
     if (isPickup) {
       const pickupSteps = ['Confirmed', 'Packing', 'Ready for Pickup', 'Picked Up'];
-      let idx = 0; // Default to Confirmed when newly placed and not yet accepted
+      let idx = 0;
       if (status === 'Delivered') {
         idx = 3;
       } else if (status === 'Ready for Pickup' || status === 'Out for Delivery') {
         idx = 2;
-      } else if (status === 'Preparing' && order?.accepted_by_shopkeeper) {
-        idx = 1; // Only advance to Packing once accepted by a shopkeeper
+      } else if (status === 'Preparing' || status?.toLowerCase() === 'preparing' || order?.accepted_by_shopkeeper) {
+        idx = 1; // Packing status
       } else {
-        idx = 0; // Order Confirmed / Placed, waiting for shopkeeper to accept
+        idx = 0; // Order Confirmed / Placed
       }
       return { steps: pickupSteps, currentIdx: idx };
     }
@@ -543,8 +543,8 @@ const TrackOrderPage = ({ navigate }) => {
     let idx = 0;
     if (status === 'Placed' || status === 'Payment Pending') {
       idx = 0;
-    } else if (status === 'Preparing') {
-      idx = order?.accepted_by_shopkeeper ? 1 : 0;
+    } else if (status === 'Preparing' || status?.toLowerCase() === 'preparing' || order?.accepted_by_shopkeeper) {
+      idx = 1; // Packing status
     } else if (status === 'Ready for Pickup') {
       idx = 2; // Packed by store, waiting for rider to pick up & start delivery
     } else if (status === 'Out for Delivery') {

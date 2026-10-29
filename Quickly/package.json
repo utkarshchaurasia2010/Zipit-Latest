@@ -12,6 +12,8 @@
   "dependencies": {
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
+    "@capacitor/geolocation": "^8.2.4",
+    "@capacitor/preferences": "^8.0.1",
     "@supabase/supabase-js": "^2.108.2",
     "firebase": "^12.16.0",
     "leaflet": "^1.9.4",

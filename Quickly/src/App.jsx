@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, useParams, useNavigationType } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Preferences } from '@capacitor/preferences';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import CategoriesPage from './components/CategoriesPage';
@@ -62,6 +64,7 @@ function AppContent() {
   const location = useLocation();
   const navType = useNavigationType();
   const viewName = location.pathname;
+  const { showToast } = useToast();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cart, setCart] = useState([]);
@@ -71,6 +74,19 @@ function AppContent() {
   const [deliveryTime, setDeliveryTime] = useState(16);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Synchronized refs for stable native back button and gestures
+  const isSearchOpenRef = useRef(isSearchOpen);
+  const isAddressModalOpenRef = useRef(isAddressModalOpen);
+  const selectedProductRef = useRef(selectedProduct);
+  const locationRef = useRef(location);
+  const lastBackPressTimeRef = useRef(0);
+
+  useEffect(() => { isSearchOpenRef.current = isSearchOpen; }, [isSearchOpen]);
+  useEffect(() => { isAddressModalOpenRef.current = isAddressModalOpen; }, [isAddressModalOpen]);
+  useEffect(() => { selectedProductRef.current = selectedProduct; }, [selectedProduct]);
+  useEffect(() => { locationRef.current = location; }, [location]);
 
   // Scroll to top on route change
   useEffect(() => {
@@ -78,34 +94,6 @@ function AppContent() {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }, 10);
   }, [location.pathname]);
-
-  // Native Android hardware/gesture back button support
-  useEffect(() => {
-    let removeListener = null;
-    import('@capacitor/app').then(({ App }) => {
-      App.addListener('backButton', () => {
-        if (isSearchOpen) {
-          setIsSearchOpen(false);
-        } else if (isAddressModalOpen) {
-          setIsAddressModalOpen(false);
-        } else if (selectedProduct) {
-          setSelectedProduct(null);
-        } else if (location.pathname !== '/') {
-          navigate(-1);
-        } else {
-          App.exitApp();
-        }
-      }).then(handle => {
-        removeListener = handle;
-      });
-    }).catch(() => {});
-
-    return () => {
-      if (removeListener && typeof removeListener.remove === 'function') {
-        removeListener.remove();
-      }
-    };
-  }, [isSearchOpen, isAddressModalOpen, selectedProduct, location.pathname, navigate]);
 
   // Global Cart Fly Animation
   useEffect(() => {
@@ -240,6 +228,46 @@ function AppContent() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isSearchOpen, selectedProduct]);
+
+  // Rock-solid Capacitor native hardware/gesture back button handler
+  useEffect(() => {
+    let listenerHandle = null;
+
+    const setupBackHandler = async () => {
+      try {
+        listenerHandle = await CapacitorApp.addListener('backButton', () => {
+          if (isSearchOpenRef.current) {
+            closeSearch();
+          } else if (isAddressModalOpenRef.current) {
+            setIsAddressModalOpen(false);
+          } else if (selectedProductRef.current) {
+            closeProductSheet();
+          } else if (locationRef.current.pathname !== '/') {
+            navigate(-1);
+          } else {
+            const now = Date.now();
+            if (now - lastBackPressTimeRef.current < 2000) {
+              CapacitorApp.exitApp();
+            } else {
+              lastBackPressTimeRef.current = now;
+              showToast('Press back again to exit', 'info');
+            }
+          }
+        });
+      } catch (err) {
+        // Fallback when running on standard browser
+      }
+    };
+
+    setupBackHandler();
+
+    return () => {
+      if (listenerHandle && typeof listenerHandle.remove === 'function') {
+        listenerHandle.remove();
+      }
+    };
+  }, [navigate, showToast]);
+
   const [headerBgColor, setHeaderBgColor] = useState('linear-gradient(to right, #F8CB46, #F9D423)');
 
   const [userProfile, setUserProfile] = useState(() => {
@@ -298,7 +326,6 @@ function AppContent() {
   const [isScrolled, setIsScrolled] = useState(false);
   const lastScrollY = React.useRef(0);
   
-  const { showToast } = useToast();
   const { theme } = useTheme();
   
   const knownOrderStatuses = React.useRef({});
@@ -384,8 +411,30 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+    const restoreSession = async () => {
+      let hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+      
+      // If localStorage was cleared (e.g. Chrome site data cleared), restore from native Android Preferences
+      if (!hasFirebasePhone) {
+        try {
+          const prefPhone = await Preferences.get({ key: 'zipit_verified_phone' });
+          if (prefPhone?.value) {
+            localStorage.setItem('zipit_verified_phone', prefPhone.value);
+            hasFirebasePhone = true;
+          }
+        } catch (_) {}
+      }
+
+      if (!localStorage.getItem('zipit_active_user_id')) {
+        try {
+          const prefUid = await Preferences.get({ key: 'zipit_active_user_id' });
+          if (prefUid?.value) {
+            localStorage.setItem('zipit_active_user_id', prefUid.value);
+          }
+        } catch (_) {}
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       const isNowLoggedIn = !!session || hasFirebasePhone;
       
       // Prevent stale user profile flash if signed in with a different account
@@ -397,10 +446,20 @@ function AppContent() {
       
       setIsLoggedIn(isNowLoggedIn);
       setIsInitializingAuth(false);
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+    restoreSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      let hasFirebasePhone = !!localStorage.getItem('zipit_verified_phone');
+      if (!hasFirebasePhone) {
+        try {
+          const prefPhone = await Preferences.get({ key: 'zipit_verified_phone' });
+          if (prefPhone?.value) {
+            hasFirebasePhone = true;
+          }
+        } catch (_) {}
+      }
       const isNowLoggedIn = !!session || hasFirebasePhone;
       
       // If user session changed or logged out, clear stale profile data
@@ -679,21 +738,41 @@ function AppContent() {
 
   const handleRefreshApp = async () => {
     try {
+      // 1. Invalidate locally cached products, banners, and categories so fresh data is loaded
+      try {
+        localStorage.removeItem('zipit_cached_products');
+        localStorage.removeItem('zipit_cached_banners');
+        localStorage.removeItem('zipit_cached_categories');
+      } catch (_) {}
+
+      // 2. Dispatch custom app:refresh event for active components
+      window.dispatchEvent(new CustomEvent('app:refresh'));
+
+      // 3. Fetch latest live products
       await db.products.getAll();
-      if (userProfile?.phone) {
-        const userAddrs = await db.addresses.getByPhone(userProfile.phone);
-        setAddresses(userAddrs || []);
+
+      // 4. Refresh addresses and profile if user is logged in
+      if (userProfile?.id || userProfile?.phone) {
+        const [freshUser, freshAddrs] = await Promise.all([
+          db.user.get().catch(() => null),
+          db.addresses.getAll().catch(() => [])
+        ]);
+        if (freshUser) setUserProfile(freshUser);
+        if (Array.isArray(freshAddrs)) setAddresses(freshAddrs);
       }
-      showToast('Inventory & prices updated');
+
+      setRefreshKey(prev => prev + 1);
+      showToast('Inventory & prices updated', 'Refreshed');
     } catch (e) {
       console.error('Refresh error', e);
+      showToast('Refresh completed', 'Refreshed');
     }
   };
 
   return (
     <>
       <PullToRefresh onRefresh={handleRefreshApp}>
-        <div key={location.pathname} className="page-transition" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div key={`${location.pathname}-${refreshKey}`} className="page-transition" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {(viewName === '/' || viewName === '/categories') && (
             <Header 
               time={deliveryTime} 
