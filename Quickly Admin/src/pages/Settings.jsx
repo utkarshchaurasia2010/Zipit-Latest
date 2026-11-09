@@ -71,14 +71,26 @@ const Settings = ({ profile, setProfile }) => {
   };
 
   const handleAutoDeployOTA = async () => {
-    const nextVer = getNextOtaVersion(branding.ota_bundle_version || '1.0.33');
-    const updated = {
-      ...branding,
-      ota_bundle_version: nextVer,
-      ota_bundle_url: branding.ota_bundle_url || OFFICIAL_OTA_URL
-    };
+    const nextVer = getNextOtaVersion(branding.ota_bundle_version || '1.0.36');
     setSaving(true);
     try {
+      let checksum = (branding.ota_bundle_checksum || '').trim();
+      try {
+        const shaRes = await fetch('https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip.sha256', { cache: 'no-store' });
+        if (shaRes.ok) {
+          const shaText = await shaRes.text();
+          checksum = shaText.trim().split(/\s+/)[0];
+        }
+      } catch (_) {}
+
+      const updated = {
+        ...branding,
+        ota_bundle_version: nextVer,
+        ota_bundle_url: branding.ota_bundle_url || OFFICIAL_OTA_URL,
+        ota_bundle_checksum: checksum,
+        ota_last_published_at: new Date().toISOString()
+      };
+
       await db.branding.update(updated);
       setBranding(updated);
       showToast(`🚀 Live OTA Update v${nextVer} deployed to all user devices!`, 'success');

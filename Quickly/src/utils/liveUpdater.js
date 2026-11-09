@@ -120,14 +120,9 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
 
     // Get current bundle version
     const current = await CapacitorUpdater.current();
-    const activeVersion = current?.bundle?.version || current?.native || current?.version || '';
+    const activeVersion = current?.bundle?.version || localStorage.getItem('zipit_active_ota_version') || current?.native || current?.version || '';
+    const activeChecksum = (localStorage.getItem('zipit_active_ota_checksum') || '').trim();
     console.log('[LiveOTA] Active bundle version:', activeVersion, 'Latest available:', latestVersion);
-
-    if (activeVersion && activeVersion === latestVersion) {
-      console.log('[LiveOTA] Already running latest version:', latestVersion);
-      isUpdating = false;
-      return null;
-    }
 
     // Retrieve or fetch SHA-256 checksum (strictly required by Capgo v8 on Android)
     let checksum = (branding.ota_bundle_checksum || '').trim();
@@ -141,6 +136,16 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
           console.log('[LiveOTA] Retrieved checksum from release:', checksum);
         }
       } catch (_) {}
+    }
+
+    const isVersionSame = activeVersion && activeVersion === latestVersion;
+    const isChecksumSame = checksum && activeChecksum && checksum.toLowerCase() === activeChecksum.toLowerCase();
+
+    // If both version and checksum match what we're already running, skip download
+    if (isVersionSame && isChecksumSame) {
+      console.log('[LiveOTA] Already running latest version and verified checksum:', latestVersion);
+      isUpdating = false;
+      return null;
     }
 
     console.log(`[LiveOTA] Downloading OTA bundle update ${latestVersion} from ${latestUrl} with checksum: ${checksum || 'auto'}`);
@@ -158,6 +163,14 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
 
     console.log('[LiveOTA] Downloaded and unpacked bundle:', bundle.id);
 
+    // Persist new version & checksum BEFORE calling set() (set destroys the JS context immediately to reload)
+    try {
+      localStorage.setItem('zipit_active_ota_version', latestVersion);
+      if (checksum) {
+        localStorage.setItem('zipit_active_ota_checksum', checksum);
+      }
+    } catch (_) {}
+
     if (immediateApply) {
       // Instantly switch WebView to the new bundle and reload UI
       console.log('[LiveOTA] Applying bundle immediately via CapacitorUpdater.set...');
@@ -173,6 +186,22 @@ export const checkForLiveBundleUpdate = async (immediateApply = true) => {
     console.warn('[LiveOTA] Error downloading or applying OTA bundle:', err);
     isUpdating = false;
     return null;
+  }
+};
+
+/**
+ * Returns the currently active OTA bundle version string
+ */
+export const getActiveOtaVersion = async () => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const current = await CapacitorUpdater.current();
+      const ver = current?.bundle?.version || localStorage.getItem('zipit_active_ota_version') || current?.native || current?.version;
+      if (ver) return ver;
+    }
+    return localStorage.getItem('zipit_active_ota_version') || '1.0.37';
+  } catch (_) {
+    return localStorage.getItem('zipit_active_ota_version') || '1.0.37';
   }
 };
 

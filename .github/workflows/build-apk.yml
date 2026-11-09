@@ -113,11 +113,16 @@ jobs:
             const { createClient } = require('@supabase/supabase-js');
             const client = createClient('https://bbaggauqnlcohrgvsios.supabase.co', 'sb_publishable_rCjAUoKGrW0u-CCnBb9rQw_ori9Y1dQ');
             async function update() {
-              const version = '1.0.${{ github.run_number }}';
-              const downloadUrl = 'https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip';
-              const checksum = process.env.OTA_CHECKSUM || '';
               const { data: profile } = await client.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').single();
               const parsed = profile?.address ? JSON.parse(profile.address) : {};
+              const currentVer = parsed.ota_bundle_version || '1.0.0';
+              const parts = currentVer.split('.');
+              const currentPatch = parseInt(parts[2] || '0', 10);
+              const runNumber = parseInt('${{ github.run_number }}' || '0', 10);
+              const nextPatch = Math.max(currentPatch + 1, runNumber + 1);
+              const version = '1.0.' + nextPatch;
+              const downloadUrl = 'https://github.com/utkarshchaurasia2010/Zipit-Latest/releases/download/live-ota/Quickly-OTA-Bundle.zip';
+              const checksum = process.env.OTA_CHECKSUM || '';
               parsed.ota_bundle_version = version;
               parsed.ota_bundle_url = downloadUrl;
               parsed.ota_bundle_checksum = checksum;

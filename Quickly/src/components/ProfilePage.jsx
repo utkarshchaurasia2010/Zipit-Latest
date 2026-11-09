@@ -5,6 +5,7 @@ import { Preferences } from '@capacitor/preferences';
 import { db, supabase } from '../services/db';
 import { useTheme } from '../context/ThemeContext';
 import { requestAppNotificationPermission } from '../utils/notifications';
+import { getActiveOtaVersion } from '../utils/liveUpdater';
 import Toast from './Toast';
 
 const SolidUserIcon = ({ size = 24, color = "currentColor" }) => (
@@ -20,6 +21,15 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
   const [formData, setFormData] = useState(userProfile || { name: 'New User', phone: '', email: '', photo: 'NU' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, title: '', message: '' });
+  const [activeVersion, setActiveVersion] = useState(() => {
+    return localStorage.getItem('zipit_active_ota_version') || '1.0.37';
+  });
+
+  React.useEffect(() => {
+    getActiveOtaVersion().then(v => {
+      if (v) setActiveVersion(v);
+    });
+  }, []);
 
   React.useEffect(() => {
     if (userProfile) {
@@ -224,6 +234,17 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
               </div>
               <span style={{color: 'var(--color-danger)'}}>Log Out</span>
             </div>
+          </div>
+        </div>
+
+        {/* Live App Version & Cloud OTA Status Footer */}
+        <div style={{ textAlign: 'center', padding: '24px 16px 36px', color: 'var(--color-text-light)', userSelect: 'none' }}>
+          <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '0.2px' }}>
+            Quickly App v{activeVersion}
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: '600', opacity: 0.75, marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
+            Live OTA Active • Cloud Synced
           </div>
         </div>
         </>
