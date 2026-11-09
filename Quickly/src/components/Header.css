@@ -1,5 +1,5 @@
 .app-header {
-  padding: calc(max(env(safe-area-inset-top, 0px), 0px) + 8px) 20px 14px;
+  padding: calc(max(env(safe-area-inset-top, 0px), 0px) + 8px) 16px 14px;
   background-color: var(--color-primary);
   display: flex;
   flex-direction: column;
@@ -10,8 +10,9 @@
   border-bottom-right-radius: 24px;
   border-bottom: 2px solid var(--color-border);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-  transition: padding 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-color 0.3s ease, border-color 0.3s ease;
+  transition: padding 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s ease, background-color 0.3s ease, border-color 0.3s ease;
   overflow: hidden;
+  will-change: padding;
 }
 
 .app-header.nav-hidden {
@@ -46,8 +47,8 @@
 .header-top-collapse-wrapper {
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  margin-bottom: 14px;
+  transition: grid-template-rows 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease, margin-bottom 0.25s cubic-bezier(0.2, 0, 0, 1);
+  margin-bottom: 12px;
   opacity: 1;
 }
 
@@ -56,9 +57,10 @@
   overflow: hidden;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   transform: translateY(0);
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 1;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
 }
 
 .app-header.nav-hidden .header-top-collapse-wrapper {
@@ -69,7 +71,8 @@
 }
 
 .app-header.nav-hidden .header-top-collapse-wrapper > .header-top {
-  transform: translateY(-8px);
+  transform: translateY(-10px);
+  opacity: 0;
 }
 
 .header-top {

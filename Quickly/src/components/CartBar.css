@@ -6,8 +6,9 @@
   z-index: 10010;
   display: flex;
   justify-content: center;
-  transition: bottom 0.3s ease-in-out;
-  animation: cartSlideUpBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  transition: bottom 0.25s cubic-bezier(0.2, 0, 0, 1);
+  animation: cartSlideUpBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: bottom;
 }
 
 @keyframes cartSlideUpBounce {

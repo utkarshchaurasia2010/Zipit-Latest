@@ -519,7 +519,7 @@ function AppContent() {
           const currentY = window.scrollY;
 
           // 1. If at or near very top, always restore header cleanly
-          if (currentY <= 30) {
+          if (currentY <= 25) {
             if (navHiddenRef.current) {
               navHiddenRef.current = false;
               setIsNavHidden(false);
@@ -532,9 +532,9 @@ function AppContent() {
           }
 
           const now = Date.now();
-          // Lock transition for 300ms to avoid mid-animation jitter and oscillation.
+          // Lock transition for 260ms to avoid mid-animation jitter and oscillation.
           // Discard deltas during animation so that header collapse/expand does not trigger reverse toggling.
-          if (now - lastToggleTime < 300) {
+          if (now - lastToggleTime < 260) {
             lastY = currentY;
             accumulatedDelta = 0;
             ticking = false;
@@ -545,7 +545,7 @@ function AppContent() {
           lastY = currentY;
 
           // Ignore tiny sub-pixel tremors (common on touch displays)
-          if (Math.abs(diff) < 4) {
+          if (Math.abs(diff) < 3) {
             ticking = false;
             return;
           }
@@ -557,15 +557,15 @@ function AppContent() {
             accumulatedDelta += diff;
           }
 
-          // Hide: Must be past header height (currentY > 140) and scrolled down > 55px
-          if (!navHiddenRef.current && currentY > 140 && accumulatedDelta > 55) {
+          // Hide: User is scrolling down and past the top area (currentY > 45) and swiped down > 28px
+          if (!navHiddenRef.current && currentY > 45 && accumulatedDelta > 28) {
             navHiddenRef.current = true;
             setIsNavHidden(true);
             lastToggleTime = now;
             accumulatedDelta = 0;
           }
-          // Reveal: Scrolled up > 35px or returned near top
-          else if (navHiddenRef.current && (accumulatedDelta < -35 || currentY <= 40)) {
+          // Reveal: User swiped up > 20px or returned near top
+          else if (navHiddenRef.current && (accumulatedDelta < -20 || currentY <= 30)) {
             navHiddenRef.current = false;
             setIsNavHidden(false);
             lastToggleTime = now;

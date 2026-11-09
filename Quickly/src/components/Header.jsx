@@ -100,16 +100,6 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
       <div className="header-vector-bg" aria-hidden="true">
         <svg viewBox="0 0 400 160" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            {/* 3D Filter for bevel specular lighting & deep volumetric shadow */}
-            <filter id="waveDepth3D" x="-20%" y="-20%" width="150%" height="160%" filterUnits="userSpaceOnUse">
-              <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor={theme === 'dark' ? '#000000' : '#b45309'} floodOpacity={theme === 'dark' ? '0.6' : '0.22'} />
-              <feDropShadow dx="0" dy="14" stdDeviation="16" floodColor={theme === 'dark' ? '#064e3b' : '#d97706'} floodOpacity={theme === 'dark' ? '0.4' : '0.15'} />
-            </filter>
-
-            <filter id="topEdgeGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#ffffff" floodOpacity={theme === 'dark' ? '0.35' : '0.8'} />
-            </filter>
-
             {/* Light Mode Gradients - 3D Embossed Golden/Amber Curves */}
             <linearGradient id="curve1Light" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#FFFBEB" stopOpacity="0.95" />
@@ -174,11 +164,10 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             transform="translate(0, 3)"
           />
 
-          {/* Primary Wave Body with 3D Bevel & Depth Filter */}
+          {/* Primary Wave Body with 3D Depth */}
           <path
             d="M-30 -25 Q 75 142, 238 48 T 445 105 L 445 -45 Z"
             fill={theme === 'dark' ? 'url(#curve1Dark)' : 'url(#curve1Light)'}
-            filter="url(#waveDepth3D)"
           />
 
           {/* Sleek, Crisp 3D Specular Highlight Ridge (Ultra-fine 1.2px embossed edge) */}
@@ -188,14 +177,12 @@ const Header = ({ time, onAddressClick, onEditAddressClick, onSearchClick, onPro
             strokeWidth="1.2"
             strokeLinecap="round"
             fill="none"
-            filter="url(#topEdgeGlow)"
           />
 
           {/* Secondary Intersecting Wave Body (Overlapping 3D tier) */}
           <path
             d="M80 -45 Q 215 160, 375 38 T 530 92 L 530 -45 Z"
             fill={theme === 'dark' ? 'url(#curve2Dark)' : 'url(#curve2Light)'}
-            filter="url(#waveDepth3D)"
           />
 
           {/* Secondary Fine Specular Ridge (1px edge) */}

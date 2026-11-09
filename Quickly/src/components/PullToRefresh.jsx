@@ -56,6 +56,11 @@ const PullToRefresh = ({ onRefresh, children }) => {
       const damped = calculateResistance(rawDiff);
       setPullDistance(damped);
       setStatus(damped >= THRESHOLD ? 'ready' : 'pulling');
+    } else if (rawDiff < -5) {
+      // User is swiping up to scroll down into the page: release immediately for native momentum
+      setIsDragging(false);
+      setPullDistance(0);
+      setStatus('idle');
     } else if (rawDiff <= 0) {
       setPullDistance(0);
       setStatus('idle');
