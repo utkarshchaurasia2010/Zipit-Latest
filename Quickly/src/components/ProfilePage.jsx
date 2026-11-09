@@ -237,15 +237,9 @@ const ProfilePage = ({ navigate, userProfile, setUserProfile, onLogout }) => {
           </div>
         </div>
 
-        {/* Live App Version & Cloud OTA Status Footer */}
-        <div style={{ textAlign: 'center', padding: '24px 16px 36px', color: 'var(--color-text-light)', userSelect: 'none' }}>
-          <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '0.2px' }}>
-            Quickly App v{activeVersion}
-          </div>
-          <div style={{ fontSize: '11px', fontWeight: '600', opacity: 0.75, marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }}></span>
-            Live OTA Active • Cloud Synced
-          </div>
+        {/* App Version Footer */}
+        <div style={{ textAlign: 'center', padding: '24px 16px 36px', color: 'var(--color-text-light)', userSelect: 'none', fontSize: '12px', fontWeight: '600' }}>
+          v{activeVersion}
         </div>
         </>
       )}
