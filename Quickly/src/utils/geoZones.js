@@ -134,11 +134,11 @@ export function calculatePolygonCenter(polygon = []) {
 export function checkAddressServiceability(address, geofenceConfig = {}) {
   if (!address) {
     return {
-      isServiceable: false,
-      isOutOfRange: true,
+      isServiceable: true,
+      isOutOfRange: false,
       matchedZone: null,
       deliveryTimeMins: 15,
-      reason: 'No delivery address selected',
+      reason: 'Standard Delivery (~15 mins)',
       distanceKm: null,
       usingPolygons: false
     };
@@ -153,72 +153,34 @@ export function checkAddressServiceability(address, geofenceConfig = {}) {
     ? geofenceConfig.delivery_zones 
     : [];
   const activeZones = zones.filter(z => z.is_active !== false && Array.isArray(z.polygon) && z.polygon.length >= 3);
-  const hasActiveZones = activeZones.length > 0;
 
-  // 1. Strict Polygon Geofence Validation (takes full precedence if polygon zones exist)
-  if (hasActiveZones) {
-    if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
-      return {
-        isServiceable: false,
-        isOutOfRange: true,
-        matchedZone: null,
-        deliveryTimeMins: 15,
-        reason: 'Address has no GPS coordinates to verify delivery zone',
-        distanceKm: null,
-        usingPolygons: true
-      };
-    }
-
-    const matched = getZoneForLocation(lat, lng, activeZones);
-    if (matched) {
-      return {
-        isServiceable: true,
-        isOutOfRange: false,
-        matchedZone: matched,
-        deliveryTimeMins: matched.delivery_time_mins || 15,
-        reason: `Inside ${matched.name}`,
-        distanceKm: null,
-        usingPolygons: true
-      };
-    }
-
-    return {
-      isServiceable: false,
-      isOutOfRange: true,
-      matchedZone: null,
-      deliveryTimeMins: 15,
-      reason: 'Location is outside our active delivery zones',
-      distanceKm: null,
-      usingPolygons: true
-    };
+  // 1. Identify operational polygon zone (for Rider Routing & SLA calculation)
+  let matchedZone = null;
+  if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0) && activeZones.length > 0) {
+    matchedZone = getZoneForLocation(lat, lng, activeZones);
   }
 
-  // 2. Circular Radius Fallback (only used when no polygon zones are defined)
+  const deliveryTimeMins = matchedZone?.delivery_time_mins || 15;
+
+  // 2. Hub Distance & Store Radius Validation (default 8.5 km radius)
   const storeLat = Number(geofenceConfig.store_lat) || 25.5788;
   const storeLng = Number(geofenceConfig.store_lng) || 83.5780;
   const maxRadiusKm = Number(geofenceConfig.max_delivery_radius_km) || 8.5;
 
-  if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
-    return {
-      isServiceable: true,
-      isOutOfRange: false,
-      matchedZone: null,
-      deliveryTimeMins: 15,
-      distanceKm: null,
-      reason: 'Within service area',
-      usingPolygons: false
-    };
+  let distKm = null;
+  if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+    distKm = calculateDistanceKm(storeLat, storeLng, lat, lng);
   }
 
-  const distKm = calculateDistanceKm(storeLat, storeLng, lat, lng);
-  if (distKm > maxRadiusKm) {
+  // Only block if location is beyond store radius limit (e.g. > 8.5 km from central hub)
+  if (distKm !== null && distKm > maxRadiusKm) {
     return {
       isServiceable: false,
       isOutOfRange: true,
-      matchedZone: null,
-      deliveryTimeMins: 15,
+      matchedZone,
+      deliveryTimeMins,
       distanceKm: distKm,
-      reason: `Location is ${distKm} km away (Max radius ${maxRadiusKm} km)`,
+      reason: `Location is ${distKm} km away (Store delivery limit is ${maxRadiusKm} km)`,
       usingPolygons: false
     };
   }
@@ -226,10 +188,10 @@ export function checkAddressServiceability(address, geofenceConfig = {}) {
   return {
     isServiceable: true,
     isOutOfRange: false,
-    matchedZone: null,
-    deliveryTimeMins: 15,
+    matchedZone,
+    deliveryTimeMins,
     distanceKm: distKm,
-    reason: `Within service area (${distKm} km)`,
-    usingPolygons: false
+    reason: matchedZone ? `Inside ${matchedZone.name}` : (distKm !== null ? `Within delivery radius (${distKm} km)` : 'Within service area'),
+    usingPolygons: !!matchedZone
   };
 }

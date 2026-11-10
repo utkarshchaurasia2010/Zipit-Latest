@@ -941,23 +941,22 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel, del
 
           return (
             <>
-              <div className="zipit-map-deliver-card" style={{ borderColor: isOutsideZones ? '#fca5a5' : undefined }}>
+              <div className="zipit-map-deliver-card">
                 <div className="zipit-map-card-top">
-                  <div className="zipit-map-card-icon" style={{ background: isOutsideZones ? 'rgba(239, 68, 68, 0.1)' : undefined }}>
-                    <MapPin size={22} color={isOutsideZones ? '#ef4444' : 'var(--color-primary)'} />
+                  <div className="zipit-map-card-icon">
+                    <MapPin size={22} color="var(--color-primary)" />
                   </div>
                   <div className="zipit-map-card-titlebox">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <h3 className="zipit-map-card-title">{isLoading ? 'Detecting location...' : areaTitle}</h3>
                       {isLoading && <Loader2 size={15} className="zipit-spin-icon" color="var(--color-primary)" />}
-                      {matchedZone && (
+                      {matchedZone ? (
                         <span style={{ fontSize: '11px', background: 'rgba(12, 131, 31, 0.12)', color: '#0c831f', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>
                           ✓ {matchedZone.name} (~{matchedZone.delivery_time_mins || 15}m)
                         </span>
-                      )}
-                      {isOutsideZones && (
-                        <span style={{ fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>
-                          ⚠ Outside Delivery Zone
+                      ) : (
+                        <span style={{ fontSize: '11px', background: 'rgba(12, 131, 31, 0.08)', color: '#0c831f', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
+                          ✓ Standard Delivery (~15-20m)
                         </span>
                       )}
                     </div>
@@ -973,15 +972,10 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel, del
                 className="zipit-map-confirm-btn" 
                 onClick={handleConfirm}
                 disabled={isLoading}
-                style={{
-                  background: isOutsideZones ? '#475569' : undefined
-                }}
               >
                 {isLoading 
                   ? 'Reading location...' 
-                  : isOutsideZones 
-                    ? 'Confirm Location (Outside Delivery Zone)' 
-                    : 'Confirm Delivery Location'}
+                  : 'Confirm Delivery Location'}
               </button>
             </>
           );

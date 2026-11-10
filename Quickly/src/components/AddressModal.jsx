@@ -58,7 +58,7 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                       )}
                       {check && check.isOutOfRange && (
                         <span style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
-                          Outside Zone
+                          Too Far (&gt;8.5km)
                         </span>
                       )}
                     </div>

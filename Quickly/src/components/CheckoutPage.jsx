@@ -237,15 +237,13 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       return;
     }
 
-    // Geofencing & Delivery Zone Validation: Strictly block orders outside active polygon zones
+    // Distance Validation: Block only if exceeding store delivery radius (> 8.5km from central hub)
     if (!isPickup) {
       const check = checkAddressServiceability(address, geofenceConfig);
       if (check.isOutOfRange) {
         showToast(
-          check.usingPolygons
-            ? 'This delivery address is outside our active delivery zones. Please choose an address within our delivery zones or switch to Store Pickup!'
-            : (check.reason || 'Delivery location is out of range. You can switch to Store Pickup!'),
-          'Outside Delivery Range'
+          check.reason || 'Delivery location exceeds maximum delivery radius. You can switch to Store Pickup!',
+          'Outside Delivery Radius'
         );
         return;
       }
@@ -747,9 +745,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                       <span>Pickup from: <strong>Quickly Store Hubs (~1 hr)</strong></span>
                     ) : isOutOfRange ? (
                       <span style={{ color: '#ef4444', fontWeight: '700' }}>
-                        {serviceCheck.usingPolygons 
-                          ? 'Unserviceable: Outside active delivery zones (Switch to Pickup)'
-                          : `Unserviceable: ${serviceCheck.reason}`}
+                        {`Unserviceable: ${serviceCheck.reason || 'Exceeds delivery radius'} (Switch to Store Pickup)`}
                       </span>
                     ) : (
                       <>
@@ -806,7 +802,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                     <span className="btn-sub">TOTAL</span>
                   </div>
                   <div className="btn-action-col">
-                    {processing ? 'Processing...' : isPickup ? 'Place Pickup Order' : isOrderBlocked ? 'Outside Delivery Zone' : 'Place Order'} <ChevronRight size={20} strokeWidth={3} />
+                    {processing ? 'Processing...' : isPickup ? 'Place Pickup Order' : isOrderBlocked ? 'Outside Delivery Radius' : 'Place Order'} <ChevronRight size={20} strokeWidth={3} />
                   </div>
                 </button>
               );

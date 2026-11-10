@@ -245,7 +245,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
                     )}
                     {serviceCheck && serviceCheck.isOutOfRange && (
                       <span style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
-                        ⚠ OUTSIDE ZONE
+                        ⚠ BEYOND RADIUS
                       </span>
                     )}
                   </h4>
