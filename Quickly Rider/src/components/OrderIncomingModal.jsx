@@ -4,13 +4,16 @@ import SlideToAccept from './SlideToAccept';
 import { startSiren, stopSiren } from '../utils/siren';
 import { supabase } from '../services/db';
 import { auth } from '../services/auth';
+import { isPointInPolygon, getZoneForLocation } from '../utils/geoZones';
 import './OrderIncomingModal.css';
 
 export default function OrderIncomingModal({ role, onOrderAccepted }) {
   const [incomingOrder, setIncomingOrder] = useState(null);
+  const [orderZone, setOrderZone] = useState(null);
   const [claimError, setClaimError] = useState('');
   const [claiming, setClaiming] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const zonesCacheRef = React.useRef({ zones: [], lastFetched: 0 });
 
   // Subscribe to realtime orders
   useEffect(() => {
@@ -63,12 +66,74 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
             const isStorePickup = o.delivery_type === 'STORE_PICKUP' || o.order_type === 'STORE_PICKUP' || o.delivery_address?.is_pickup === true || o.delivery_address?.order_type === 'PICKUP';
             return !isStorePickup;
           });
-          setIncomingOrder(nonPickupOrders.length > 0 ? nonPickupOrders[0] : null);
+
+          // Fetch active delivery zones (cached for 30 seconds)
+          let activeZones = zonesCacheRef.current.zones;
+          const now = Date.now();
+          if (now - zonesCacheRef.current.lastFetched > 30000) {
+            try {
+              const { data: sysData } = await supabase.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').limit(1);
+              if (sysData && sysData[0]?.address) {
+                const parsed = JSON.parse(sysData[0].address);
+                activeZones = (parsed.delivery_zones || []).filter(z => z.is_active !== false);
+                zonesCacheRef.current = { zones: activeZones, lastFetched: now };
+              }
+            } catch (_) {}
+          }
+
+          let candidateOrder = null;
+          let matchedZoneForOrder = null;
+
+          if (activeZones.length > 0 && nonPickupOrders.length > 0) {
+            const riderCode = localStorage.getItem('zipit_sales_code') || localStorage.getItem('partner_code');
+            const riderLat = Number(localStorage.getItem('rider_lat') || 0);
+            const riderLng = Number(localStorage.getItem('rider_lng') || 0);
+            const hasRiderLocation = !isNaN(riderLat) && !isNaN(riderLng) && (riderLat !== 0 || riderLng !== 0);
+
+            for (const order of nonPickupOrders) {
+              const oLat = Number(order.delivery_address?.lat);
+              const oLng = Number(order.delivery_address?.lng);
+              const matchedZone = (!isNaN(oLat) && !isNaN(oLng)) ? getZoneForLocation(oLat, oLng, activeZones) : null;
+
+              if (matchedZone) {
+                const isAssigned = Array.isArray(matchedZone.assigned_riders) && matchedZone.assigned_riders.includes(riderCode);
+                const isInside = hasRiderLocation && isPointInPolygon([riderLat, riderLng], matchedZone.polygon);
+
+                if (isAssigned || isInside) {
+                  candidateOrder = order;
+                  matchedZoneForOrder = matchedZone;
+                  break;
+                }
+              } else {
+                // Order outside defined zones: broadcast fallback
+                candidateOrder = order;
+                break;
+              }
+            }
+
+            // Fallback: if order remains unclaimed for > 3 mins, allow broadcast to prevent delays
+            if (!candidateOrder && nonPickupOrders.length > 0) {
+              const threeMinsAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+              const urgentOrder = nonPickupOrders.find(o => o.created_at <= threeMinsAgo);
+              if (urgentOrder) {
+                candidateOrder = urgentOrder;
+                const uLat = Number(urgentOrder.delivery_address?.lat);
+                const uLng = Number(urgentOrder.delivery_address?.lng);
+                matchedZoneForOrder = (!isNaN(uLat) && !isNaN(uLng)) ? getZoneForLocation(uLat, uLng, activeZones) : null;
+              }
+            }
+          } else {
+            candidateOrder = nonPickupOrders.length > 0 ? nonPickupOrders[0] : null;
+          }
+
+          setOrderZone(matchedZoneForOrder);
+          setIncomingOrder(candidateOrder);
         } else {
           setIncomingOrder(recentOrders.length > 0 ? recentOrders[0] : null);
         }
       } else {
         setIncomingOrder(null);
+        setOrderZone(null);
       }
     };
 
@@ -205,6 +270,11 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
             <div className="order-id-badge">
               Order #{incomingOrder.id.slice(0, 6).toUpperCase()}
             </div>
+            {orderZone && (
+              <div style={{ background: `${orderZone.color}18`, color: orderZone.color, border: `1px solid ${orderZone.color}40`, padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' }}>
+                📍 {orderZone.name}
+              </div>
+            )}
             {(incomingOrder.delivery_address?.is_pickup || incomingOrder.delivery_address?.order_type === 'PICKUP') && (
               <div style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>
                 Store Pickup

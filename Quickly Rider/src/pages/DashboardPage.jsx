@@ -118,10 +118,14 @@ export default function DashboardPage() {
           // Update rider_status GPS every 5 seconds while online
           if (now - lastPing >= 5000) {
             lastPing = now;
+            localStorage.setItem('rider_lat', String(pos.coords.latitude));
+            localStorage.setItem('rider_lng', String(pos.coords.longitude));
             supabase.from('rider_status').upsert({
               rider_code: riderCode,
               lat: pos.coords.latitude,
               lng: pos.coords.longitude,
+              current_lat: pos.coords.latitude,
+              current_lng: pos.coords.longitude,
               is_online: true,
               last_ping: new Date().toISOString()
             }, { onConflict: 'rider_code' }).then();

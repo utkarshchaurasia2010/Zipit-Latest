@@ -735,5 +735,47 @@ export const db = {
       }
       return payload;
     }
+  },
+  zones: {
+    getAll: async () => {
+      try {
+        const { data, error } = await supabase.from('profiles').select('address').eq('id', '00000000-0000-0000-0000-000000000001').limit(1);
+        if (data && data.length > 0 && data[0].address) {
+          try {
+            const parsed = JSON.parse(data[0].address);
+            return parsed.delivery_zones || [];
+          } catch (_) {
+            return [];
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load delivery zones:', err);
+      }
+      return [];
+    },
+    save: async (zonesList) => {
+      try {
+        const currentData = (await db.branding.get()) || {};
+        const payload = {
+          ...currentData,
+          delivery_zones: zonesList,
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase.from('profiles').upsert({
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'App Branding System',
+          phone: '0000000000',
+          photo: 'SYSTEM',
+          address: JSON.stringify(payload)
+        }, { onConflict: 'id' });
+
+        if (error) throw new Error(error.message);
+        return zonesList;
+      } catch (err) {
+        console.error('Error saving delivery zones:', err);
+        throw err;
+      }
+    }
   }
 };

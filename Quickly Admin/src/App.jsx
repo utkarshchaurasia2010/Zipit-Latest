@@ -9,6 +9,7 @@ import AdminDashboard from './components/AdminDashboard';
 import PartnersCodesManager from './components/PartnersCodesManager';
 import SectionsManager from './pages/SectionsManager';
 import RevenuesPage from './pages/RevenuesPage';
+import DeliveryZonesPage from './pages/DeliveryZonesPage';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 
@@ -92,6 +93,7 @@ function App() {
               <Route path="sections" element={<SectionsManager />} />
               <Route path="partners-codes" element={<PartnersCodesManager />} />
               <Route path="access-codes" element={<Navigate to="/partners-codes" replace />} />
+              <Route path="zones" element={<DeliveryZonesPage />} />
               <Route path="settings" element={<Settings profile={profile} setProfile={setProfile} />} />
               <Route path="*" element={<Navigate to="/orders" replace />} />
             </Route>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers, IndianRupee, ArrowUpCircle, ArrowDownCircle, Users } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Grid, List, Tag, LogOut, Settings, Bell, Search, X, RefreshCcw, Sun, Moon, Key, ExternalLink, Menu, Power, Layers, IndianRupee, ArrowUpCircle, ArrowDownCircle, Users, MapPin } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import './AdminLayout.css';
 
@@ -236,6 +236,7 @@ const AdminLayout = ({ profile, setProfile }) => {
     { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
     { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
     { name: 'Partners Codes', path: '/partners-codes', icon: <Users size={20} /> },
+    { name: 'Delivery Zones', path: '/zones', icon: <MapPin size={20} /> },
     { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 
