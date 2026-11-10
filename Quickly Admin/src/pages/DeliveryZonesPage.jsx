@@ -479,35 +479,52 @@ export default function DeliveryZonesPage() {
     }
   }, [drawPoints, zoneForm.color]);
 
-  // Render live online riders on map
+  // Render live online riders on map (Blinkit style rider on bike marker)
   useEffect(() => {
     const layerGroup = ridersLayerGroupRef.current;
     if (!layerGroup) return;
 
     layerGroup.clearLayers();
 
-    riders.forEach((rider) => {
-      const lat = Number(rider.current_lat ?? rider.lat);
-      const lng = Number(rider.current_lng ?? rider.lng);
-      if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
+    // Strictly show only registered online delivery riders
+    const onlineRiders = riders.filter(r => r.is_online);
 
-      const isOnline = rider.is_online === true;
+    onlineRiders.forEach((rider, idx) => {
+      let lat = Number(rider.current_lat ?? rider.lat);
+      let lng = Number(rider.current_lng ?? rider.lng);
+
+      const hasRealGPS = !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
+      if (!hasRealGPS) {
+        // Position online rider near Central Hub with slight spread if GPS not yet pinged
+        lat = storeCoords[0] + 0.0007 * (idx + 1);
+        lng = storeCoords[1] + 0.0007 * (idx + 1);
+      }
+
       const isBusy = !!rider.active_order_id;
+      const firstName = rider.rider_name ? rider.rider_name.split(' ')[0] : rider.rider_code;
 
       const riderIcon = L.divIcon({
-        className: 'rider-custom-marker',
+        className: 'blinkit-rider-marker-container',
         html: `
-          <div class="rider-dot-wrapper ${isOnline ? 'online' : 'offline'} ${isBusy ? 'busy' : 'idle'}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18.5" cy="17.5" r="3.5"></circle>
-              <circle cx="5.5" cy="17.5" r="3.5"></circle>
-              <circle cx="15" cy="5" r="1"></circle>
-              <path d="M12 17.5V14l-3-3 4-3 2 3h2"></path>
-            </svg>
+          <div class="blinkit-rider-wrapper ${isBusy ? 'busy' : 'online'}">
+            <div class="blinkit-rider-tag">
+              <span class="rider-live-dot"></span>
+              <span class="rider-name-label">${firstName}</span>
+            </div>
+            <div class="blinkit-bike-circle">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18.5" cy="17.5" r="3.5"></circle>
+                <circle cx="5.5" cy="17.5" r="3.5"></circle>
+                <circle cx="15" cy="5" r="1.5" fill="currentColor"></circle>
+                <path d="M12 17.5V14l-3-3 4-3 2 3h3"></path>
+                <rect x="7" y="6" width="3" height="4" rx="1" fill="currentColor"></rect>
+              </svg>
+            </div>
+            <div class="blinkit-marker-pulse"></div>
           </div>
         `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconSize: [46, 56],
+        iconAnchor: [23, 50]
       });
 
       // Find which zone this rider is inside
@@ -516,15 +533,20 @@ export default function DeliveryZonesPage() {
       L.marker([lat, lng], { icon: riderIcon })
         .addTo(layerGroup)
         .bindPopup(`
-          <div style="font-family: inherit;">
-            <h4 style="margin: 0 0 2px;">${rider.rider_name || rider.rider_code}</h4>
-            <p style="margin: 0 0 4px; font-size: 11.5px; color: #64748b;">Code: <strong>${rider.rider_code}</strong></p>
-            <p style="margin: 0 0 4px; font-size: 12px;">Status: <strong>${isBusy ? 'On Active Delivery' : 'Available & Idle'}</strong></p>
-            <p style="margin: 0; font-size: 12px;">Current Zone: <strong style="color: ${insideZone ? insideZone.color : '#94a3b8'};">${insideZone ? insideZone.name : 'Unzoned Territory'}</strong></p>
+          <div style="font-family: inherit; min-width: 170px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+              <h4 style="margin: 0; font-size: 13.5px; font-weight: 700;">${rider.rider_name || rider.rider_code}</h4>
+            </div>
+            <p style="margin: 0 0 3px; font-size: 11.5px; color: #64748b;">Code: <strong>${rider.rider_code}</strong></p>
+            ${rider.vehicle_no ? `<p style="margin: 0 0 3px; font-size: 11.5px; color: #64748b;">Vehicle: <strong>${rider.vehicle_no}</strong></p>` : ''}
+            <p style="margin: 0 0 3px; font-size: 12px;">Status: <strong style="color: ${isBusy ? '#f59e0b' : '#10b981'};">${isBusy ? 'On Delivery' : 'Online & Available'}</strong></p>
+            <p style="margin: 0 0 3px; font-size: 11.5px; color: #64748b;">Telemetry: <strong>${hasRealGPS ? 'Live GPS Beacon' : 'Active at Store Hub'}</strong></p>
+            <p style="margin: 0; font-size: 12px;">Delivery Zone: <strong style="color: ${insideZone ? insideZone.color : '#94a3b8'};">${insideZone ? insideZone.name : 'Outside Zones'}</strong></p>
           </div>
         `);
     });
-  }, [riders, zones]);
+  }, [riders, zones, storeCoords]);
 
   // Test Location Simulator
   const handleTestLocation = (coords) => {
@@ -601,8 +623,11 @@ export default function DeliveryZonesPage() {
   };
 
   const handleEditZone = (zone) => {
+    const validCodes = new Set(riders.map(r => r.rider_code));
+    const cleanAssigned = (zone.assigned_riders || []).filter(c => validCodes.has(c));
     setZoneForm({
-      ...zone
+      ...zone,
+      assigned_riders: cleanAssigned
     });
     setEditingZone(zone);
     setDrawPoints([...zone.polygon]);
@@ -684,24 +709,11 @@ export default function DeliveryZonesPage() {
             <h2>Delivery Zones &amp; Polygon Logic</h2>
             <span className="zones-count-pill">{zones.length} Zones Active</span>
           </div>
-          <p className="zones-subtitle">
-            Define custom geographic polygons to route incoming customer orders to the optimal riders without boundary detour delays.
-          </p>
         </div>
 
         <div className="zones-header-actions">
           {!isDrawing ? (
             <>
-              {/* Satellite / Streets View Switcher */}
-              <button 
-                type="button" 
-                className={`btn-action style-toggle-btn ${mapStyle === 'google-hybrid' ? 'satellite-active' : ''}`}
-                onClick={handleToggleMapStyle}
-                title="Toggle Google Satellite / Street View"
-              >
-                <Eye size={16} />
-                <span>{mapStyle === 'google-hybrid' ? 'Satellite View' : 'Street Map'}</span>
-              </button>
 
               <button 
                 type="button" 
@@ -867,7 +879,6 @@ export default function DeliveryZonesPage() {
       <div className="zones-list-section">
         <div className="section-title-bar">
           <h3>Configured Delivery Zones ({zones.length})</h3>
-          <span className="section-hint">Orders dropping inside these polygons prioritize local zone riders first.</span>
         </div>
 
         {zones.length === 0 ? (
@@ -879,10 +890,17 @@ export default function DeliveryZonesPage() {
         ) : (
           <div className="zones-cards-grid">
             {zones.map((zone) => {
-              const insideRiders = riders.filter(r => {
+              const validRiderCodes = new Set(riders.map(r => r.rider_code));
+              const validAssignedRiders = (zone.assigned_riders || []).filter(c => validRiderCodes.has(c));
+
+              // Compute online riders in this zone (inside polygon OR assigned to zone)
+              const zoneOnlineRiders = riders.filter(r => {
+                if (!r.is_online) return false;
                 const lat = Number(r.current_lat ?? r.lat);
                 const lng = Number(r.current_lng ?? r.lng);
-                return !isNaN(lat) && !isNaN(lng) && isPointInPolygon([lat, lng], zone.polygon);
+                const isInside = !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0) && isPointInPolygon([lat, lng], zone.polygon);
+                const isAssigned = validAssignedRiders.includes(r.rider_code);
+                return isInside || isAssigned;
               });
 
               return (
@@ -919,9 +937,9 @@ export default function DeliveryZonesPage() {
                       <span className="meta-value">{zone.delivery_time_mins || 15} Mins</span>
                     </div>
                     <div className="meta-box">
-                      <span className="meta-label"><Bike size={12} /> Live Riders</span>
-                      <span className="meta-value" style={{ color: insideRiders.length > 0 ? '#0c831f' : '#94a3b8' }}>
-                        {insideRiders.length} in zone
+                      <span className="meta-label"><Bike size={12} /> Online Riders</span>
+                      <span className="meta-value" style={{ color: zoneOnlineRiders.length > 0 ? '#0c831f' : '#94a3b8' }}>
+                        {zoneOnlineRiders.length} Active
                       </span>
                     </div>
                     <div className="meta-box">
@@ -930,16 +948,40 @@ export default function DeliveryZonesPage() {
                     </div>
                   </div>
 
-                  {Array.isArray(zone.assigned_riders) && zone.assigned_riders.length > 0 && (
+                  {/* Online Riders Live List */}
+                  <div className="zone-online-riders-row">
+                    <div className="zone-row-label">
+                      <span className="online-live-beacon"></span>
+                      <span>Online Riders ({zoneOnlineRiders.length})</span>
+                    </div>
+                    <div className="zone-riders-badges-wrap">
+                      {zoneOnlineRiders.length > 0 ? (
+                        zoneOnlineRiders.map(r => (
+                          <span key={r.rider_code} className="zone-rider-live-chip" title={`${r.rider_name} (${r.rider_code})`}>
+                            <span className="rider-live-pulse-dot" />
+                            <Bike size={12} />
+                            <span className="rider-chip-name">{r.rider_name || r.rider_code}</span>
+                            {r.vehicle_no && <span className="rider-chip-veh">{r.vehicle_no}</span>}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="zone-no-riders-text">No riders currently online in this zone</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Priority Assigned Riders (Strictly registered verified partners) */}
+                  {validAssignedRiders.length > 0 && (
                     <div className="zone-assigned-row">
-                      <span className="zone-assigned-title">Priority Riders:</span>
+                      <span className="zone-assigned-title">Assigned Priority Riders:</span>
                       <div className="zone-assigned-tags">
-                        {zone.assigned_riders.map(code => {
+                        {validAssignedRiders.map(code => {
                           const rMatch = riders.find(r => r.rider_code === code);
                           return (
                             <span key={code} className="zone-assigned-pill">
                               <span className={`status-mini-dot ${rMatch?.is_online ? 'online' : 'offline'}`} />
-                              {rMatch?.rider_name || code}
+                              <span>{rMatch?.rider_name || code}</span>
+                              {rMatch?.is_online && <span className="live-text-tag">LIVE</span>}
                             </span>
                           );
                         })}
@@ -1056,9 +1098,6 @@ export default function DeliveryZonesPage() {
                     {riders.length} Registered Rider{riders.length === 1 ? '' : 's'}
                   </span>
                 </div>
-                <p className="form-input-hint">
-                  Strictly showing verified delivery riders from database (role: rider). Excludes shopkeepers and unverified accounts.
-                </p>
                 <div className="riders-select-grid">
                   {riders.map(r => {
                     const isSelected = Array.isArray(zoneForm.assigned_riders) && zoneForm.assigned_riders.includes(r.rider_code);

@@ -508,6 +508,107 @@ body[data-theme="dark"] .map-legend-overlay {
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
+/* Blinkit Style Live Delivery Bike Rider Marker */
+.blinkit-rider-marker-container {
+  background: transparent !important;
+  border: none !important;
+}
+
+.blinkit-rider-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateY(-8px);
+}
+
+.blinkit-rider-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  margin-bottom: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.2px;
+}
+
+.blinkit-rider-wrapper.busy .blinkit-rider-tag {
+  background: #d97706;
+}
+
+.rider-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.blinkit-rider-wrapper.busy .rider-live-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+}
+
+.rider-name-label {
+  max-width: 75px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blinkit-bike-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #0c831f; /* Blinkit signature green */
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(12, 131, 31, 0.45);
+  position: relative;
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.blinkit-bike-circle:hover {
+  transform: scale(1.1);
+}
+
+.blinkit-rider-wrapper.busy .blinkit-bike-circle {
+  background: #f59e0b;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.45);
+}
+
+.blinkit-marker-pulse {
+  position: absolute;
+  bottom: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.45);
+  animation: blinkitRiderPulse 1.8s infinite ease-out;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.blinkit-rider-wrapper.busy .blinkit-marker-pulse {
+  background: rgba(245, 158, 11, 0.45);
+}
+
+@keyframes blinkitRiderPulse {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 .rider-custom-marker .rider-dot-wrapper {
   width: 28px;
   height: 28px;
@@ -1065,6 +1166,98 @@ body[data-theme="dark"] .map-legend-overlay {
   border: 1px dashed rgba(239, 68, 68, 0.3);
   color: #b91c1c;
   font-size: 12px;
+}
+
+/* Zone Card Online Riders Live Row */
+.zone-online-riders-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f0fdf4;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+}
+
+.zone-row-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.online-live-beacon {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulseBeacon 1.5s infinite;
+}
+
+@keyframes pulseBeacon {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.25); }
+}
+
+.zone-riders-badges-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.zone-rider-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ffffff;
+  border: 1px solid #86efac;
+  color: #0c831f;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.rider-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.rider-chip-name {
+  font-weight: 800;
+}
+
+.rider-chip-veh {
+  font-size: 10px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.zone-no-riders-text {
+  font-size: 11.5px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.live-text-tag {
+  font-size: 9px;
+  font-weight: 900;
+  background: #10b981;
+  color: #ffffff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 3px;
 }
 
 /* Zone Card Assigned Riders Row */
