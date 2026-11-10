@@ -55,28 +55,26 @@
 .add-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #0c831f 0%, #0a6c1a 100%);
+  gap: 7px;
+  background-color: #0c831f;
   color: #ffffff;
-  border: none;
-  padding: 10px 22px;
-  border-radius: 9999px;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: -0.2px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13.5px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(12, 131, 31, 0.28);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease;
 }
 
 .add-btn:hover {
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 18px rgba(12, 131, 31, 0.38);
-  filter: brightness(1.05);
+  background-color: #096818;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .add-btn:active {
-  transform: translateY(0.5px) scale(0.98);
+  transform: translateY(1px);
 }
 
 .admin-tabs {

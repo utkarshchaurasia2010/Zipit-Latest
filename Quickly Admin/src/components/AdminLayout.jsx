@@ -236,6 +236,7 @@ const AdminLayout = ({ profile, setProfile }) => {
     { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
     { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
     { name: 'Partners Codes', path: '/partners-codes', icon: <Users size={20} /> },
+    { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 
   // Pending Applications Badge State
@@ -368,12 +369,26 @@ const AdminLayout = ({ profile, setProfile }) => {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="admin-user-profile">
+          <div 
+            className="admin-user-profile" 
+            onClick={() => { setIsMobileMenuOpen(false); navigate('/settings'); }}
+            style={{ cursor: 'pointer' }}
+            title="Open Settings"
+          >
             <div className="admin-avatar">{profile?.name?.charAt(0) || 'A'}</div>
             <div className="admin-user-info">
               <h4>{profile?.name || 'Administrator'}</h4>
               <p>Super Admin</p>
             </div>
+            <button 
+              type="button" 
+              className="sidebar-settings-shortcut" 
+              onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(false); navigate('/settings'); }}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings size={18} />
+            </button>
           </div>
           <button onClick={handleLogout} className="sidebar-logout-btn">
             <LogOut size={18} />
@@ -461,7 +476,7 @@ const AdminLayout = ({ profile, setProfile }) => {
           <div className="topbar-actions">
             
             {/* Google Sheets Cloud Sync Buttons */}
-            <div style={{display: 'flex', gap: '8px', marginRight: '16px', alignItems: 'center'}}>
+            <div className="topbar-sheets-group">
               <button 
                 onClick={async (e) => {
                   const btn = e.currentTarget;
@@ -496,22 +511,7 @@ const AdminLayout = ({ profile, setProfile }) => {
                     btn.innerHTML = originalContent;
                   }
                 }}
-                style={{
-                  background: 'linear-gradient(135deg, #0c831f 0%, #086317 100%)',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 2px 6px rgba(12, 131, 31, 0.2)'
-                }}
+                className="sheets-btn push-btn"
                 title="Push all products, orders, profiles to Google Sheets (Cloud: https://zipit-sync.onrender.com)"
               >
                 <ArrowUpCircle size={14} strokeWidth={2.4} />
@@ -548,22 +548,7 @@ const AdminLayout = ({ profile, setProfile }) => {
                     btn.innerHTML = originalContent;
                   }
                 }}
-                style={{
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  border: '1px solid var(--color-border)',
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                }}
+                className="sheets-btn pull-btn"
                 title="Pull updated product prices/stock from Google Sheets (Cloud: https://zipit-sync.onrender.com)"
               >
                 <ArrowDownCircle size={14} strokeWidth={2.4} />
@@ -574,19 +559,7 @@ const AdminLayout = ({ profile, setProfile }) => {
                 href="https://docs.google.com/spreadsheets/d/1nIK_sYkNurKoVkXch9WBuxT_TfLI_-R4s83uxrGL1is/edit"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-light)',
-                  textDecoration: 'none',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface-muted)'
-                }}
+                className="sheets-link-btn"
                 title="Open Google Sheet in new tab"
               >
                 <span>Sheet</span>
@@ -600,20 +573,20 @@ const AdminLayout = ({ profile, setProfile }) => {
               disabled={togglingStore}
               role="switch"
               aria-checked={isStoreOpen}
+              className="topbar-store-btn"
               title={isStoreOpen ? `Store is live (${storeSchedule.open} - ${storeSchedule.close}): click to pause` : `Store is offline: click to toggle`}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '6px 14px',
-                borderRadius: '999px',
+                padding: '6px 12px',
+                borderRadius: '8px',
                 border: isStoreOpen ? '1px solid #10b981' : (!isWithinHours ? '1px solid #f59e0b' : '1px solid #cbd5e1'),
                 background: isStoreOpen ? '#ecfdf5' : (!isWithinHours ? '#fffbeb' : 'var(--color-surface)'),
                 color: isStoreOpen ? '#047857' : (!isWithinHours ? '#b45309' : 'var(--color-text-light)'),
                 fontWeight: 700,
                 fontSize: '12.5px',
                 cursor: togglingStore ? 'not-allowed' : 'pointer',
-                marginRight: '8px',
                 transition: 'all 0.2s ease',
                 boxShadow: isStoreOpen ? '0 1px 3px rgba(16, 185, 129, 0.15)' : 'none'
               }}
@@ -625,24 +598,29 @@ const AdminLayout = ({ profile, setProfile }) => {
                   borderRadius: '50%',
                   background: isStoreOpen ? '#10b981' : (!isWithinHours ? '#f59e0b' : '#94a3b8'),
                   boxShadow: isStoreOpen ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : 'none',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
                 }}
               />
-              <span>
+              <span className="store-text-desktop">
                 {togglingStore 
                   ? 'Updating...' 
                   : (isStoreOpen 
                       ? `Store Online (${storeSchedule.close} close)` 
                       : (!isWithinHours ? `Auto-Closed (Opens ${storeSchedule.open})` : 'Store Paused'))}
               </span>
+              <span className="store-text-mobile">
+                {togglingStore ? '...' : (isStoreOpen ? 'Online' : 'Closed')}
+              </span>
             </button>
 
-            <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme">
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            <button className="icon-btn theme-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
+              {theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}
             </button>
+
             <div className="notification-wrapper" ref={notifRef}>
-              <button className="icon-btn" onClick={() => { setShowNotifications(!showNotifications); setUnreadCount(0); }}>
-                <Bell size={20} />
+              <button className="icon-btn notif-btn" onClick={() => { setShowNotifications(!showNotifications); setUnreadCount(0); }} title="Notifications" aria-label="Notifications">
+                <Bell size={19} />
                 {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
               </button>
               
@@ -667,7 +645,16 @@ const AdminLayout = ({ profile, setProfile }) => {
                 </div>
               )}
             </div>
-            <button className="icon-btn" onClick={() => navigate('/settings')}><Settings size={20} /></button>
+
+            {/* Prominent Settings Button */}
+            <button 
+              className="icon-btn settings-topbar-btn" 
+              onClick={() => navigate('/settings')}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings size={19} />
+            </button>
           </div>
         </header>
         

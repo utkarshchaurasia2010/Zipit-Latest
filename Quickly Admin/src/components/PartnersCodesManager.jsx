@@ -355,20 +355,19 @@ export default function PartnersCodesManager() {
           <button
             onClick={() => { resetForm(); setIsModalOpen(true); }}
             style={{
-              background: 'linear-gradient(135deg, #0c831f 0%, #0a6c1a 100%)',
+              background: '#0c831f',
               color: '#ffffff',
               border: 'none',
-              padding: '10px 22px',
-              borderRadius: '9999px',
-              fontWeight: '700',
-              fontSize: '14px',
-              letterSpacing: '-0.2px',
+              padding: '9px 16px',
+              borderRadius: '8px',
+              fontWeight: '600',
+              fontSize: '13.5px',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              boxShadow: '0 4px 14px rgba(12, 131, 31, 0.28)',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              transition: 'background 0.15s ease'
             }}
           >
             <Plus size={18} /> Generate Partner Code

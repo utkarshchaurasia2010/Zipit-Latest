@@ -147,6 +147,24 @@
   font-size: 12px;
   color: var(--color-text-light);
 }
+.sidebar-settings-shortcut {
+  background: transparent;
+  border: none;
+  color: var(--color-text-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  margin-left: auto;
+  transition: all 0.2s ease;
+}
+
+.sidebar-settings-shortcut:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
 
 .sidebar-logout-btn {
   display: flex;
@@ -218,7 +236,78 @@
 
 .topbar-actions {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-sheets-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.sheets-btn {
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.sheets-btn.push-btn {
+  background: linear-gradient(135deg, #0c831f 0%, #086317 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(12, 131, 31, 0.2);
+}
+
+.sheets-btn.push-btn:hover {
+  background: linear-gradient(135deg, #0a6f1a 0%, #064e12 100%);
+}
+
+.sheets-btn.pull-btn {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sheets-btn.pull-btn:hover {
+  background: var(--color-surface-muted);
+}
+
+.sheets-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-decoration: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  transition: all 0.15s ease;
+}
+
+.sheets-link-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-light);
+}
+
+.store-text-desktop {
+  display: inline;
+}
+
+.store-text-mobile {
+  display: none;
 }
 
 .icon-btn {
@@ -646,9 +735,22 @@
   }
 
   .admin-topbar {
-    padding: 10px 14px;
+    padding: 10px 12px;
     gap: 8px;
     flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .topbar-sheets-group {
+    display: none !important; /* Hide Google Sheets sync group on mobile header to guarantee settings visibility */
+  }
+
+  .store-text-desktop {
+    display: none !important;
+  }
+
+  .store-text-mobile {
+    display: inline !important;
   }
 
   .search-container {
@@ -660,17 +762,27 @@
 
   .topbar-actions {
     margin-left: auto;
+    display: flex;
+    align-items: center;
     gap: 6px;
+    flex-shrink: 0;
   }
 
-  .topbar-actions > div {
-    margin-right: 0 !important;
-    gap: 4px !important;
-  }
-
-  .topbar-actions button, .topbar-actions a {
-    padding: 5px 8px !important;
+  .topbar-store-btn {
+    padding: 6px 10px !important;
     font-size: 11.5px !important;
+    flex-shrink: 0;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .settings-topbar-btn {
+    display: flex !important;
+    flex-shrink: 0 !important;
   }
 
   .admin-content-scroll {
@@ -679,8 +791,23 @@
 }
 
 @media (max-width: 480px) {
-  .topbar-actions > div > a {
-    display: none !important; /* Hide direct sheet link on ultra small phones to save space */
+  .admin-topbar {
+    padding: 8px 10px;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .topbar-store-btn {
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    gap: 5px !important;
   }
 }
 

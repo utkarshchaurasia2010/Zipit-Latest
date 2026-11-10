@@ -149,7 +149,7 @@ export default function AccessCodesManager() {
 
         <button
           onClick={() => { resetForm(); setIsModalOpen(true); }}
-          style={{ background: 'var(--color-primary)', color: '#000', padding: '12px 20px', borderRadius: '10px', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+          style={{ background: 'var(--color-primary)', color: '#000', padding: '10px 18px', borderRadius: '8px', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
         >
           <Plus size={18} /> Generate Code
         </button>
