@@ -206,6 +206,7 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const recognitionRef = useRef(null);
+  const searchInputRef = useRef(null);
   const { showToast } = useToast();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const location = useLocation();
@@ -247,24 +248,16 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
       setActiveFilter('All');
       setIsListening(false);
       setVoiceTranscript('');
-      // Restore body scroll
       document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
     } else {
-      // Lock body scroll so the page behind doesn't scroll through the overlay
+      // Lightweight scroll lock without layout reflow
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
       if (initialVoiceSearch) {
-        setTimeout(() => startVoiceSearch(), 300);
+        setTimeout(() => startVoiceSearch(), 250);
       }
     }
     return () => {
-      // Always restore on unmount
       document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
     };
   }, [isOpen, initialVoiceSearch]);
 
@@ -314,6 +307,15 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
   };
 
   const startVoiceSearch = async () => {
+    // Immediately dismiss virtual software keyboard so voice modal is centered on screen
+    if (searchInputRef.current) searchInputRef.current.blur();
+    if (document.activeElement?.blur) document.activeElement.blur();
+    try {
+      if (window.Capacitor?.Plugins?.Keyboard) {
+        window.Capacitor.Plugins.Keyboard.hide();
+      }
+    } catch (_) {}
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       showToast('Voice search not supported on this device.', 'Error');
@@ -472,10 +474,11 @@ const SearchOverlay = ({ isOpen, onClose, cart, updateCartQty, initialVoiceSearc
             <ChevronLeft size={26} color="var(--color-text)" strokeWidth={2.6} />
           </button>
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search for groceries, snacks..."
             aria-label="Search for groceries, snacks"
-            autoFocus
+            autoFocus={!initialVoiceSearch}
             value={query}
             onChange={e => setQuery(e.target.value)}
           />

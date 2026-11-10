@@ -349,28 +349,26 @@ export default function PartnersCodesManager() {
               </span>
             )}
           </div>
-          <p style={{ color: 'var(--color-text-light)', margin: '6px 0 0', fontSize: '14px' }}>
-            Manage Retail Partners (Shopkeepers), Delivery Partners (Riders), verify companion applications, and control access permissions.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={() => { resetForm(); setIsModalOpen(true); }}
             style={{
-              background: '#0c831f',
+              background: 'linear-gradient(135deg, #0c831f 0%, #0a6c1a 100%)',
               color: '#ffffff',
               border: 'none',
-              padding: '10px 18px',
-              borderRadius: '10px',
+              padding: '10px 22px',
+              borderRadius: '9999px',
               fontWeight: '700',
               fontSize: '14px',
+              letterSpacing: '-0.2px',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              boxShadow: '0 4px 12px rgba(12, 131, 31, 0.25)',
-              transition: 'transform 0.15s ease'
+              boxShadow: '0 4px 14px rgba(12, 131, 31, 0.28)',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           >
             <Plus size={18} /> Generate Partner Code

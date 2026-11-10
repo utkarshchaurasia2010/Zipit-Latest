@@ -78,19 +78,22 @@
   align-items: center;
   gap: 8px;
   background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e2e8f0);
+  border: 1.5px solid var(--color-border, #e2e8f0);
   color: var(--color-text, #0f172a);
-  padding: 8px 16px;
-  border-radius: 10px;
+  padding: 8px 18px;
+  border-radius: 9999px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .export-csv-btn:hover {
   background: var(--color-surface-hover, #f8fafc);
-  border-color: #cbd5e1;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
 /* KPI Cards Grid */

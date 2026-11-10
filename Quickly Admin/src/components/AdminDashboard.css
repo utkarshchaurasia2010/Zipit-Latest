@@ -53,16 +53,30 @@
 }
 
 .add-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background-color: #0c831f;
-  color: white;
+  gap: 8px;
+  background: linear-gradient(135deg, #0c831f 0%, #0a6c1a 100%);
+  color: #ffffff;
   border: none;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.2px;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(12, 131, 31, 0.28);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.add-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(12, 131, 31, 0.38);
+  filter: brightness(1.05);
+}
+
+.add-btn:active {
+  transform: translateY(0.5px) scale(0.98);
 }
 
 .admin-tabs {

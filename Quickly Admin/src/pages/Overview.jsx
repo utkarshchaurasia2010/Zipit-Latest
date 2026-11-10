@@ -22,54 +22,118 @@ const Overview = () => {
     totalProducts: 0,
     totalRevenue: 0
   });
+  const [rawOrders, setRawOrders] = useState([]);
+  const [timeframe, setTimeframe] = useState('6M'); // '6M' | '1Y' | 'ALL'
   const [chartData, setChartData] = useState([]);
+
+  const generateChartData = (orders, tf) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const generated = [];
+
+    if (tf === '6M') {
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mLabel = months[d.getMonth()];
+
+        const monthOrders = orders.filter(o => {
+          const oDate = new Date(o.created_at);
+          return oDate.getMonth() === d.getMonth() && oDate.getFullYear() === d.getFullYear();
+        });
+
+        generated.push({
+          month: mLabel,
+          sales: monthOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+          orders: monthOrders.length
+        });
+      }
+    } else if (tf === '1Y') {
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mLabel = months[d.getMonth()];
+        const yr = String(d.getFullYear()).slice(-2);
+
+        const monthOrders = orders.filter(o => {
+          const oDate = new Date(o.created_at);
+          return oDate.getMonth() === d.getMonth() && oDate.getFullYear() === d.getFullYear();
+        });
+
+        generated.push({
+          month: `${mLabel} '${yr}`,
+          sales: monthOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+          orders: monthOrders.length
+        });
+      }
+    } else {
+      // 'ALL' - all historical orders grouped chronologically
+      if (orders.length === 0) {
+        return [{ month: months[now.getMonth()], sales: 0, orders: 0 }];
+      }
+
+      let earliest = new Date();
+      orders.forEach(o => {
+        const oDate = new Date(o.created_at);
+        if (oDate < earliest) earliest = oDate;
+      });
+
+      const startYear = earliest.getFullYear();
+      const startMonth = earliest.getMonth();
+      const endYear = now.getFullYear();
+      const endMonth = now.getMonth();
+      const totalMonths = Math.max(1, (endYear - startYear) * 12 + (endMonth - startMonth) + 1);
+      const monthsToDisplay = Math.max(6, totalMonths);
+
+      for (let i = monthsToDisplay - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mLabel = months[d.getMonth()];
+        const yr = String(d.getFullYear()).slice(-2);
+
+        const monthOrders = orders.filter(o => {
+          const oDate = new Date(o.created_at);
+          return oDate.getMonth() === d.getMonth() && oDate.getFullYear() === d.getFullYear();
+        });
+
+        generated.push({
+          month: `${mLabel} '${yr}`,
+          sales: monthOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+          orders: monthOrders.length
+        });
+      }
+    }
+
+    return generated;
+  };
 
   useEffect(() => {
     loadStats();
   }, []);
 
+  useEffect(() => {
+    if (rawOrders.length > 0) {
+      setChartData(generateChartData(rawOrders, timeframe));
+    }
+  }, [timeframe, rawOrders]);
+
   const loadStats = async () => {
     const products = await db.products.getAll();
     const orders = await db.orders.getAllAdmin();
     
-    // Calculate total true revenue (only delivered or active orders if needed, but we'll use all non-cancelled)
-    const validOrders = orders.filter(o => o.status !== 'Cancelled');
+    // Calculate total true revenue (non-cancelled)
+    const validOrders = (orders || []).filter(o => o.status !== 'Cancelled');
     const totalRevenue = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     
-    // Get distinct user IDs from orders as a proxy for active users
-    const uniqueUsers = new Set(orders.map(o => o.profile_id)).size;
+    // Distinct user IDs from orders as proxy for active users
+    const uniqueUsers = new Set((orders || []).map(o => o.profile_id)).size;
 
+    setRawOrders(validOrders);
     setStats({
-      totalUsers: uniqueUsers || 1, // At least the admin
+      totalUsers: uniqueUsers || 1,
       totalOrders: validOrders.length,
-      totalProducts: products.length,
+      totalProducts: (products || []).length,
       totalRevenue: totalRevenue
     });
 
-    // Generate Chart Data (Last 6 Months backfilled with 0)
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date().getMonth();
-    const generatedChartData = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      let d = new Date();
-      d.setMonth(currentMonth - i);
-      const mLabel = months[d.getMonth()];
-      const yLabel = d.getFullYear();
-      
-      // Filter orders for this specific month/year
-      const monthOrders = validOrders.filter(o => {
-        const oDate = new Date(o.created_at);
-        return oDate.getMonth() === d.getMonth() && oDate.getFullYear() === d.getFullYear();
-      });
-
-      generatedChartData.push({
-        month: mLabel,
-        sales: monthOrders.reduce((sum, o) => sum + (o.total || 0), 0),
-        orders: monthOrders.length
-      });
-    }
-    setChartData(generatedChartData);
+    setChartData(generateChartData(validOrders, timeframe));
   };
 
   return (
@@ -147,11 +211,28 @@ const Overview = () => {
       {/* Analytics Chart */}
       <div className="chart-section">
         <div className="chart-header">
-          <h3>Sales & Orders Trend (Last 6 Months)</h3>
+          <h3>
+            Sales & Orders Trend ({timeframe === '6M' ? 'Last 6 Months' : timeframe === '1Y' ? 'Last 1 Year' : 'All Time History'})
+          </h3>
           <div className="chart-filters">
-            <button className="active">6M</button>
-            <button>1Y</button>
-            <button>ALL</button>
+            <button 
+              className={timeframe === '6M' ? 'active' : ''} 
+              onClick={() => setTimeframe('6M')}
+            >
+              6M
+            </button>
+            <button 
+              className={timeframe === '1Y' ? 'active' : ''} 
+              onClick={() => setTimeframe('1Y')}
+            >
+              1Y
+            </button>
+            <button 
+              className={timeframe === 'ALL' ? 'active' : ''} 
+              onClick={() => setTimeframe('ALL')}
+            >
+              ALL
+            </button>
           </div>
         </div>
         

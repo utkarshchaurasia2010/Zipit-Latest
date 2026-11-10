@@ -26,7 +26,8 @@ const AllProductsPage = React.lazy(() => import('./components/AllProductsPage'))
 const PaymentPage = React.lazy(() => import('./components/PaymentPage'));
 const CheckoutPage = React.lazy(() => import('./components/CheckoutPage'));
 const AddressModal = React.lazy(() => import('./components/AddressModal'));
-const SearchOverlay = React.lazy(() => import('./components/SearchOverlay'));
+import SearchOverlay from './components/SearchOverlay';
+import { loadGoogleMapsSDK } from './components/MapPinPicker';
 const WishlistPage = React.lazy(() => import('./components/WishlistPage'));
 const TrackOrderPage = React.lazy(() => import('./components/TrackOrderPage'));
 const SubstituteSelectionPage = React.lazy(() => import('./components/SubstituteSelectionPage'));
@@ -432,9 +433,10 @@ function AppContent() {
   }, [viewName, theme, showSplash]);
 
   useEffect(() => {
-    // Pre-warm product catalogue and branding in background during splash screen
+    // Pre-warm product catalogue, branding, and Google Maps in background during splash screen
     db.products.getAll().catch(() => {});
     db.branding.get().catch(() => {});
+    loadGoogleMapsSDK().catch(() => {});
 
     // Elegant splash display time to imprint brand identity in user mind
     const timer = setTimeout(() => {

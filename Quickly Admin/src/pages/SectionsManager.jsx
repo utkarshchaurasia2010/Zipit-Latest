@@ -297,7 +297,6 @@ const SectionsManager = () => {
       <div className="sections-manager-header">
         <div>
           <h2>Homepage Sections & Priority</h2>
-          <p>Organize, reorder, create festive campaigns, and customize homepage storefront sections</p>
         </div>
         <div className="sections-header-actions">
           <button 
@@ -317,20 +316,6 @@ const SectionsManager = () => {
             <Save size={18} />
             <span>{saving ? 'Publishing...' : hasChanges ? 'Publish Changes Live' : 'Sections Published'}</span>
           </button>
-        </div>
-      </div>
-
-      {/* Info Banner */}
-      <div className="sections-banner-info">
-        <div className="icon-box">
-          <Sparkles size={22} />
-        </div>
-        <div>
-          <h4>Festive Season & Dynamic Priority Controls</h4>
-          <p>
-            Use the arrow controls to prioritize which sections customers see first on the homepage.
-            You can create special festive banners, select specific holiday items, or hide/show sections at will.
-          </p>
         </div>
       </div>
 

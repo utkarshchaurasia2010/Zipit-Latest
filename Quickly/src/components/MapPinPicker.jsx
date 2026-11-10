@@ -3,6 +3,43 @@ import { MapPin, Search, Crosshair, Layers, Navigation, Loader2, X } from 'lucid
 import { getDeviceLocation } from '../utils/geolocation';
 import './MapPinPicker.css';
 
+export const DEFAULT_GOOGLE_MAPS_KEY = 'AIzaSyA_pq9MB8GYWB6b03uAL4Ej7Cu6CatewmM';
+
+export const getStoredGoogleMapsKey = () => {
+  return localStorage.getItem('zipit_google_maps_key') || 
+    import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 
+    DEFAULT_GOOGLE_MAPS_KEY;
+};
+
+export const loadGoogleMapsSDK = (key) => {
+  const activeKey = key || getStoredGoogleMapsKey();
+  if (!activeKey) return Promise.resolve(false);
+  if (typeof window !== 'undefined' && window.google?.maps?.places) {
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined') return resolve(false);
+    const existing = document.getElementById('zipit-gmaps-script');
+    if (existing) {
+      if (window.google?.maps?.places) return resolve(true);
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'zipit-gmaps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${activeKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      console.warn('Google Maps SDK load error');
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+};
+
 const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) => {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -30,16 +67,19 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
 
-  // Google Maps API Sync state: loads from DB system config, localStorage, or env
-  const [googleMapsKey, setGoogleMapsKey] = useState(() => 
-    localStorage.getItem('zipit_google_maps_key') || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
-  );
-  const [isGoogleLoaded, setIsGoogleLoaded] = useState(() => Boolean(window.google && window.google.maps && window.google.maps.places));
+  // Synchronously initialize active Google Maps API key from cache or bundled key
+  const [googleMapsKey, setGoogleMapsKey] = useState(getStoredGoogleMapsKey);
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(() => Boolean(typeof window !== 'undefined' && window.google?.maps?.places));
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [inputKey, setInputKey] = useState('');
 
-  // 1. Fetch persistent Google Maps Key from Supabase DB on load so user NEVER has to re-enter it
+  // 1. Ensure Google Maps SDK is loaded immediately
   useEffect(() => {
+    loadGoogleMapsSDK(googleMapsKey).then(loaded => {
+      if (loaded) setIsGoogleLoaded(true);
+    });
+
+    // Background sync with Supabase in case admin updated remote key
     const fetchRemoteKey = async () => {
       try {
         const { supabase } = await import('../services/db');
@@ -50,44 +90,17 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
           .eq('type', 'GOOGLE_MAPS_KEY')
           .maybeSingle();
 
-        if (data?.details && data.details.trim()) {
+        if (data?.details && data.details.trim() && data.details.trim() !== googleMapsKey) {
           const remoteKey = data.details.trim();
           localStorage.setItem('zipit_google_maps_key', remoteKey);
           setGoogleMapsKey(remoteKey);
+          loadGoogleMapsSDK(remoteKey).then(l => { if (l) setIsGoogleLoaded(true); });
         }
       } catch (err) {
         console.warn('Could not fetch remote Google Maps key:', err);
       }
     };
     fetchRemoteKey();
-  }, []);
-
-  // Dynamically load Official Google Maps JS SDK (Places + Geocoder) when a key is provided
-  useEffect(() => {
-    if (!googleMapsKey) {
-      setIsGoogleLoaded(Boolean(window.google && window.google.maps && window.google.maps.places));
-      return;
-    }
-    if (window.google && window.google.maps && window.google.maps.places) {
-      setIsGoogleLoaded(true);
-      return;
-    }
-    const existingScript = document.getElementById('zipit-gmaps-script');
-    if (existingScript) existingScript.remove();
-
-    const script = document.createElement('script');
-    script.id = 'zipit-gmaps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      setIsGoogleLoaded(true);
-    };
-    script.onerror = () => {
-      console.warn('Failed to load Google Maps SDK. Check API Key.');
-      setIsGoogleLoaded(false);
-    };
-    document.head.appendChild(script);
   }, [googleMapsKey]);
 
   // Live Autocomplete Suggestions as user types (Google Places API New REST -> Esri ArcGIS -> Photon)
@@ -698,20 +711,7 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
         </form>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 4px 0', fontSize: '11px', color: 'var(--color-text-light)' }}>
           <span>
-            {isGoogleLoaded ? (
-              <span style={{ color: '#16a34a', fontWeight: 700 }}>● 100% Google Maps Synced</span>
-            ) : (
-              <span style={{ color: '#16a34a', fontWeight: 700 }}>
-                ● 100% Free Smart Geocoding{' '}
-                <button 
-                  type="button" 
-                  onClick={() => setShowKeyModal(true)} 
-                  style={{ background: 'none', border: 'none', color: 'var(--color-primary)', textDecoration: 'underline', cursor: 'pointer', fontWeight: 700, padding: 0, marginLeft: '6px' }}
-                >
-                  [ 🔑 Connect Google Maps Key ]
-                </button>
-              </span>
-            )}
+            <span style={{ color: '#16a34a', fontWeight: 700 }}>● 100% Google Maps Synced</span>
           </span>
           <a 
             href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}

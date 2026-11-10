@@ -218,9 +218,6 @@ const RevenuesPage = () => {
       <div className="revenues-header">
         <div>
           <h1 className="revenues-title">Revenue & Financial Intelligence</h1>
-          <p className="revenues-subtitle">
-            Comprehensive audit of gross merchandise value (GMV), payment channels, and transaction settlements.
-          </p>
         </div>
 
         <div className="revenues-controls">
