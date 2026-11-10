@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Search, Crosshair, Layers, Navigation, Loader2, X } from 'lucide-react';
 import { getDeviceLocation } from '../utils/geolocation';
+import { getZoneForLocation, isPointInPolygon } from '../utils/geoZones';
 import './MapPinPicker.css';
 
 export const DEFAULT_GOOGLE_MAPS_KEY = 'AIzaSyA_pq9MB8GYWB6b03uAL4Ej7Cu6CatewmM';
@@ -40,10 +41,11 @@ export const loadGoogleMapsSDK = (key) => {
   });
 };
 
-const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) => {
+const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel, deliveryZones = [], storeCoords = [25.5788, 83.5780] }) => {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const zonesLayerGroupRef = useRef(null);
   const isSelectingSuggestionRef = useRef(false);
 
   const [mapStyle, setMapStyle] = useState('google-streets'); // 'google-streets' or 'google-hybrid'
@@ -667,6 +669,30 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
     };
   }, []);
 
+  // Live render of active delivery zone polygons on Leaflet map
+  useEffect(() => {
+    if (!leafletMapRef.current || !window.L) return;
+    const map = leafletMapRef.current;
+    const L = window.L;
+
+    if (!zonesLayerGroupRef.current) {
+      zonesLayerGroupRef.current = L.layerGroup().addTo(map);
+    }
+    zonesLayerGroupRef.current.clearLayers();
+
+    const activeZones = (deliveryZones || []).filter(z => z.is_active !== false && Array.isArray(z.polygon) && z.polygon.length >= 3);
+    
+    activeZones.forEach(zone => {
+      L.polygon(zone.polygon, {
+        color: zone.color || '#0c831f',
+        weight: 2.5,
+        fillColor: zone.color || '#0c831f',
+        fillOpacity: 0.18,
+        dashArray: '5, 5'
+      }).addTo(zonesLayerGroupRef.current);
+    });
+  }, [deliveryZones]);
+
   const handleConfirm = () => {
     if (onConfirmLocation) {
       onConfirmLocation({
@@ -908,31 +934,58 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel }) =
           <span className="zipit-map-footer-label">Selected Delivery Location</span>
         </div>
 
-        <div className="zipit-map-deliver-card">
-          <div className="zipit-map-card-top">
-            <div className="zipit-map-card-icon">
-              <MapPin size={22} color="var(--color-primary)" />
-            </div>
-            <div className="zipit-map-card-titlebox">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 className="zipit-map-card-title">{isLoading ? 'Detecting location...' : areaTitle}</h3>
-                {isLoading && <Loader2 size={15} className="zipit-spin-icon" color="var(--color-primary)" />}
-              </div>
-              <p className="zipit-map-card-subtitle">
-                {isLoading ? 'Reading address details from Google Maps...' : fullAddress}
-              </p>
-            </div>
-          </div>
-        </div>
+        {(() => {
+          const activeZones = (deliveryZones || []).filter(z => z.is_active !== false && Array.isArray(z.polygon) && z.polygon.length >= 3);
+          const matchedZone = activeZones.length > 0 ? getZoneForLocation(coords.lat, coords.lng, activeZones) : null;
+          const isOutsideZones = activeZones.length > 0 && !matchedZone;
 
-        <button 
-          type="button" 
-          className="zipit-map-confirm-btn" 
-          onClick={handleConfirm}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Reading location...' : 'Confirm Current Location'}
-        </button>
+          return (
+            <>
+              <div className="zipit-map-deliver-card" style={{ borderColor: isOutsideZones ? '#fca5a5' : undefined }}>
+                <div className="zipit-map-card-top">
+                  <div className="zipit-map-card-icon" style={{ background: isOutsideZones ? 'rgba(239, 68, 68, 0.1)' : undefined }}>
+                    <MapPin size={22} color={isOutsideZones ? '#ef4444' : 'var(--color-primary)'} />
+                  </div>
+                  <div className="zipit-map-card-titlebox">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h3 className="zipit-map-card-title">{isLoading ? 'Detecting location...' : areaTitle}</h3>
+                      {isLoading && <Loader2 size={15} className="zipit-spin-icon" color="var(--color-primary)" />}
+                      {matchedZone && (
+                        <span style={{ fontSize: '11px', background: 'rgba(12, 131, 31, 0.12)', color: '#0c831f', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>
+                          ✓ {matchedZone.name} (~{matchedZone.delivery_time_mins || 15}m)
+                        </span>
+                      )}
+                      {isOutsideZones && (
+                        <span style={{ fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>
+                          ⚠ Outside Delivery Zone
+                        </span>
+                      )}
+                    </div>
+                    <p className="zipit-map-card-subtitle">
+                      {isLoading ? 'Reading address details from Google Maps...' : fullAddress}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                type="button" 
+                className="zipit-map-confirm-btn" 
+                onClick={handleConfirm}
+                disabled={isLoading}
+                style={{
+                  background: isOutsideZones ? '#475569' : undefined
+                }}
+              >
+                {isLoading 
+                  ? 'Reading location...' 
+                  : isOutsideZones 
+                    ? 'Confirm Location (Outside Delivery Zone)' 
+                    : 'Confirm Delivery Location'}
+              </button>
+            </>
+          );
+        })()}
       </div>
     </div>
   );

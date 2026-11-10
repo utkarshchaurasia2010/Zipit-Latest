@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { X, MapPin, Search, Navigation, Plus } from 'lucide-react';
 import { stripAddressTags } from './SavedAddressesPage';
+import { checkAddressServiceability } from '../utils/geoZones';
 import './AddressModal.css';
 
-const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, currentRoute }) => {
+const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, currentRoute, geofenceConfig }) => {
   if (!isOpen) return null;
 
   const sortedAddresses = [...addresses].sort((a, b) => {
@@ -36,7 +37,9 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
 
           <h4 className="section-title">Your saved addresses</h4>
 
-          {sortedAddresses.map(addr => (
+          {sortedAddresses.map(addr => {
+            const check = geofenceConfig ? checkAddressServiceability(addr, geofenceConfig) : null;
+            return (
             <div key={addr.id} className="address-card" style={{marginTop: 12}}>
               <div className="address-card-content">
                 <div className="address-icon-box" onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>
@@ -45,8 +48,20 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                   </div>
                 </div>
                 <div className="address-info-box">
-                  <div className="address-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <h4 style={{margin:0}} onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>{addr.type}</h4>
+                  <div className="address-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h4 style={{margin:0}} onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>{addr.type}</h4>
+                      {check && check.matchedZone && (
+                        <span style={{ fontSize: '10px', background: 'rgba(12, 131, 31, 0.12)', color: '#0c831f', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                          ✓ {check.matchedZone.name} ({check.deliveryTimeMins}m)
+                        </span>
+                      )}
+                      {check && check.isOutOfRange && (
+                        <span style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                          Outside Zone
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -103,7 +118,8 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       </div>
     </div>

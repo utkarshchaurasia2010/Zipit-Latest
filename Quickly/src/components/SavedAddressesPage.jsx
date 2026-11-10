@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Trash2, Edit2, MoreHorizontal, Share, Plus, X } from 'lucide-react';
 import { db } from '../services/db';
 import { useToast } from '../context/ToastContext';
+import { checkAddressServiceability } from '../utils/geoZones';
 import MapPinPicker from './MapPinPicker';
 import './SavedAddressesPage.css';
 
@@ -10,7 +11,7 @@ export const stripAddressTags = (str) => {
   return str.toString().replace(/[\s\n]*---[A-Z_]+:[^-\n]*---/g, '').replace(/---.*$/, '').trim();
 };
 
-const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, editId }) => {
+const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, editId, geofenceConfig }) => {
   const [isEditing, setIsEditing] = useState(null);
   const [formData, setFormData] = useState({
     type: 'Home',
@@ -27,7 +28,12 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(!!add);
-  const [storeGeofence, setStoreGeofence] = useState({ lat: 25.5788, lng: 83.5780 });
+  const [storeGeofence, setStoreGeofence] = useState(() => ({
+    lat: Number(geofenceConfig?.store_lat) || 25.5788,
+    lng: Number(geofenceConfig?.store_lng) || 83.5780,
+    max_delivery_radius_km: Number(geofenceConfig?.max_delivery_radius_km) || 8.5,
+    delivery_zones: Array.isArray(geofenceConfig?.delivery_zones) ? geofenceConfig.delivery_zones : []
+  }));
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -39,10 +45,12 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
     }).catch(() => {});
 
     db.branding.get().then(b => {
-      if (b && b.store_lat && b.store_lng) {
+      if (b) {
         setStoreGeofence({
           lat: Number(b.store_lat) || 25.5788,
-          lng: Number(b.store_lng) || 83.5780
+          lng: Number(b.store_lng) || 83.5780,
+          max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5,
+          delivery_zones: Array.isArray(b.delivery_zones) ? b.delivery_zones : []
         });
       }
     }).catch(() => {});
@@ -210,7 +218,10 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
 
         {(!isAddingNew && !isEditing) && <h4 className="section-title">Your saved addresses</h4>}
 
-        {(!isAddingNew && !isEditing) && sortedAddresses.map(addr => (
+        {(!isAddingNew && !isEditing) && sortedAddresses.map(addr => {
+          const serviceCheck = checkAddressServiceability(addr, storeGeofence);
+
+          return (
           <div 
             key={addr.id} 
             className={`address-card ${addr.is_default ? 'is-default-card' : ''}`}
@@ -224,9 +235,19 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
               </div>
               <div className="address-info-box">
                 <div className="address-header">
-                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     {addr.type}
                     {addr.is_default && <span style={{ background: 'rgba(12, 131, 31, 0.1)', color: '#0c831f', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DEFAULT</span>}
+                    {serviceCheck && serviceCheck.matchedZone && (
+                      <span style={{ background: 'rgba(12, 131, 31, 0.12)', color: '#0c831f', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                        ✓ {serviceCheck.matchedZone.name} ({serviceCheck.deliveryTimeMins}m)
+                      </span>
+                    )}
+                    {serviceCheck && serviceCheck.isOutOfRange && (
+                      <span style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
+                        ⚠ OUTSIDE ZONE
+                      </span>
+                    )}
                   </h4>
                   <MapPin size={16} className="pin-icon" />
                 </div>
@@ -341,7 +362,8 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         
         {(isEditing || isAddingNew) && (
           <div className="new-address-form" style={{ textAlign: 'left', width: '100%' }}>
@@ -373,6 +395,8 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
                 <MapPinPicker 
                   initialLat={mapPinData?.lat || storeGeofence?.lat || 25.5788} 
                   initialLng={mapPinData?.lng || storeGeofence?.lng || 83.5780} 
+                  deliveryZones={storeGeofence.delivery_zones}
+                  storeCoords={[storeGeofence.lat, storeGeofence.lng]}
                   onConfirmLocation={(data) => {
                     setMapPinData(data);
                     if (!formData.village_area) {

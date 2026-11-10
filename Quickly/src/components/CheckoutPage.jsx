@@ -8,21 +8,9 @@ import { triggerHaptic } from '../utils/haptics';
 import { useToast } from '../context/ToastContext';
 import { useWishlist } from '../context/WishlistContext';
 import { executeInvisibleTurnstile } from '../utils/turnstile';
+import { checkAddressServiceability, calculateDistanceKm, getZoneForLocation } from '../utils/geoZones';
 import './CheckoutPage.css';
 import './ProductListPage.css'; // For the bestseller-card style
-
-// Haversine formula to compute exact distance between customer GPS and Dark Store
-const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-  const R = 6371; // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10;
-};
 
 const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharge, deliveryCharge, surgeCharge = 0, feeConfig, initialGeofence, grandTotal, address, onAddressClick, appliedCoupon, setAppliedCoupon, discountAmount, clearCart }) => {
   const [suggestedProducts, setSuggestedProducts] = useState([]);
@@ -47,27 +35,32 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   
   // Instantaneous geofence initialization using parent prop or synchronous cache
   const [geofenceConfig, setGeofenceConfig] = useState(() => {
-    if (initialGeofence?.store_lat && initialGeofence?.store_lng) {
-      return {
-        store_lat: Number(initialGeofence.store_lat),
-        store_lng: Number(initialGeofence.store_lng),
-        max_delivery_radius_km: Number(initialGeofence.max_delivery_radius_km) || 8.5
-      };
-    }
-    try {
-      const stored = localStorage.getItem('zipit_cached_branding');
-      if (stored) {
-        const b = JSON.parse(stored);
-        if (b) {
-          return {
-            store_lat: Number(b.store_lat) || 25.5788,
-            store_lng: Number(b.store_lng) || 83.5780,
-            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
-          };
+    let zones = Array.isArray(initialGeofence?.delivery_zones) ? initialGeofence.delivery_zones : null;
+    let sLat = initialGeofence?.store_lat ? Number(initialGeofence.store_lat) : null;
+    let sLng = initialGeofence?.store_lng ? Number(initialGeofence.store_lng) : null;
+    let maxR = initialGeofence?.max_delivery_radius_km ? Number(initialGeofence.max_delivery_radius_km) : null;
+
+    if (!zones || sLat == null || sLng == null) {
+      try {
+        const stored = localStorage.getItem('zipit_cached_branding');
+        if (stored) {
+          const b = JSON.parse(stored);
+          if (b) {
+            if (sLat == null) sLat = Number(b.store_lat) || 25.5788;
+            if (sLng == null) sLng = Number(b.store_lng) || 83.5780;
+            if (maxR == null) maxR = Number(b.max_delivery_radius_km) || 8.5;
+            if (!zones) zones = Array.isArray(b.delivery_zones) ? b.delivery_zones : [];
+          }
         }
-      }
-    } catch (_) {}
-    return { store_lat: 25.5788, store_lng: 83.5780, max_delivery_radius_km: 8.5 };
+      } catch (_) {}
+    }
+
+    return {
+      store_lat: sLat ?? 25.5788,
+      store_lng: sLng ?? 83.5780,
+      max_delivery_radius_km: maxR ?? 8.5,
+      delivery_zones: Array.isArray(zones) ? zones : []
+    };
   });
 
   const { showToast } = useToast();
@@ -75,12 +68,13 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
 
   useEffect(() => {
     // Keep geofenceConfig in sync if initialGeofence updates
-    if (initialGeofence?.store_lat && initialGeofence?.store_lng) {
-      setGeofenceConfig({
-        store_lat: Number(initialGeofence.store_lat),
-        store_lng: Number(initialGeofence.store_lng),
-        max_delivery_radius_km: Number(initialGeofence.max_delivery_radius_km) || 8.5
-      });
+    if (initialGeofence) {
+      setGeofenceConfig(prev => ({
+        store_lat: Number(initialGeofence.store_lat) || prev.store_lat,
+        store_lng: Number(initialGeofence.store_lng) || prev.store_lng,
+        max_delivery_radius_km: Number(initialGeofence.max_delivery_radius_km) || prev.max_delivery_radius_km,
+        delivery_zones: Array.isArray(initialGeofence.delivery_zones) ? initialGeofence.delivery_zones : prev.delivery_zones
+      }));
     }
   }, [initialGeofence]);
 
@@ -106,7 +100,8 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
           setGeofenceConfig({
             store_lat: Number(b.store_lat) || 25.5788,
             store_lng: Number(b.store_lng) || 83.5780,
-            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5,
+            delivery_zones: Array.isArray(b.delivery_zones) ? b.delivery_zones : []
           });
           const cod = b.cod_enabled !== false;
           const upi = b.upi_enabled !== false;
@@ -242,19 +237,15 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       return;
     }
 
-    // Geofencing Validation: Block delivery orders outside maximum service radius
-    if (!isPickup && address?.lat && address?.lng) {
-      const distance = calculateDistanceKm(
-        geofenceConfig.store_lat,
-        geofenceConfig.store_lng,
-        Number(address.lat),
-        Number(address.lng)
-      );
-
-      if (distance > geofenceConfig.max_delivery_radius_km) {
+    // Geofencing & Delivery Zone Validation: Strictly block orders outside active polygon zones
+    if (!isPickup) {
+      const check = checkAddressServiceability(address, geofenceConfig);
+      if (check.isOutOfRange) {
         showToast(
-          `Delivery location is ${distance} km away. We currently deliver up to ${geofenceConfig.max_delivery_radius_km} km. You can switch to Store Pickup!`,
-          'Out of Delivery Range'
+          check.usingPolygons
+            ? 'This delivery address is outside our active delivery zones. Please choose an address within our delivery zones or switch to Store Pickup!'
+            : (check.reason || 'Delivery location is out of range. You can switch to Store Pickup!'),
+          'Outside Delivery Range'
         );
         return;
       }
@@ -327,6 +318,8 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       const pickupTimeObj = new Date(Date.now() + 60 * 60 * 1000);
       const formattedPickupTime = pickupTimeObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+      const zoneCheck = !isPickup ? checkAddressServiceability(address, geofenceConfig) : null;
+
       const finalAddress = isPickup ? {
         is_pickup: true,
         order_type: 'PICKUP',
@@ -340,7 +333,11 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       } : {
         ...address,
         is_pickup: false,
-        order_type: 'DELIVERY'
+        order_type: 'DELIVERY',
+        delivery_zone_id: zoneCheck?.matchedZone?.id || null,
+        delivery_zone_name: zoneCheck?.matchedZone?.name || null,
+        delivery_zone_code: zoneCheck?.matchedZone?.code || null,
+        delivery_time_mins: zoneCheck?.deliveryTimeMins || 15
       };
 
       await db.orders.add({
@@ -353,7 +350,11 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         paymentMethod: activeMethod,
         discountAmount: discountAmount || 0,
         appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
-        couponCode: appliedCoupon ? appliedCoupon.code : null
+        couponCode: appliedCoupon ? appliedCoupon.code : null,
+        delivery_zone_id: zoneCheck?.matchedZone?.id || null,
+        delivery_zone_name: zoneCheck?.matchedZone?.name || null,
+        delivery_zone_code: zoneCheck?.matchedZone?.code || null,
+        delivery_time_mins: zoneCheck?.deliveryTimeMins || 15
       });
 
       triggerConfetti();
@@ -724,10 +725,8 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         <div className="checkout-bottom-bar" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, backgroundColor: 'var(--color-surface)' }}>
           {/* Address Banner Above the Buttons */}
           {(() => {
-            const deliveryDistance = (!isPickup && address?.lat && address?.lng) 
-              ? calculateDistanceKm(geofenceConfig.store_lat, geofenceConfig.store_lng, Number(address.lat), Number(address.lng))
-              : null;
-            const isOutOfRange = deliveryDistance !== null && deliveryDistance > geofenceConfig.max_delivery_radius_km;
+            const serviceCheck = !isPickup ? checkAddressServiceability(address, geofenceConfig) : { isOutOfRange: false };
+            const isOutOfRange = !isPickup && serviceCheck.isOutOfRange;
 
             return (
               <div 
@@ -748,11 +747,24 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                       <span>Pickup from: <strong>Quickly Store Hubs (~1 hr)</strong></span>
                     ) : isOutOfRange ? (
                       <span style={{ color: '#ef4444', fontWeight: '700' }}>
-                        Unserviceable: {deliveryDistance} km away (Max radius {geofenceConfig.max_delivery_radius_km} km)
+                        {serviceCheck.usingPolygons 
+                          ? 'Unserviceable: Outside active delivery zones (Switch to Pickup)'
+                          : `Unserviceable: ${serviceCheck.reason}`}
                       </span>
                     ) : (
                       <>
-                        <span>Delivering to <strong>{address ? (address.type || 'Selected Location') : 'Selected Location'}</strong> {deliveryDistance !== null && <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({deliveryDistance} km)</span>}</span>
+                        <span>
+                          Delivering to <strong>{address ? (address.type || 'Selected Location') : 'Selected Location'}</strong>
+                          {serviceCheck.matchedZone ? (
+                            <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', marginLeft: '6px' }}>
+                              • {serviceCheck.matchedZone.name} (~{serviceCheck.deliveryTimeMins}m)
+                            </span>
+                          ) : serviceCheck.distanceKm !== null ? (
+                            <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', marginLeft: '6px' }}>
+                              ({serviceCheck.distanceKm} km)
+                            </span>
+                          ) : null}
+                        </span>
                         <span className="address-change-btn">Change</span>
                       </>
                     )}
@@ -774,15 +786,31 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
               <div className="pay-using-value">{selectedPayment}</div>
             </div>
             
-            <button className="checkout-place-order-btn" onClick={handlePlaceOrder} disabled={processing}>
-              <div className="btn-price-col">
-                <span className="btn-total">₹{effectiveGrandTotal}</span>
-                <span className="btn-sub">TOTAL</span>
-              </div>
-              <div className="btn-action-col">
-                {processing ? 'Processing...' : isPickup ? 'Place Pickup Order' : 'Place Order'} <ChevronRight size={20} strokeWidth={3} />
-              </div>
-            </button>
+            {(() => {
+              const currentCheck = !isPickup ? checkAddressServiceability(address, geofenceConfig) : { isOutOfRange: false };
+              const isOrderBlocked = !isPickup && currentCheck.isOutOfRange;
+
+              return (
+                <button 
+                  className="checkout-place-order-btn" 
+                  onClick={handlePlaceOrder} 
+                  disabled={processing || isOrderBlocked}
+                  style={{
+                    opacity: isOrderBlocked ? 0.6 : 1,
+                    cursor: isOrderBlocked ? 'not-allowed' : 'pointer',
+                    background: isOrderBlocked ? '#94a3b8' : undefined
+                  }}
+                >
+                  <div className="btn-price-col">
+                    <span className="btn-total">₹{effectiveGrandTotal}</span>
+                    <span className="btn-sub">TOTAL</span>
+                  </div>
+                  <div className="btn-action-col">
+                    {processing ? 'Processing...' : isPickup ? 'Place Pickup Order' : isOrderBlocked ? 'Outside Delivery Zone' : 'Place Order'} <ChevronRight size={20} strokeWidth={3} />
+                  </div>
+                </button>
+              );
+            })()}
           </div>
         </div>,
         document.body

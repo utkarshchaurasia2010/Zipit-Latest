@@ -93,7 +93,9 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
             for (const order of nonPickupOrders) {
               const oLat = Number(order.delivery_address?.lat);
               const oLng = Number(order.delivery_address?.lng);
-              const matchedZone = (!isNaN(oLat) && !isNaN(oLng)) ? getZoneForLocation(oLat, oLng, activeZones) : null;
+              const matchedZone = (!isNaN(oLat) && !isNaN(oLng)) 
+                ? getZoneForLocation(oLat, oLng, activeZones) 
+                : (order.delivery_zone_id ? activeZones.find(z => z.id === order.delivery_zone_id) : null);
 
               if (matchedZone) {
                 const isAssigned = Array.isArray(matchedZone.assigned_riders) && matchedZone.assigned_riders.includes(riderCode);
@@ -104,10 +106,6 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
                   matchedZoneForOrder = matchedZone;
                   break;
                 }
-              } else {
-                // Order outside defined zones: broadcast fallback
-                candidateOrder = order;
-                break;
               }
             }
 

@@ -796,7 +796,8 @@ function AppContent() {
   const [geofenceConfig, setGeofenceConfig] = useState(() => ({
     store_lat: Number(initialCachedBranding?.store_lat) || 25.5788,
     store_lng: Number(initialCachedBranding?.store_lng) || 83.5780,
-    max_delivery_radius_km: Number(initialCachedBranding?.max_delivery_radius_km) || 8.5
+    max_delivery_radius_km: Number(initialCachedBranding?.max_delivery_radius_km) || 8.5,
+    delivery_zones: Array.isArray(initialCachedBranding?.delivery_zones) ? initialCachedBranding.delivery_zones : []
   }));
 
   useEffect(() => {
@@ -815,7 +816,8 @@ function AppContent() {
           setGeofenceConfig({
             store_lat: Number(b.store_lat) || 25.5788,
             store_lng: Number(b.store_lng) || 83.5780,
-            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5
+            max_delivery_radius_km: Number(b.max_delivery_radius_km) || 8.5,
+            delivery_zones: Array.isArray(b.delivery_zones) ? b.delivery_zones : []
           });
         }
       } catch (_) {}
@@ -975,7 +977,7 @@ function AppContent() {
                 <Route path="/categories" element={<CategoriesPage navigate={navigate} />} />
                 <Route path="/orders" element={<PlacedOrdersPage navigate={navigate} />} />
                 <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
-                <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} editId={location.state?.editId} />} />
+                <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} editId={location.state?.editId} geofenceConfig={geofenceConfig} />} />
                 <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
                 <Route path="/customer-support" element={<CustomerSupportPage navigate={navigate} />} />
                 <Route path="/support" element={<CustomerSupportPage navigate={navigate} />} />
@@ -1029,6 +1031,7 @@ function AppContent() {
             navigate={navigate}
             onSelectAddress={handleSetDefaultAddress}
             currentRoute={viewName}
+            geofenceConfig={geofenceConfig}
           />
         )}
         {isSearchOpen && (
