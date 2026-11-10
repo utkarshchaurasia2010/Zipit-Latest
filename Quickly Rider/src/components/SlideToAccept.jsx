@@ -16,16 +16,30 @@ export default function SlideToAccept({ onAccept, label = "Slide to Accept", dis
     isCompletedRef.current = isCompleted;
   }, [isCompleted]);
 
+  const resetSlider = useCallback(() => {
+    setIsCompleted(false);
+    isCompletedRef.current = false;
+    setSliderPosition(0);
+    sliderPosRef.current = 0;
+    setIsDragging(false);
+    isDraggingRef.current = false;
+  }, []);
+
   useEffect(() => {
     if (resetTrigger !== null && resetTrigger !== undefined) {
-      setIsCompleted(false);
-      isCompletedRef.current = false;
-      setSliderPosition(0);
-      sliderPosRef.current = 0;
-      setIsDragging(false);
-      isDraggingRef.current = false;
+      resetSlider();
     }
-  }, [resetTrigger]);
+  }, [resetTrigger, resetSlider]);
+
+  // Safety auto-unlock: If marked completed, but component stays mounted without unmounting
+  // (e.g. backend network lag or error), automatically unlock after 3.5s so rider is never stuck
+  useEffect(() => {
+    if (!isCompleted) return;
+    const safetyTimer = setTimeout(() => {
+      resetSlider();
+    }, 3500);
+    return () => clearTimeout(safetyTimer);
+  }, [isCompleted, resetSlider]);
 
   const getMaxTravel = useCallback(() => {
     if (!containerRef.current) return 220;
@@ -61,9 +75,22 @@ export default function SlideToAccept({ onAccept, label = "Slide to Accept", dis
       setSliderPosition(maxTravel);
       setIsCompleted(true);
       isCompletedRef.current = true;
-      if (onAccept) onAccept();
+      if (onAccept) {
+        try {
+          const res = onAccept();
+          if (res && typeof res.catch === 'function') {
+            res.catch((err) => {
+              console.warn('Slide action failed:', err);
+              resetSlider();
+            });
+          }
+        } catch (err) {
+          console.warn('Slide action threw error:', err);
+          resetSlider();
+        }
+      }
     }
-  }, [disabled, getMaxTravel, onAccept]);
+  }, [disabled, getMaxTravel, onAccept, resetSlider]);
 
   const handleEnd = useCallback(() => {
     if (!isDraggingRef.current) return;

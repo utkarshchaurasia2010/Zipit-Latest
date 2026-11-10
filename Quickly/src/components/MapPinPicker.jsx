@@ -647,17 +647,40 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel, del
         reverseGeocode(center.lat, center.lng);
       });
 
-      // Automatically fetch current device location on first open
-      getDeviceLocation({ enableHighAccuracy: true, timeout: 6000 })
-        .then((loc) => {
-          if (!isMounted) return;
-          setCoords({ lat: loc.latitude, lng: loc.longitude });
-          map.setView([loc.latitude, loc.longitude], 18);
-          reverseGeocode(loc.latitude, loc.longitude);
-        })
-        .catch(() => {
-          if (isMounted) reverseGeocode(coords.lat, coords.lng);
-        });
+      // Automatically fetch current device GPS location on map open
+      const acquireCurrentGps = () => {
+        getDeviceLocation({ enableHighAccuracy: true, timeout: 8000 })
+          .then((loc) => {
+            if (!isMounted) return;
+            setCoords({ lat: loc.latitude, lng: loc.longitude });
+            map.setView([loc.latitude, loc.longitude], 18);
+            reverseGeocode(loc.latitude, loc.longitude);
+          })
+          .catch(() => {
+            if ('geolocation' in navigator) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  if (!isMounted) return;
+                  setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                  map.setView([pos.coords.latitude, pos.coords.longitude], 18);
+                  reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+                },
+                () => {
+                  if (isMounted) reverseGeocode(coords.lat, coords.lng);
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+              );
+            } else if (isMounted) {
+              reverseGeocode(coords.lat, coords.lng);
+            }
+          });
+      };
+
+      if (!initialLat || initialLat === storeCoords[0]) {
+        acquireCurrentGps();
+      } else {
+        reverseGeocode(coords.lat, coords.lng);
+      }
     });
 
     return () => {
@@ -975,7 +998,7 @@ const MapPinPicker = ({ initialLat, initialLng, onConfirmLocation, onCancel, del
               >
                 {isLoading 
                   ? 'Reading location...' 
-                  : 'Confirm Delivery Location'}
+                  : 'Confirm Location & Enter Details →'}
               </button>
             </>
           );

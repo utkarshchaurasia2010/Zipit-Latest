@@ -84,6 +84,16 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
   }, [isEditing, isAddingNew]);
 
   const handleSave = async () => {
+    // 1. Mandatory Location Check: User must select location on map first
+    const confirmedLat = mapPinData?.lat ?? (isEditing ? formData?.lat : null);
+    const confirmedLng = mapPinData?.lng ?? (isEditing ? formData?.lng : null);
+
+    if (confirmedLat == null || confirmedLng == null || isNaN(Number(confirmedLat)) || isNaN(Number(confirmedLng))) {
+      showToast('Please select and confirm your location on the map first.', 'Location Required');
+      setStep(1);
+      return;
+    }
+
     // Generate combined details if not already present
     let combinedDetails = formData.details?.trim() || '';
     if (!combinedDetails) {
@@ -101,16 +111,14 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
 
     setLoading(true);
     try {
-      const defaultLat = storeGeofence?.lat || 25.5788;
-      const defaultLng = storeGeofence?.lng || 83.5780;
       const enrichedData = {
         ...formData,
         details: combinedDetails,
-        gps_area: mapPinData?.areaTitle || localStorage.getItem('zipit_gps_area') || (formData.village_area || 'Village Delivery Zone'),
-        lat: mapPinData?.lat || defaultLat,
-        lng: mapPinData?.lng || defaultLng,
+        gps_area: mapPinData?.areaTitle || formData.village_area || 'Selected Location',
+        lat: Number(confirmedLat),
+        lng: Number(confirmedLng),
         map_full_address: mapPinData?.fullAddress || combinedDetails,
-        google_maps_url: mapPinData?.googleMapsUrl || `https://maps.google.com/?q=${mapPinData?.lat || defaultLat},${mapPinData?.lng || defaultLng}`
+        google_maps_url: mapPinData?.googleMapsUrl || `https://maps.google.com/?q=${confirmedLat},${confirmedLng}`
       };
 
       let savedId = isEditing;
@@ -369,43 +377,28 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
           <div className="new-address-form" style={{ textAlign: 'left', width: '100%' }}>
             {step === 1 ? (
               <div>
-                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    style={{
-                      width: '100%',
-                      background: 'rgba(12, 131, 31, 0.1)',
-                      border: '1.5px dashed #0c831f',
-                      borderRadius: '12px',
-                      padding: '12px 16px',
-                      color: '#0c831f',
-                      fontWeight: 700,
-                      fontSize: '13.5px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <span>Skip Map & Enter Village / Landmark Directly →</span>
-                  </button>
+                <div style={{ marginBottom: 14, textAlign: 'center' }}>
+                  <h3 style={{ margin: '0 0 6px', fontSize: '16.5px', fontWeight: 800, color: 'var(--color-text)' }}>
+                    {isEditing ? 'Adjust Pin on Map' : 'Step 1: Select Your Location on Map'}
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--color-text-light)' }}>
+                    Pinpoint your house/building on Google satellite or street view, then proceed to enter details.
+                  </p>
                 </div>
                 <MapPinPicker 
-                  initialLat={mapPinData?.lat || storeGeofence?.lat || 25.5788} 
-                  initialLng={mapPinData?.lng || storeGeofence?.lng || 83.5780} 
+                  initialLat={mapPinData?.lat || (isEditing ? formData?.lat : null)} 
+                  initialLng={mapPinData?.lng || (isEditing ? formData?.lng : null)} 
                   deliveryZones={storeGeofence.delivery_zones}
                   storeCoords={[storeGeofence.lat, storeGeofence.lng]}
                   onConfirmLocation={(data) => {
                     setMapPinData(data);
-                    if (!formData.village_area) {
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        village_area: data.areaTitle || '',
-                        details: prev.details || data.fullAddress || ''
-                      }));
-                    }
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      village_area: prev.village_area || data.areaTitle || '',
+                      details: prev.details || data.fullAddress || '',
+                      lat: data.lat,
+                      lng: data.lng
+                    }));
                     setStep(2);
                   }}
                   onCancel={() => {
@@ -417,7 +410,7 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
             ) : (
               <div>
                 <h3 style={{color: 'var(--color-text)', marginBottom: 16, textAlign: 'center'}}>
-                  {isEditing ? 'Edit Address & Landmark' : 'Enter Address & Village Landmark'}
+                  {isEditing ? 'Edit Address & Landmark Details' : 'Step 2: Enter House & Landmark Details'}
                 </h3>
 
                 {mapPinData && (

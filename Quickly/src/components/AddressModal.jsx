@@ -29,9 +29,16 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
           </div>
 
           <div className="action-list picker-action-list">
+            <div className="action-item" onClick={() => { onClose(); navigate('/saved-addresses', { state: { from: currentRoute || 'home', add: true, autoLocate: true } }); }}>
+              <Navigation size={20} color="#0c831f" />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ color: '#0c831f', fontWeight: 700, fontSize: '13.5px' }}>Use current location</span>
+                <span style={{ color: 'var(--color-text-light)', fontSize: '11px' }}>Pinpoint on map &amp; enter details</span>
+              </div>
+            </div>
             <div className="action-item" onClick={() => { onClose(); navigate('/saved-addresses', { state: { from: currentRoute || 'home', add: true } }); }}>
               <Plus size={20} color="#0c831f" />
-              <span style={{color: '#0c831f', fontWeight: 600}}>Add new address</span>
+              <span style={{ color: '#0c831f', fontWeight: 600 }}>Add new address</span>
             </div>
           </div>
 

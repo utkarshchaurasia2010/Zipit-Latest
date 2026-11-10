@@ -244,8 +244,21 @@ export default function DashboardPage() {
   };
 
   const handleMarkOutForDelivery = async (orderId) => {
-    await db.orders.updateStatus(orderId, 'Out for Delivery');
-    fetchOrders();
+    // 1. Instant optimistic state update so UI transitions immediately without freezing
+    setActiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Out for Delivery' } : o));
+    if (deliveryDetailModalOrder?.id === orderId) {
+      setDeliveryDetailModalOrder(prev => prev ? { ...prev, status: 'Out for Delivery' } : null);
+    }
+    setSliderResetKey(prev => prev + 1);
+
+    // 2. Persist to database
+    try {
+      await db.orders.updateStatus(orderId, 'Out for Delivery');
+    } catch (err) {
+      console.warn('Network issue while marking Out for Delivery:', err);
+    } finally {
+      fetchOrders();
+    }
   };
 
   const handleMarkDelivered = async (order) => {

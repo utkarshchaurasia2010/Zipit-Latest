@@ -365,10 +365,20 @@ export default function OrderMapPage() {
   };
 
   const handleUpdateStatus = async (status) => {
-    await db.orders.updateStatus(id, status);
-    fetchOrder();
-    if (status === 'Delivered') {
-      navigate('/');
+    // 1. Instant optimistic update so UI never hangs
+    setOrder(prev => prev ? { ...prev, status } : prev);
+    setSliderResetKey(prev => prev + 1);
+
+    // 2. Persist to database
+    try {
+      await db.orders.updateStatus(id, status);
+    } catch (err) {
+      console.warn('Network issue during status update:', err);
+    } finally {
+      fetchOrder();
+      if (status === 'Delivered') {
+        navigate('/');
+      }
     }
   };
 
