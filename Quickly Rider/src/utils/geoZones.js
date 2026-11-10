@@ -76,3 +76,32 @@ export function getDistanceMeters(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c);
 }
+
+/**
+ * Calculates Haversine distance in kilometers between two coordinates.
+ */
+export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  return getDistanceMeters(lat1, lon1, lat2, lon2) / 1000;
+}
+
+/**
+ * Calculates geometric centroid of polygon coordinates.
+ */
+export function calculatePolygonCenter(polygon = []) {
+  if (!polygon || polygon.length === 0) return [25.5788, 83.5780];
+  let sumLat = 0;
+  let sumLng = 0;
+  let count = 0;
+  for (const pt of polygon) {
+    const lat = Number(pt[0]);
+    const lng = Number(pt[1]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      sumLat += lat;
+      sumLng += lng;
+      count++;
+    }
+  }
+  if (count === 0) return [25.5788, 83.5780];
+  return [sumLat / count, sumLng / count];
+}
+

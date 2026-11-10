@@ -246,14 +246,14 @@ const SavedAddressesPage = ({ navigate, addresses, setAddresses, from, add, edit
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     {addr.type}
                     {addr.is_default && <span style={{ background: 'rgba(12, 131, 31, 0.1)', color: '#0c831f', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>DEFAULT</span>}
-                    {serviceCheck && serviceCheck.matchedZone && (
+                    {serviceCheck && !serviceCheck.isOutOfRange && (
                       <span style={{ background: 'rgba(12, 131, 31, 0.12)', color: '#0c831f', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
-                        ✓ {serviceCheck.matchedZone.name} ({serviceCheck.deliveryTimeMins}m)
+                        ✓ In Radius
                       </span>
                     )}
                     {serviceCheck && serviceCheck.isOutOfRange && (
                       <span style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
-                        ⚠ BEYOND RADIUS
+                        ⚠ Beyond Radius
                       </span>
                     )}
                   </h4>

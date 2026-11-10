@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase, db } from '../services/db';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff, KeyRound, Navigation, IndianRupee, Wallet, TrendingUp, Calendar, Clock, ChevronRight } from 'lucide-react';
+import { MapPin, LogOut, PackageCheck, Zap, User, CheckCircle2, History, Package, QrCode, X, Wifi, WifiOff, KeyRound, Navigation, IndianRupee, Wallet, TrendingUp, Calendar, Clock, ChevronRight, RefreshCw } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
 import { auth } from '../services/auth';
 import { useToast } from '../context/ToastContext';
@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'history'
   const [isOnline, setIsOnline] = useState(localStorage.getItem('partner_online') === 'true');
   const [isNetworkOnline, setIsNetworkOnline] = useState(navigator.onLine);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [qrModalOrder, setQrModalOrder] = useState(null); // Order to show dynamic UPI QR for
   const [otpModalOrder, setOtpModalOrder] = useState(null); // Order requiring customer OTP to mark delivered
   const [deliveryDetailModalOrder, setDeliveryDetailModalOrder] = useState(null); // Click to view delivery details modal
@@ -169,14 +170,14 @@ export default function DashboardPage() {
           // Use accepted_at or fallback to order.updated_at or created_at
           const startTime = new Date(order.accepted_at || order.updated_at || order.created_at).getTime();
           const elapsedSec = Math.floor((now - startTime) / 1000);
-          const maxSec = 5 * 60; // 5 minutes (300s)
+          const maxSec = 3 * 60; // 3 minutes SLA (180s)
           const leftSec = Math.max(0, maxSec - elapsedSec);
 
           updatedTimers[order.id] = leftSec;
 
-          // If 5 minutes expired and rider still didn't mark "Out for Delivery"
+          // If 3 minutes expired and rider still didn't mark "Out for Delivery"
           if (leftSec <= 0) {
-            console.warn(`[Auto-Unclaim] Rider ${riderCode} exceeded 5 mins for order ${order.id}. Releasing back to pool.`);
+            console.warn(`[Auto-Unclaim] Rider ${riderCode} exceeded 3 mins for order ${order.id}. Releasing back to pool.`);
             await supabase
               .from('orders')
               .update({
@@ -194,6 +195,18 @@ export default function DashboardPage() {
 
     return () => clearInterval(interval);
   }, [activeOrders, riderCode]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchOrders();
+      if (showToast) showToast('Orders refreshed', 'info');
+    } catch (err) {
+      console.error('Manual refresh error:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   const fetchOrders = async () => {
     // 1. Fetch active orders
@@ -232,7 +245,7 @@ export default function DashboardPage() {
       .eq('id', orderId)
       .or(`accepted_by_rider.is.null,accepted_by_rider.eq.${riderCode}`)
       .select()
-      .single();
+      .maybeSingle();
     
     if (error || !data) {
       alert('Notice: Order was already claimed by another rider.');
@@ -325,6 +338,47 @@ export default function DashboardPage() {
     return addr.details?.split('\n---TAG:')[0] || addr.address || 'Customer Address';
   };
 
+  const getOrderDistanceKm = (ord) => {
+    const destLat = Number(ord?.delivery_address?.lat);
+    const destLng = Number(ord?.delivery_address?.lng);
+    const storeLat = Number(brandingConfig?.store_lat) || 25.5788;
+    const storeLng = Number(brandingConfig?.store_lng) || 83.5780;
+    if (!destLat || !destLng) return 1.5;
+
+    const dLat = (destLat - storeLat) * Math.PI / 180;
+    const dLng = (destLng - storeLng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(storeLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10);
+  };
+
+  const getOrderPayout = (ord) => {
+    if (!ord) return 0;
+    if (ord.commission?.rider_share !== undefined && ord.commission.rider_share !== null) {
+      return Number(ord.commission.rider_share);
+    }
+    const subtotal = Math.max(0, (Number(ord.total) || 0) - (Number(ord.delivery_fee) || 0));
+    const mode = brandingConfig?.rider_commission_mode || 'percent';
+    let base = 0;
+    if (mode === 'flat') {
+      base = Number(brandingConfig?.rider_flat_amount) >= 0 ? Number(brandingConfig.rider_flat_amount) : 12;
+    } else {
+      const pct = Number(brandingConfig?.rider_commission_percent) >= 0 ? Number(brandingConfig.rider_commission_percent) : 4;
+      const minPay = Number(brandingConfig?.rider_commission_min) >= 0 ? Number(brandingConfig.rider_commission_min) : 10;
+      const maxPay = Number(brandingConfig?.rider_commission_max) >= 0 ? Number(brandingConfig.rider_commission_max) : 20;
+      base = Math.min(maxPay, Math.max(minPay, (subtotal * pct) / 100));
+    }
+    const distKm = getOrderDistanceKm(ord);
+    let addon = 0;
+    if (distKm > 6) {
+      addon = Number(brandingConfig?.rider_distance_addon_6_8km) >= 0 ? Number(brandingConfig.rider_distance_addon_6_8km) : 6;
+    } else if (distKm > 3) {
+      addon = Number(brandingConfig?.rider_distance_addon_3_6km) >= 0 ? Number(brandingConfig.rider_distance_addon_3_6km) : 3;
+    }
+    return Math.round(base + addon);
+  };
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       {/* Sticky Header */}
@@ -367,6 +421,26 @@ export default function DashboardPage() {
             {isOnline ? 'Online' : 'Offline'}
           </button>
 
+          <button 
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing}
+            style={{ 
+              background: '#f1f5f9', 
+              border: 'none', 
+              padding: '8px', 
+              borderRadius: '50%', 
+              cursor: isRefreshing ? 'wait' : 'pointer', 
+              color: isRefreshing ? 'var(--color-primary, #2563eb)' : 'var(--color-text)', 
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
+            }} 
+            title="Refresh Live Orders"
+          >
+            <RefreshCw size={18} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+          </button>
+
           <button onClick={() => navigate('/profile')} style={{ background: '#f1f5f9', border: 'none', padding: '8px', borderRadius: '50%', cursor: 'pointer', color: 'var(--color-text)', display: 'flex' }} title="Profile">
             <User size={18} />
           </button>
@@ -391,28 +465,6 @@ export default function DashboardPage() {
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
         const allTimeDelivered = historyOrders;
-
-        const getOrderDistanceKm = (ord) => {
-          const destLat = Number(ord?.delivery_address?.lat);
-          const destLng = Number(ord?.delivery_address?.lng);
-          const storeLat = Number(brandingConfig?.store_lat) || 25.5788;
-          const storeLng = Number(brandingConfig?.store_lng) || 83.5780;
-          if (!destLat || !destLng) return 1.5;
-
-          const dLat = (destLat - storeLat) * Math.PI / 180;
-          const dLng = (destLng - storeLng) * Math.PI / 180;
-          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(storeLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) *
-                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-          return Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10);
-        };
-
-        const getOrderPayout = (ord) => {
-          const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 25;
-          const perKmRate = Number(brandingConfig?.rider_per_km_bonus) >= 0 ? Number(brandingConfig.rider_per_km_bonus) : 5;
-          const distKm = getOrderDistanceKm(ord);
-          return Math.round(basePayout + (distKm * perKmRate));
-        };
 
         const todayEarnings = todayDelivered.reduce((sum, o) => sum + getOrderPayout(o), 0);
         const monthEarnings = monthDelivered.reduce((sum, o) => sum + getOrderPayout(o), 0);
@@ -1152,22 +1204,7 @@ export default function DashboardPage() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Payout</div>
                 <div style={{ fontSize: '16px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                  ₹{(() => {
-                    const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 25;
-                    const perKmRate = Number(brandingConfig?.rider_per_km_bonus) >= 0 ? Number(brandingConfig.rider_per_km_bonus) : 5;
-                    const destLat = Number(deliveryDetailModalOrder.delivery_address?.lat);
-                    const destLng = Number(deliveryDetailModalOrder.delivery_address?.lng);
-                    const sLat = Number(brandingConfig?.store_lat) || 25.5788;
-                    const sLng = Number(brandingConfig?.store_lng) || 83.5780;
-                    let km = 1.5;
-                    if (destLat && destLng) {
-                      const dLat = (destLat - sLat) * Math.PI / 180;
-                      const dLng = (destLng - sLng) * Math.PI / 180;
-                      const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(sLat*Math.PI/180)*Math.cos(destLat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-                      km = Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 10) / 10);
-                    }
-                    return Math.round(basePayout + (km * perKmRate));
-                  })()}
+                  ₹{getOrderPayout(deliveryDetailModalOrder)}
                 </div>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
@@ -1543,22 +1580,8 @@ export default function DashboardPage() {
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {Object.entries(groups).map(([dateLabel, dateOrders]) => {
-                    const basePayout = Number(brandingConfig?.rider_base_payout) >= 0 ? Number(brandingConfig.rider_base_payout) : 25;
-                    const perKmRate = Number(brandingConfig?.rider_per_km_bonus) >= 0 ? Number(brandingConfig.rider_per_km_bonus) : 5;
-                    const sLat = Number(brandingConfig?.store_lat) || 25.5788;
-                    const sLng = Number(brandingConfig?.store_lng) || 83.5780;
-
                     const dayPayout = dateOrders.reduce((sum, ord) => {
-                      const destLat = Number(ord.delivery_address?.lat);
-                      const destLng = Number(ord.delivery_address?.lng);
-                      let km = 1.5;
-                      if (destLat && destLng) {
-                        const dLat = (destLat - sLat) * Math.PI / 180;
-                        const dLng = (destLng - sLng) * Math.PI / 180;
-                        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(sLat*Math.PI/180)*Math.cos(destLat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
-                        km = Math.max(0.5, Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 10) / 10);
-                      }
-                      return sum + Math.round(basePayout + (km * perKmRate));
+                      return sum + getOrderPayout(ord);
                     }, 0);
                     return (
                       <div key={dateLabel} style={{ background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '14px' }}>

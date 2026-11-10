@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, Search, Heart, Filter, X, SlidersHorizontal } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { getProductDeliveryTime } from '../utils/time';
@@ -14,6 +15,16 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterConfig, setFilterConfig] = useState({ inStockOnly: false, sort: 'default' });
+
+  useEffect(() => {
+    if (isFilterOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isFilterOpen]);
 
   const getFilteredProducts = () => {
     let result = [...products];
@@ -82,8 +93,20 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
           <h3 style={{margin: 0, fontSize: 16}}>{categoryName}</h3>
         </div>
         <div style={{display: 'flex', gap: '8px'}}>
-          <button className="back-btn" onClick={() => setIsFilterOpen(true)}>
+          <button className="back-btn" onClick={() => setIsFilterOpen(true)} style={{ position: 'relative' }} title="Filter & Sort">
             <Filter size={20} color="var(--color-text)" />
+            {(filterConfig.inStockOnly || filterConfig.sort !== 'default') && (
+              <span style={{
+                position: 'absolute',
+                top: '5px',
+                right: '5px',
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-primary, #0c831f)',
+                border: '1.5px solid var(--color-surface, #ffffff)'
+              }} />
+            )}
           </button>
           <button className="back-btn" onClick={onSearchClick}>
             <Search size={22} color="var(--color-text)" />
@@ -164,48 +187,19 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
           })}
         </div>
       )}
-      {isFilterOpen && (
+      {isFilterOpen && createPortal(
         <div 
           className="filter-drawer-overlay" 
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            backgroundColor: 'rgba(0,0,0,0.65)', 
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            zIndex: 99999, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'flex-end',
-            alignItems: 'center'
-          }} 
           onClick={() => setIsFilterOpen(false)}
         >
           <div 
             className="filter-drawer" 
-            style={{ 
-              background: 'var(--color-surface, #ffffff)', 
-              borderTopLeftRadius: '24px', 
-              borderTopRightRadius: '24px', 
-              width: '100%',
-              maxWidth: '540px',
-              maxHeight: '82vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 -10px 30px rgba(0,0,0,0.3)',
-              border: '1px solid var(--color-border)',
-              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-              overflow: 'hidden'
-            }} 
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Drag Handle & Header */}
             <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <SlidersHorizontal size={17} color="#10B981" />
                 </div>
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: 'var(--color-text)' }}>Filters & Sort</h3>
@@ -213,7 +207,7 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
               <button 
                 onClick={() => setIsFilterOpen(false)} 
                 aria-label="Close filters"
-                style={{ background: 'var(--color-surface-muted)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text)' }}
+                style={{ background: 'var(--color-surface-muted)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--color-text)' }}
               >
                 <X size={18} />
               </button>
@@ -230,7 +224,7 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
                   onClick={() => setFilterConfig({...filterConfig, inStockOnly: !filterConfig.inStockOnly})}
                   style={{
                     padding: '14px 16px',
-                    borderRadius: '16px',
+                    borderRadius: '8px',
                     background: filterConfig.inStockOnly ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-surface-muted)',
                     color: filterConfig.inStockOnly ? '#10B981' : 'var(--color-text)',
                     fontWeight: filterConfig.inStockOnly ? '700' : '600',
@@ -283,7 +277,7 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
                       onClick={() => setFilterConfig({...filterConfig, sort: sortOption.id})}
                       style={{
                         padding: '14px 16px',
-                        borderRadius: '14px',
+                        borderRadius: '8px',
                         background: filterConfig.sort === sortOption.id ? 'var(--color-text)' : 'var(--color-surface-muted)',
                         color: filterConfig.sort === sortOption.id ? 'var(--color-background)' : 'var(--color-text)',
                         fontWeight: filterConfig.sort === sortOption.id ? '700' : '500',
@@ -322,7 +316,7 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
                   background: 'var(--color-primary, #0c831f)', 
                   color: '#ffffff', 
                   border: 'none', 
-                  borderRadius: '16px', 
+                  borderRadius: '8px', 
                   fontWeight: '800', 
                   fontSize: '15px', 
                   cursor: 'pointer', 
@@ -333,7 +327,8 @@ const ProductListPage = ({ category: initialCategory, categoryId, navigate, cart
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

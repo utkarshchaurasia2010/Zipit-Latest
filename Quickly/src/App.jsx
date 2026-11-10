@@ -755,6 +755,17 @@ function AppContent() {
     });
   };
 
+  const handleClearCart = async () => {
+    setCart([]);
+    try {
+      localStorage.removeItem('cart');
+      localStorage.removeItem('zipit_cart');
+      await db.carts.clear();
+    } catch (e) {
+      console.warn('Error clearing cart storage/DB:', e);
+    }
+  };
+
   const handleSetDefaultAddress = async (id) => {
     if (id === 'GPS') {
       const gpsArea = localStorage.getItem('zipit_gps_area') || 'Sector 14, MG Road, Gurugram';
@@ -976,7 +987,7 @@ function AppContent() {
                 <Route path="/" element={<ProductGrid cart={cart} updateCartQty={updateCartQty} navigate={navigate} onProductClick={openProductSheet} />} />
                 <Route path="/categories" element={<CategoriesPage navigate={navigate} />} />
                 <Route path="/orders" element={<PlacedOrdersPage navigate={navigate} />} />
-                <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); setCart([]); setUserProfile(null); }} />} />
+                <Route path="/profile" element={<ProfilePage navigate={navigate} userProfile={userProfile} setUserProfile={setUserProfile} onLogout={() => { setIsLoggedIn(false); handleClearCart(); setUserProfile(null); }} />} />
                 <Route path="/saved-addresses" element={<SavedAddressesPage navigate={navigate} addresses={addresses} setAddresses={setAddresses} from={location.state?.from} add={location.state?.add} editId={location.state?.editId} geofenceConfig={geofenceConfig} />} />
                 <Route path="/payment-methods" element={<PaymentMethodsPage navigate={navigate} />} />
                 <Route path="/customer-support" element={<CustomerSupportPage navigate={navigate} />} />
@@ -991,8 +1002,8 @@ function AppContent() {
                 <Route path="/track" element={<TrackOrderPage navigate={navigate} />} />
                 <Route path="/substitute-selection" element={<SubstituteSelectionPage navigate={navigate} />} />
                 <Route path="/past-orders" element={<PastOrdersPage navigate={navigate} updateCartQty={updateCartQty} />} />
-                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} initialGeofence={geofenceConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={() => setCart([])} />} />
-                <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={() => setCart([])} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
+                <Route path="/checkout" element={<CheckoutPage navigate={navigate} cart={cart} updateCartQty={updateCartQty} itemTotal={itemTotal} smallCartCharge={smallCartCharge} deliveryCharge={deliveryCharge} surgeCharge={surgeCharge} feeConfig={feeConfig} initialGeofence={geofenceConfig} grandTotal={grandTotal} address={defaultAddress} onAddressClick={() => setIsAddressModalOpen(true)} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} clearCart={handleClearCart} />} />
+                <Route path="/payment" element={<PaymentPageWrapper defaultAddress={defaultAddress} navigate={navigate} cart={cart} total={grandTotal} deliveryCharge={deliveryCharge} smallCartCharge={smallCartCharge} clearCart={handleClearCart} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} discountAmount={discountAmount} />} />
                 <Route path="/partner-register" element={<PartnerRegistrationPage navigate={navigate} />} />
                 <Route path="/partner" element={<PartnerRegistrationPage navigate={navigate} />} />
                 <Route path="/sell" element={<PartnerRegistrationPage navigate={navigate} />} />

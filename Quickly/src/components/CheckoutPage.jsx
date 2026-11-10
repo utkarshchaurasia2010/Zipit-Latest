@@ -172,11 +172,19 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
   const [fulfillmentMode, setFulfillmentMode] = useState('delivery'); // 'delivery' | 'pickup'
   const isPickup = fulfillmentMode === 'pickup';
 
+  const [showSmallOrderModal, setShowSmallOrderModal] = useState(false);
+  const [hasAgreedSmallOrderFee, setHasAgreedSmallOrderFee] = useState(false);
+
+  const minOrderAmount = Number(feeConfig?.min_order_amount) || 199;
+  const smallOrderFee = Number(feeConfig?.small_order_fee) || 35;
+  const isBelowMinOrder = !isPickup && itemTotal > 0 && itemTotal < minOrderAmount;
+  const smallOrderFeeApplied = isBelowMinOrder && hasAgreedSmallOrderFee;
+
   // For pickup: delivery, handling, and surge charges are 0
   const effectiveDeliveryCharge = isPickup ? 0 : deliveryCharge;
   const effectiveSmallCartCharge = isPickup ? 0 : smallCartCharge;
   const effectiveSurgeCharge = isPickup ? 0 : (surgeCharge || 0);
-  const effectiveGrandTotal = Math.max(0, itemTotal + effectiveDeliveryCharge + effectiveSmallCartCharge + effectiveSurgeCharge - (discountAmount || 0));
+  const effectiveGrandTotal = Math.max(0, itemTotal + effectiveDeliveryCharge + effectiveSmallCartCharge + (smallOrderFeeApplied ? smallOrderFee : 0) + effectiveSurgeCharge - (discountAmount || 0));
 
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
 
@@ -231,7 +239,18 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
     setAppliedCoupon(null);
   };
 
-  const handlePlaceOrder = async () => {
+  const handleAcceptSmallOrderFee = () => {
+    setHasAgreedSmallOrderFee(true);
+    setShowSmallOrderModal(false);
+    handlePlaceOrder(true);
+  };
+
+  const handleAddMoreItems = () => {
+    setShowSmallOrderModal(false);
+    navigate('/');
+  };
+
+  const handlePlaceOrder = async (bypassSmallOrderCheck = false) => {
     if (!isPickup && !address) {
       showToast('Please select a delivery address', 'Address Required');
       return;
@@ -247,6 +266,12 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         );
         return;
       }
+    }
+
+    const willApplySmallOrderFee = bypassSmallOrderCheck || hasAgreedSmallOrderFee;
+    if (isBelowMinOrder && !willApplySmallOrderFee) {
+      setShowSmallOrderModal(true);
+      return;
     }
 
     setProcessing(true);
@@ -343,6 +368,7 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
         total: effectiveGrandTotal,
         deliveryCharge: effectiveDeliveryCharge,
         smallCartCharge: effectiveSmallCartCharge,
+        small_order_fee: (willApplySmallOrderFee && isBelowMinOrder) ? smallOrderFee : 0,
         address: finalAddress,
         status: activeMethod === 'UPI' ? 'Payment Pending' : 'Placed',
         paymentMethod: activeMethod,
@@ -358,7 +384,11 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
       triggerConfetti();
       triggerHaptic('success');
       clearCart();
-      await db.carts.clear();
+      try {
+        localStorage.removeItem('cart');
+        localStorage.removeItem('zipit_cart');
+        await db.carts.clear();
+      } catch (_) {}
       if (setAppliedCoupon) setAppliedCoupon(null);
       showToast(
         isPickup 
@@ -700,7 +730,26 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
             )}
           </div>
         </div>
-        {!isPickup && (feeConfig?.free_delivery_enabled !== false) && (itemTotal < (Number(feeConfig?.free_delivery_min_amount) || 149) && appliedCoupon?.discount_type !== 'FREE_DELIVERY') && (
+
+        {!isPickup && smallOrderFeeApplied && (
+          <div className="bill-row-modern">
+            <div className="bill-label-modern">
+              <ShoppingBag size={16} color="#d97706" />
+              <span className="dotted-underline" style={{ color: '#b45309' }}>Small order fee (basket &lt; ₹{minOrderAmount})</span>
+            </div>
+            <div className="bill-value-modern" style={{ color: '#b45309', fontWeight: 700 }}>
+              ₹{smallOrderFee}
+            </div>
+          </div>
+        )}
+
+        {!isPickup && isBelowMinOrder && !smallOrderFeeApplied && (
+          <div className="bill-subtext-orange" style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', padding: '6px 10px', borderRadius: '8px', marginTop: '6px', fontSize: '12px' }}>
+            Min order value is ₹{minOrderAmount}. Add ₹{minOrderAmount - itemTotal} more items or pay ₹{smallOrderFee} fee.
+          </div>
+        )}
+
+        {!isPickup && (feeConfig?.free_delivery_enabled !== false) && !isBelowMinOrder && (itemTotal < (Number(feeConfig?.free_delivery_min_amount) || 149) && appliedCoupon?.discount_type !== 'FREE_DELIVERY') && (
           <div className="bill-subtext-orange">
             Shop for ₹{(Number(feeConfig?.free_delivery_min_amount) || 149) - itemTotal} more to get FREE delivery
           </div>
@@ -751,15 +800,15 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                       <>
                         <span>
                           Delivering to <strong>{address ? (address.type || 'Selected Location') : 'Selected Location'}</strong>
-                          {serviceCheck.matchedZone ? (
+                          {serviceCheck.distanceKm !== null ? (
                             <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', marginLeft: '6px' }}>
-                              • {serviceCheck.matchedZone.name} (~{serviceCheck.deliveryTimeMins}m)
+                              • In Radius ({serviceCheck.distanceKm} km)
                             </span>
-                          ) : serviceCheck.distanceKm !== null ? (
+                          ) : (
                             <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', marginLeft: '6px' }}>
-                              ({serviceCheck.distanceKm} km)
+                              • In Radius
                             </span>
-                          ) : null}
+                          )}
                         </span>
                         <span className="address-change-btn">Change</span>
                       </>
@@ -901,6 +950,113 @@ const CheckoutPage = ({ navigate, cart, updateCartQty, itemTotal, smallCartCharg
                 </button>
               </div>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Small Order Confirmation Modal */}
+      {showSmallOrderModal && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--color-surface, #ffffff)',
+            borderRadius: '16px',
+            padding: '24px 20px',
+            maxWidth: '380px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
+            <div style={{
+              width: '54px',
+              height: '54px',
+              borderRadius: '50%',
+              background: '#fef3c7',
+              color: '#d97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+              fontSize: '28px'
+            }}>
+              🛍️
+            </div>
+
+            <div>
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: 800, color: 'var(--color-text, #0f172a)' }}>
+                Minimum Order: ₹{minOrderAmount}
+              </h3>
+              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--color-text-light, #64748b)', lineHeight: '1.45' }}>
+                Your current basket is <strong style={{ color: '#0f172a' }}>₹{itemTotal}</strong>. Add <strong style={{ color: '#0c831f' }}>₹{minOrderAmount - itemTotal}</strong> more to your cart to enjoy free delivery, or pay a <strong style={{ color: '#d97706' }}>₹{smallOrderFee}</strong> small order fee to proceed.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={handleAddMoreItems}
+                style={{
+                  background: '#0c831f',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(12, 131, 31, 0.25)'
+                }}
+              >
+                + Add items worth ₹{minOrderAmount - itemTotal}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAcceptSmallOrderFee}
+                style={{
+                  background: 'var(--color-surface-muted, #f1f5f9)',
+                  color: 'var(--color-text, #334155)',
+                  border: '1px solid var(--color-border, #cbd5e1)',
+                  borderRadius: '10px',
+                  padding: '11px 16px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Pay ₹{smallOrderFee} Fee & Place Order
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSmallOrderModal(false)}
+                style={{
+                  background: 'transparent',
+                  color: '#94a3b8',
+                  border: 'none',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>,
         document.body

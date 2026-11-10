@@ -256,10 +256,14 @@
   transform: translateY(-1px);
 }
 
-.partner-submit-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
+.partner-submit-btn:disabled,
+.partner-submit-btn.disabled-faded {
+  background: #94a3b8 !important;
+  color: #f8fafc !important;
+  opacity: 0.42 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 /* SUCCESS RECEIPT CARD */

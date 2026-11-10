@@ -4,7 +4,7 @@ import SlideToAccept from './SlideToAccept';
 import { startSiren, stopSiren } from '../utils/siren';
 import { supabase } from '../services/db';
 import { auth } from '../services/auth';
-import { isPointInPolygon, getZoneForLocation } from '../utils/geoZones';
+import { isPointInPolygon, getZoneForLocation, calculateDistanceKm, calculatePolygonCenter } from '../utils/geoZones';
 import './OrderIncomingModal.css';
 
 export default function OrderIncomingModal({ role, onOrderAccepted }) {
@@ -33,15 +33,6 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
           setIncomingOrder(newOrder);
           setIsMuted(false);
           return;
-        }
-        if (role === 'rider' && !newOrder.accepted_by_rider) {
-          const isPreparingOrReady = ['Preparing', 'Preparing (Accepted)', 'Ready for Pickup'].includes(newOrder.status);
-          const isStorePickup = newOrder.delivery_type === 'STORE_PICKUP' || newOrder.order_type === 'STORE_PICKUP' || newOrder.delivery_address?.is_pickup === true || newOrder.delivery_address?.order_type === 'PICKUP';
-          if (isPreparingOrReady && !isStorePickup) {
-            setIncomingOrder(newOrder);
-            setIsMuted(false);
-            return;
-          }
         }
       }
 
@@ -81,6 +72,16 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
             } catch (_) {}
           }
 
+          // Fetch currently online riders from rider_status
+          let onlineRiders = [];
+          try {
+            const { data: statusList } = await supabase
+              .from('rider_status')
+              .select('rider_code, is_online, current_lat, current_lng, last_ping')
+              .eq('is_online', true);
+            onlineRiders = (statusList || []).filter(r => r.is_online);
+          } catch (_) {}
+
           let candidateOrder = null;
           let matchedZoneForOrder = null;
 
@@ -98,18 +99,58 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
                 : (order.delivery_zone_id ? activeZones.find(z => z.id === order.delivery_zone_id) : null);
 
               if (matchedZone) {
-                const isAssigned = Array.isArray(matchedZone.assigned_riders) && matchedZone.assigned_riders.includes(riderCode);
-                const isInside = hasRiderLocation && isPointInPolygon([riderLat, riderLng], matchedZone.polygon);
+                const assignedRidersList = Array.isArray(matchedZone.assigned_riders) ? matchedZone.assigned_riders : [];
+                // Check if any assigned rider is online
+                const onlineAssignedRiders = onlineRiders.filter(r => assignedRidersList.includes(r.rider_code));
 
-                if (isAssigned || isInside) {
-                  candidateOrder = order;
-                  matchedZoneForOrder = matchedZone;
-                  break;
+                if (onlineAssignedRiders.length > 0) {
+                  // Assigned riders ARE online: dispatch exclusively to assigned rider or rider physically inside zone
+                  const isAssigned = assignedRidersList.includes(riderCode);
+                  const isInside = hasRiderLocation && isPointInPolygon([riderLat, riderLng], matchedZone.polygon);
+
+                  if (isAssigned || isInside) {
+                    candidateOrder = order;
+                    matchedZoneForOrder = matchedZone;
+                    break;
+                  }
+                } else {
+                  // NO assigned rider online in this zone! Alert nearest rider of the zone
+                  const zoneCenter = calculatePolygonCenter(matchedZone.polygon);
+                  const targetLat = (!isNaN(oLat) && oLat !== 0) ? oLat : zoneCenter[0];
+                  const targetLng = (!isNaN(oLng) && oLng !== 0) ? oLng : zoneCenter[1];
+
+                  let nearestRiderCode = null;
+                  let minDistance = Infinity;
+
+                  if (onlineRiders.length > 0) {
+                    for (const r of onlineRiders) {
+                      const rLat = Number(r.current_lat);
+                      const rLng = Number(r.current_lng);
+                      if (!isNaN(rLat) && !isNaN(rLng) && (rLat !== 0 || rLng !== 0)) {
+                        const dist = calculateDistanceKm(targetLat, targetLng, rLat, rLng);
+                        if (dist < minDistance) {
+                          minDistance = dist;
+                          nearestRiderCode = r.rider_code;
+                        }
+                      }
+                    }
+                  }
+
+                  // If this rider is the nearest online rider to the zone:
+                  if (!nearestRiderCode || nearestRiderCode === riderCode) {
+                    candidateOrder = order;
+                    matchedZoneForOrder = {
+                      ...matchedZone,
+                      isNearestFallback: true,
+                      distanceToZoneKm: minDistance !== Infinity ? Math.round(minDistance * 10) / 10 : null
+                    };
+                    break;
+                  }
                 }
               }
             }
 
-            // Fallback: if order remains unclaimed for > 3 mins, allow broadcast to prevent delays
+            // Fallback: if order remains unclaimed for > 3 mins, allow broadcast to prevent customer delays
             if (!candidateOrder && nonPickupOrders.length > 0) {
               const threeMinsAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
               const urgentOrder = nonPickupOrders.find(o => o.created_at <= threeMinsAgo);
@@ -186,36 +227,30 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
           accepted_by_shopkeeper: userCode,
           status: 'Preparing (Accepted)'
         };
-        // Verify it was not already claimed
-        const { data: checkData } = await supabase.from('orders').select('accepted_by_shopkeeper').eq('id', orderId).single();
-        if (checkData?.accepted_by_shopkeeper && checkData.accepted_by_shopkeeper !== userCode) {
-          setClaimError('Notice: Order was already accepted by another shopkeeper.');
-          setTimeout(() => setIncomingOrder(null), 3000);
-          setClaiming(false);
-          return;
-        }
       } else if (role === 'rider') {
         updatePayload = {
-          accepted_by_rider: userCode
+          accepted_by_rider: userCode,
+          accepted_at: new Date().toISOString()
         };
-        // Verify it was not already claimed
-        const { data: checkData } = await supabase.from('orders').select('accepted_by_rider').eq('id', orderId).single();
-        if (checkData?.accepted_by_rider && checkData.accepted_by_rider !== userCode) {
-          setClaimError('Notice: Order was already claimed by another rider.');
-          setTimeout(() => setIncomingOrder(null), 3000);
-          setClaiming(false);
-          return;
-        }
       }
 
-      const { data, error } = await supabase
-        .from('orders')
-        .update(updatePayload)
-        .eq('id', orderId)
-        .select()
-        .single();
+      let query = supabase.from('orders').update(updatePayload).eq('id', orderId);
+      if (role === 'shopkeeper') {
+        query = query.or(`accepted_by_shopkeeper.is.null,accepted_by_shopkeeper.eq.${userCode}`);
+      } else if (role === 'rider') {
+        query = query.or(`accepted_by_rider.is.null,accepted_by_rider.eq.${userCode}`);
+      }
+
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
+
+      if (!data) {
+        setClaimError(role === 'rider' ? 'Order was already claimed by another rider!' : 'Order was already accepted by another shopkeeper!');
+        setTimeout(() => setIncomingOrder(null), 3000);
+        setClaiming(false);
+        return;
+      }
 
       if (onOrderAccepted) onOrderAccepted(data);
       setIncomingOrder(null);
@@ -269,8 +304,16 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
               Order #{incomingOrder.id.slice(0, 6).toUpperCase()}
             </div>
             {orderZone && (
-              <div style={{ background: `${orderZone.color}18`, color: orderZone.color, border: `1px solid ${orderZone.color}40`, padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800' }}>
-                📍 {orderZone.name}
+              <div style={{
+                background: orderZone.isNearestFallback ? '#fef3c7' : `${orderZone.color || '#0c831f'}18`,
+                color: orderZone.isNearestFallback ? '#b45309' : (orderZone.color || '#0c831f'),
+                border: `1px solid ${orderZone.isNearestFallback ? '#fde68a' : `${orderZone.color || '#0c831f'}40`}`,
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '800'
+              }}>
+                {orderZone.isNearestFallback ? `⚡ Nearest Rider to ${orderZone.name}` : `📍 ${orderZone.name}`}
               </div>
             )}
             {(incomingOrder.delivery_address?.is_pickup || incomingOrder.delivery_address?.order_type === 'PICKUP') && (

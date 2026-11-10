@@ -227,17 +227,16 @@ const AdminLayout = ({ profile, setProfile }) => {
     { name: 'Overview', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'Revenues', path: '/revenues', icon: <IndianRupee size={20} /> },
     { name: 'Orders', path: '/orders', icon: <ShoppingBag size={20} /> },
+    { name: 'Payouts', path: '/payouts', icon: <IndianRupee size={20} /> },
     { name: 'Categories', path: '/categories', icon: <Grid size={20} /> },
     { name: 'Products', path: '/products', icon: <List size={20} /> },
     { name: 'Pinnacle Showcase', path: '/grid-products', icon: <Grid size={20} /> },
     { name: 'Bestsellers', path: '/bestsellers', icon: <Tag size={20} /> },
     { name: 'Banners', path: '/banners', icon: <LayoutDashboard size={20} /> },
-    { name: 'Sections', path: '/sections', icon: <Layers size={20} /> },
     { name: 'Coupons', path: '/coupons', icon: <Tag size={20} /> },
     { name: 'Refunds', path: '/refunds', icon: <RefreshCcw size={20} /> },
     { name: 'Partners Codes', path: '/partners-codes', icon: <Users size={20} /> },
     { name: 'Delivery Zones', path: '/zones', icon: <MapPin size={20} /> },
-    { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
   ];
 
   // Pending Applications Badge State
@@ -401,13 +400,24 @@ const AdminLayout = ({ profile, setProfile }) => {
       {/* Main Content Area */}
       <main className="admin-main">
         <header className="admin-topbar">
-          <button 
-            className="mobile-menu-toggle" 
-            onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Open Navigation Menu"
-          >
-            <Menu size={22} />
-          </button>
+          <div className="mobile-header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              className="mobile-menu-toggle" 
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Open Navigation Menu"
+            >
+              <Menu size={22} />
+            </button>
+
+            <button 
+              className="mobile-settings-btn"
+              onClick={() => navigate('/settings')}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings size={18} />
+            </button>
+          </div>
 
           <div className="search-container" ref={searchRef}>
             <div className={`search-bar ${isSearchOpen && searchQuery ? 'focused' : ''}`}>

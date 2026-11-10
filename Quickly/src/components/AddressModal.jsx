@@ -36,10 +36,6 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                 <span style={{ color: 'var(--color-text-light)', fontSize: '11px' }}>Pinpoint on map &amp; enter details</span>
               </div>
             </div>
-            <div className="action-item" onClick={() => { onClose(); navigate('/saved-addresses', { state: { from: currentRoute || 'home', add: true } }); }}>
-              <Plus size={20} color="#0c831f" />
-              <span style={{ color: '#0c831f', fontWeight: 600 }}>Add new address</span>
-            </div>
           </div>
 
           <h4 className="section-title">Your saved addresses</h4>
@@ -58,14 +54,14 @@ const AddressModal = ({ isOpen, onClose, addresses, navigate, onSelectAddress, c
                   <div className="address-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '6px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <h4 style={{margin:0}} onClick={() => { onSelectAddress && onSelectAddress(addr.id); onClose(); }}>{addr.type}</h4>
-                      {check && check.matchedZone && (
+                      {check && !check.isOutOfRange && (
                         <span style={{ fontSize: '10px', background: 'rgba(12, 131, 31, 0.12)', color: '#0c831f', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
-                          ✓ {check.matchedZone.name} ({check.deliveryTimeMins}m)
+                          ✓ In Radius
                         </span>
                       )}
                       {check && check.isOutOfRange && (
                         <span style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
-                          Too Far (&gt;8.5km)
+                          ⚠ Beyond Radius
                         </span>
                       )}
                     </div>

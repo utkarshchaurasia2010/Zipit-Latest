@@ -495,9 +495,17 @@ export default function DeliveryZonesPage() {
 
       const hasRealGPS = !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
       if (!hasRealGPS) {
-        // Position online rider near Central Hub with slight spread if GPS not yet pinged
-        lat = storeCoords[0] + 0.0007 * (idx + 1);
-        lng = storeCoords[1] + 0.0007 * (idx + 1);
+        // If rider is assigned to an active zone, keep them inside their assigned polygon!
+        const assignedZone = zones.find(z => z.is_active && Array.isArray(z.assigned_riders) && z.assigned_riders.includes(rider.rider_code));
+        if (assignedZone && Array.isArray(assignedZone.polygon) && assignedZone.polygon.length >= 3) {
+          const center = calculatePolygonCenter(assignedZone.polygon);
+          lat = center[0] + (0.0003 * ((idx % 3) + 1));
+          lng = center[1] + (0.0003 * ((idx % 3) + 1));
+        } else {
+          // Fallback to Central Hub
+          lat = storeCoords[0] + 0.0007 * (idx + 1);
+          lng = storeCoords[1] + 0.0007 * (idx + 1);
+        }
       }
 
       const isBusy = !!rider.active_order_id;

@@ -153,36 +153,30 @@ export default function OrderIncomingModal({ role, onOrderAccepted }) {
           accepted_by_shopkeeper: userCode,
           status: 'Preparing'
         };
-        // Verify it was not already claimed
-        const { data: checkData } = await supabase.from('orders').select('accepted_by_shopkeeper').eq('id', orderId).single();
-        if (checkData?.accepted_by_shopkeeper && checkData.accepted_by_shopkeeper !== userCode) {
-          setClaimError('Notice: Order was already accepted by another shopkeeper.');
-          setTimeout(() => setIncomingOrder(null), 3000);
-          setClaiming(false);
-          return;
-        }
       } else if (role === 'rider') {
         updatePayload = {
-          accepted_by_rider: userCode
+          accepted_by_rider: userCode,
+          accepted_at: new Date().toISOString()
         };
-        // Verify it was not already claimed
-        const { data: checkData } = await supabase.from('orders').select('accepted_by_rider').eq('id', orderId).single();
-        if (checkData?.accepted_by_rider && checkData.accepted_by_rider !== userCode) {
-          setClaimError('Notice: Order was already claimed by another rider.');
-          setTimeout(() => setIncomingOrder(null), 3000);
-          setClaiming(false);
-          return;
-        }
       }
 
-      const { data, error } = await supabase
-        .from('orders')
-        .update(updatePayload)
-        .eq('id', orderId)
-        .select()
-        .single();
+      let query = supabase.from('orders').update(updatePayload).eq('id', orderId);
+      if (role === 'shopkeeper') {
+        query = query.or(`accepted_by_shopkeeper.is.null,accepted_by_shopkeeper.eq.${userCode}`);
+      } else if (role === 'rider') {
+        query = query.or(`accepted_by_rider.is.null,accepted_by_rider.eq.${userCode}`);
+      }
+
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
+
+      if (!data) {
+        setClaimError(role === 'shopkeeper' ? 'Order was already accepted by another shopkeeper!' : 'Order was already claimed by another rider!');
+        setTimeout(() => setIncomingOrder(null), 3000);
+        setClaiming(false);
+        return;
+      }
 
       if (onOrderAccepted) onOrderAccepted(data);
       setIncomingOrder(null);

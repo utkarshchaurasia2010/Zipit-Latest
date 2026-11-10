@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase, db } from '../services/db';
-import { ShoppingBag, Clock, CheckCircle2, MapPin, Phone, User, Package, Bike, ArrowLeft, Calendar, ChevronRight, Barcode, Ban, IndianRupee } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, MapPin, Phone, User, Package, Bike, ArrowLeft, Calendar, ChevronRight, Barcode, Ban, IndianRupee, RefreshCw } from 'lucide-react';
 import SlideToAccept from '../components/SlideToAccept';
 import BarcodePackingModal from '../components/BarcodePackingModal';
 import { auth } from '../services/auth';
@@ -14,6 +14,7 @@ export default function ShopkeeperDashboard() {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [viewingDetailOrder, setViewingDetailOrder] = useState(null);
   const [packingModalOrder, setPackingModalOrder] = useState(null);
@@ -44,6 +45,18 @@ export default function ShopkeeperDashboard() {
       }
     }
     if (!silent) setLoading(false);
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchOrders(true);
+      if (showToast) showToast('Store orders refreshed', 'info');
+    } catch (err) {
+      console.error('Manual refresh error:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
   };
 
   useEffect(() => {
@@ -570,6 +583,19 @@ export default function ShopkeeperDashboard() {
     );
   }
 
+  const getShopOrderPayout = (ord) => {
+    if (!ord) return 0;
+    if (ord.commission?.shop_share !== undefined && ord.commission.shop_share !== null) {
+      return Number(ord.commission.shop_share);
+    }
+    const subtotal = Math.max(0, (Number(ord.total) || 0) - (Number(ord.delivery_fee) || 0));
+    const pct = Number(brandingConfig?.shop_commission_percent) >= 0 ? Number(brandingConfig.shop_commission_percent) : 7;
+    const cap = Number(brandingConfig?.shop_commission_cap) >= 0 ? Number(brandingConfig.shop_commission_cap) : 20;
+    const computed = (subtotal * pct) / 100;
+    const share = cap > 0 ? Math.min(cap, computed) : computed;
+    return Math.round(share * 100) / 100;
+  };
+
   // -------------------------------------------------------------
   // VIEW 1: OVERVIEW PAGE ('/') -> ONLY ACTIVE ORDERS QUEUE
   // -------------------------------------------------------------
@@ -608,10 +634,10 @@ export default function ShopkeeperDashboard() {
             </div>
             <div>
               <span className="metric-num" style={{ color: '#15803d' }}>
-                ₹{completedOrders.length * (Number(brandingConfig?.shopkeeper_commission_fixed) >= 0 ? Number(brandingConfig.shopkeeper_commission_fixed) : 10)}
+                ₹{Math.round(completedOrders.reduce((sum, o) => sum + getShopOrderPayout(o), 0))}
               </span>
               <span className="metric-label">
-                Packing Payout (₹{Number(brandingConfig?.shopkeeper_commission_fixed) >= 0 ? Number(brandingConfig.shopkeeper_commission_fixed) : 10}/order · SLA {brandingConfig?.shopkeeper_sla_mins ?? 3}m)
+                Packing Payout ({brandingConfig?.shop_commission_percent ?? 7}% · Cap ₹{brandingConfig?.shop_commission_cap ?? 20} · SLA {brandingConfig?.shopkeeper_sla_mins ?? 3}m)
               </span>
             </div>
           </div>
@@ -623,9 +649,33 @@ export default function ShopkeeperDashboard() {
             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Live Active Queue</h2>
             <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748b' }}>Recent orders that need packing, preparation, or pickup</p>
           </div>
-          <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '12px', fontWeight: 800, padding: '4px 12px', borderRadius: '14px' }}>
-            {activeOrders.length} In Progress
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                cursor: isRefreshing ? 'wait' : 'pointer',
+                fontSize: '12.5px',
+                fontWeight: '700',
+                color: '#334155',
+                transition: 'all 0.15s ease'
+              }}
+              title="Refresh Store Orders"
+            >
+              <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+              <span>Sync</span>
+            </button>
+            <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '12px', fontWeight: 800, padding: '4px 12px', borderRadius: '14px' }}>
+              {activeOrders.length} In Progress
+            </span>
+          </div>
         </div>
 
         {/* Responsive Split View for Active Orders */}
@@ -961,7 +1011,29 @@ export default function ShopkeeperDashboard() {
           <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748b' }}>Browse all completed and historical orders</p>
         </div>
 
-        <div className="dashboard-tabs-bar" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+        <div className="dashboard-tabs-bar" style={{ borderBottom: 'none', paddingBottom: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              cursor: isRefreshing ? 'wait' : 'pointer',
+              fontSize: '12.5px',
+              fontWeight: '700',
+              color: '#334155',
+              transition: 'all 0.15s ease'
+            }}
+            title="Refresh Store Orders"
+          >
+            <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+            <span>Sync</span>
+          </button>
           <button 
             className={`tab-btn ${ordersTab === 'completed' ? 'active' : ''}`} 
             onClick={() => setOrdersTab('completed')}

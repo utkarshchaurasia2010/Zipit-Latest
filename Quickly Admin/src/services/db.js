@@ -777,5 +777,134 @@ export const db = {
         throw err;
       }
     }
+  },
+  commissions: {
+    getByOrderId: async (orderId) => {
+      const { data, error } = await supabase
+        .from('order_commissions')
+        .select('*')
+        .eq('order_id', orderId)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') console.warn('Error fetching commission:', error);
+      return data;
+    },
+    getAll: async () => {
+      const { data, error } = await supabase
+        .from('order_commissions')
+        .select('*')
+        .order('calculated_at', { ascending: false });
+      if (error) console.warn('Error fetching all commissions:', error);
+      return data || [];
+    },
+    save: async (commission) => {
+      const payload = {
+        order_id: commission.order_id,
+        shop_id: commission.shop_id || null,
+        rider_id: commission.rider_id || null,
+        subtotal: commission.subtotal || 0,
+        wholesale_cost: commission.wholesale_cost,
+        delivery_fee: commission.delivery_fee || 0,
+        small_order_fee: commission.small_order_fee || 0,
+        shop_share: commission.shop_share || 0,
+        rider_share: commission.rider_share || 0,
+        platform_share: commission.platform_share,
+        rates_snapshot: commission.rates_snapshot || {},
+        status: commission.status || 'pending',
+        calculated_at: commission.calculated_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await supabase
+        .from('order_commissions')
+        .upsert(payload, { onConflict: 'order_id' })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    saveBulk: async (commissionsList) => {
+      if (!commissionsList || commissionsList.length === 0) return [];
+      const payloads = commissionsList.map(c => ({
+        order_id: c.order_id,
+        shop_id: c.shop_id || null,
+        rider_id: c.rider_id || null,
+        subtotal: c.subtotal || 0,
+        wholesale_cost: c.wholesale_cost,
+        delivery_fee: c.delivery_fee || 0,
+        small_order_fee: c.small_order_fee || 0,
+        shop_share: c.shop_share || 0,
+        rider_share: c.rider_share || 0,
+        platform_share: c.platform_share,
+        rates_snapshot: c.rates_snapshot || {},
+        status: c.status || 'pending',
+        calculated_at: c.calculated_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+      const { data, error } = await supabase
+        .from('order_commissions')
+        .upsert(payloads, { onConflict: 'order_id' })
+        .select();
+      if (error) throw error;
+      return data || [];
+    },
+    voidOrder: async (orderId) => {
+      const { data, error } = await supabase
+        .from('order_commissions')
+        .update({
+          status: 'void',
+          shop_share: 0,
+          rider_share: 0,
+          platform_share: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_id', orderId)
+        .select()
+        .maybeSingle();
+      if (error) console.warn('Error voiding commission:', error);
+      return data;
+    }
+  },
+  payouts: {
+    getAll: async () => {
+      const { data, error } = await supabase
+        .from('partner_payouts')
+        .select('*')
+        .order('paid_at', { ascending: false });
+      if (error) console.warn('Error fetching payouts:', error);
+      return data || [];
+    },
+    create: async ({ partner_type, partner_id, period_start, period_end, total_amount, payment_mode, reference_note, created_by, order_ids = [] }) => {
+      const { data: payout, error: payoutError } = await supabase
+        .from('partner_payouts')
+        .insert([{
+          partner_type,
+          partner_id,
+          period_start,
+          period_end,
+          total_amount,
+          payment_mode: payment_mode || 'upi',
+          reference_note: reference_note || null,
+          created_by: created_by || 'Admin',
+          paid_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (payoutError) throw payoutError;
+
+      if (order_ids && order_ids.length > 0) {
+        const { error: linkError } = await supabase
+          .from('order_commissions')
+          .update({
+            payout_id: payout.id,
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .in('order_id', order_ids);
+
+        if (linkError) console.warn('Warning linking commission orders to payout:', linkError);
+      }
+
+      return payout;
+    }
   }
 };

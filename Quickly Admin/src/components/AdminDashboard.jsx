@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { db, supabase } from '../services/db';
-import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff, Phone, MapPin, UserCheck, Bike, Scan, Barcode, Camera } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Upload, ArrowLeft, Filter, Check, Printer, Moon, Sun, Eye, EyeOff, Phone, MapPin, UserCheck, Bike, Scan, Barcode, Camera, Calculator, IndianRupee, AlertTriangle } from 'lucide-react';
 import BarcodeScanModal from './BarcodeScanModal';
 import { useToast } from '../context/ToastContext';
+import { calculateOrderCommission } from '../utils/commissions';
 import './AdminDashboard.css';
 
 const AdminDashboard = ({ initialTab }) => {
@@ -24,6 +25,13 @@ const AdminDashboard = ({ initialTab }) => {
   const fileInputRef = useRef(null);
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   
+  // Commissions & Payouts State
+  const [commissionsMap, setCommissionsMap] = useState({});
+  const [productsMap, setProductsMap] = useState(new Map());
+  const [brandingConfig, setBrandingConfig] = useState({});
+  const [calculatingCommissionId, setCalculatingCommissionId] = useState(null);
+  const [isBulkCalculating, setIsBulkCalculating] = useState(false);
+
   // Specific view modals
   const [viewUser, setViewUser] = useState(null);
   
@@ -160,6 +168,27 @@ const AdminDashboard = ({ initialTab }) => {
         } else {
           setData(allOrders);
         }
+
+        if (initialTab === 'orders') {
+          try {
+            const [allComms, allProds, brandConf] = await Promise.all([
+              db.commissions.getAll(),
+              db.products.getAll(),
+              db.branding.get()
+            ]);
+            const cMap = {};
+            (allComms || []).forEach(c => { cMap[c.order_id] = c; });
+            setCommissionsMap(cMap);
+
+            const pMap = new Map();
+            (allProds || []).forEach(p => pMap.set(p.id, p));
+            setProductsMap(pMap);
+
+            if (brandConf) setBrandingConfig(brandConf);
+          } catch (cErr) {
+            console.warn('Error loading commission context:', cErr);
+          }
+        }
       } else if (initialTab === 'categories') {
         const cats = await db.categories.getAll();
         setData(cats || []);
@@ -183,6 +212,7 @@ const AdminDashboard = ({ initialTab }) => {
     loadData(false);
 
     let channel = null;
+    let commChannel = null;
 
     if (initialTab === 'orders' || initialTab === 'refunds') {
       channel = supabase
@@ -203,10 +233,20 @@ const AdminDashboard = ({ initialTab }) => {
           }
         })
         .subscribe();
+
+      commChannel = supabase
+        .channel(`admin-commissions-realtime-${Date.now()}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'order_commissions' }, (payload) => {
+          if (payload?.new?.order_id) {
+            setCommissionsMap(prev => ({ ...prev, [payload.new.order_id]: payload.new }));
+          }
+        })
+        .subscribe();
     }
 
     return () => {
       if (channel) supabase.removeChannel(channel);
+      if (commChannel) supabase.removeChannel(commChannel);
     };
   }, [initialTab]);
 
@@ -220,6 +260,86 @@ const AdminDashboard = ({ initialTab }) => {
       case 'bestsellers': return 'Bestsellers';
       case 'refunds': return 'Refunds & Cancellations';
       default: return initialTab.charAt(0).toUpperCase() + initialTab.slice(1);
+    }
+  };
+
+  const handleCalculateCommission = async (order) => {
+    setCalculatingCommissionId(order.id);
+    try {
+      let currentPMap = productsMap;
+      if (!currentPMap || currentPMap.size === 0) {
+        const prods = await db.products.getAll();
+        const freshMap = new Map();
+        (prods || []).forEach(p => freshMap.set(p.id, p));
+        setProductsMap(freshMap);
+        currentPMap = freshMap;
+      }
+      let currentBrand = brandingConfig;
+      if (!currentBrand || !currentBrand.shop_commission_percent) {
+        const b = await db.branding.get();
+        if (b) {
+          setBrandingConfig(b);
+          currentBrand = b;
+        }
+      }
+
+      const calcResult = calculateOrderCommission(order, currentPMap, currentBrand);
+      const saved = await db.commissions.save(calcResult);
+      setCommissionsMap(prev => ({ ...prev, [order.id]: saved }));
+      showToast(`Commission calculated: Shop ₹${saved.shop_share}, Rider ₹${saved.rider_share}, Platform ${saved.platform_share !== null ? `₹${saved.platform_share}` : '(Cost Missing)'}`, 'success');
+    } catch (err) {
+      console.error('Calculate commission error:', err);
+      showToast('Failed to calculate commission: ' + err.message, 'error');
+    } finally {
+      setCalculatingCommissionId(null);
+    }
+  };
+
+  const handleBulkCalculateCommissions = async () => {
+    const uncalcDelivered = data.filter(o => 
+      (o.status || '').toLowerCase() === 'delivered' && 
+      (!commissionsMap[o.id] || commissionsMap[o.id].status === 'void')
+    );
+
+    if (uncalcDelivered.length === 0) {
+      showToast('All delivered orders already have calculated commissions.', 'info');
+      return;
+    }
+
+    setIsBulkCalculating(true);
+    try {
+      let currentPMap = productsMap;
+      if (!currentPMap || currentPMap.size === 0) {
+        const prods = await db.products.getAll();
+        const freshMap = new Map();
+        (prods || []).forEach(p => freshMap.set(p.id, p));
+        setProductsMap(freshMap);
+        currentPMap = freshMap;
+      }
+      let currentBrand = brandingConfig;
+      if (!currentBrand || !currentBrand.shop_commission_percent) {
+        const b = await db.branding.get();
+        if (b) {
+          setBrandingConfig(b);
+          currentBrand = b;
+        }
+      }
+
+      const results = uncalcDelivered.map(order => 
+        calculateOrderCommission(order, currentPMap, currentBrand)
+      );
+      const savedList = await db.commissions.saveBulk(results);
+      setCommissionsMap(prev => {
+        const next = { ...prev };
+        savedList.forEach(c => { next[c.order_id] = c; });
+        return next;
+      });
+      showToast(`Calculated commissions for ${savedList.length} delivered orders!`, 'success');
+    } catch (err) {
+      console.error('Bulk calculate error:', err);
+      showToast('Failed in bulk calculation: ' + err.message, 'error');
+    } finally {
+      setIsBulkCalculating(false);
     }
   };
 
@@ -244,7 +364,7 @@ const AdminDashboard = ({ initialTab }) => {
     }
 
     if (initialTab === 'products' || initialTab === 'grid-products' || initialTab === 'bestsellers') {
-      setFormData(item ? { ...item } : { name: '', price: '', mrp: '', amount: '', barcode: '', stock_count: -1, is_out_of_stock: false, category_id: categories[0]?.id, is_grid: initialTab === 'grid-products', is_bestseller: initialTab === 'bestsellers', tags: '', shopkeeper_codes: '' });
+      setFormData(item ? { ...item, cost_price: item.cost_price ?? '' } : { name: '', price: '', mrp: '', cost_price: '', amount: '', barcode: '', stock_count: -1, is_out_of_stock: false, category_id: categories[0]?.id, is_grid: initialTab === 'grid-products', is_bestseller: initialTab === 'bestsellers', tags: '', shopkeeper_codes: '' });
     } else if (initialTab === 'banners') {
       setFormData(item ? { ...item } : { bg_color: '#F8CB46', order_index: 1 });
     } else if (initialTab === 'categories') {
@@ -283,6 +403,11 @@ const AdminDashboard = ({ initialTab }) => {
         
         const payload = { ...formData, image_url: imageUrl };
         if (initialTab === 'products' || initialTab === 'grid-products' || initialTab === 'bestsellers') {
+          if (payload.cost_price !== '' && payload.cost_price !== undefined && payload.cost_price !== null) {
+            payload.cost_price = parseFloat(payload.cost_price) || 0;
+          } else {
+            payload.cost_price = null;
+          }
           if (editingItem) await db.products.update(editingItem.id, payload);
           else await db.products.add(payload);
         } else if (initialTab === 'banners') {
@@ -818,6 +943,100 @@ const AdminDashboard = ({ initialTab }) => {
           </div>
         );
       })()}
+      {initialTab === 'orders' && (
+        <div style={{
+          marginBottom: '20px',
+          background: 'var(--color-surface, #ffffff)',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          borderRadius: '8px',
+          padding: '16px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '14px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-text-light)', fontWeight: 700, letterSpacing: '0.5px' }}>
+                Total Orders
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-text)' }}>
+                {data.length}
+              </div>
+            </div>
+
+            <div style={{ width: '1px', height: '32px', background: 'var(--color-border)' }} />
+
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#16a34a', fontWeight: 700, letterSpacing: '0.5px' }}>
+                Delivered
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
+                {data.filter(o => (o.status || '').toLowerCase() === 'delivered').length}
+              </div>
+            </div>
+
+            <div style={{ width: '1px', height: '32px', background: 'var(--color-border)' }} />
+
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#d97706', fontWeight: 700, letterSpacing: '0.5px' }}>
+                Uncalculated Commissions
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#d97706' }}>
+                {data.filter(o => (o.status || '').toLowerCase() === 'delivered' && (!commissionsMap[o.id] || commissionsMap[o.id].status === 'void')).length}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleBulkCalculateCommissions}
+              disabled={isBulkCalculating}
+              title="Calculate commissions for all delivered orders that do not have active commissions"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#0c831f',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: isBulkCalculating ? 'not-allowed' : 'pointer',
+                opacity: isBulkCalculating ? 0.7 : 1,
+                boxShadow: '0 2px 6px rgba(12, 131, 31, 0.25)'
+              }}
+            >
+              <Calculator size={16} />
+              <span>{isBulkCalculating ? 'Calculating...' : 'Calculate for all delivered orders'}</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/payouts')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'var(--color-surface-muted, #f1f5f9)',
+                color: 'var(--color-text)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <IndianRupee size={15} />
+              <span>Partner Payouts →</span>
+            </button>
+          </div>
+        </div>
+      )}
       {initialTab !== 'orders' && initialTab !== 'refunds' && initialTab !== 'grid-products' && initialTab !== 'bestsellers' && (
         <div style={{marginBottom: '20px', display: 'flex', justifyContent: 'flex-end'}}>
           <button onClick={() => openModal()} className="add-btn"><Plus size={18} /> Add New</button>
@@ -1109,6 +1328,17 @@ const AdminDashboard = ({ initialTab }) => {
 
                         setData(prev => prev.map(item => item.id === o.id ? { ...item, ...updatePayload } : item));
                         await supabase.from('orders').update(updatePayload).eq('id', o.id);
+
+                        // Auto-void commission if cancelled or refunded
+                        if (['Cancelled', 'Refunded', 'Cancellation Requested', 'Refund Initiated'].includes(newSelection)) {
+                          try {
+                            await db.commissions.voidOrder(o.id);
+                            setCommissionsMap(prev => prev[o.id] ? { ...prev, [o.id]: { ...prev[o.id], status: 'void' } } : prev);
+                          } catch (commErr) {
+                            console.warn('Error voiding commission for order:', commErr);
+                          }
+                        }
+
                         showToast(`Order updated to ${newSelection}`, 'success');
                       }}
                     >
@@ -1439,6 +1669,134 @@ const AdminDashboard = ({ initialTab }) => {
                       );
                     })}
                   </div>
+
+                  {/* Commissions & Margins Card */}
+                  {(() => {
+                    const isDelivered = (o.status || '').toLowerCase() === 'delivered';
+                    const comm = commissionsMap[o.id];
+                    const isCalculatingThis = calculatingCommissionId === o.id;
+
+                    if (!isDelivered && !comm) return null;
+
+                    const isVoid = comm?.status === 'void';
+                    const isPaid = comm?.status === 'paid';
+
+                    return (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px 14px',
+                        background: isVoid ? 'var(--color-surface-muted, #f8fafc)' : 'rgba(12, 131, 31, 0.04)',
+                        border: `1px solid ${isVoid ? 'var(--color-border, #e2e8f0)' : 'rgba(12, 131, 31, 0.2)'}`,
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 800, color: isVoid ? 'var(--color-text-light, #64748b)' : '#0c831f', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <IndianRupee size={14} /> Commissions & Margins
+                            </span>
+                            {comm && (
+                              <span style={{
+                                fontSize: '10.5px',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                padding: '2px 7px',
+                                borderRadius: '6px',
+                                background: isPaid ? '#dcfce7' : isVoid ? '#fee2e2' : '#fef3c7',
+                                color: isPaid ? '#15803d' : isVoid ? '#b91c1c' : '#b45309',
+                                border: `1px solid ${isPaid ? '#86efac' : isVoid ? '#fca5a5' : '#fde68a'}`
+                              }}>
+                                {isPaid ? 'PAID OUT' : isVoid ? 'VOID (CANCELLED)' : 'PENDING PAYOUT'}
+                              </span>
+                            )}
+                          </div>
+
+                          {isDelivered && (
+                            <button
+                              type="button"
+                              onClick={() => handleCalculateCommission(o)}
+                              disabled={isCalculatingThis}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: 'var(--color-surface, #ffffff)',
+                                border: '1px solid var(--color-border, #cbd5e1)',
+                                borderRadius: '8px',
+                                padding: '5px 12px',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                color: 'var(--color-text, #0f172a)',
+                                cursor: isCalculatingThis ? 'not-allowed' : 'pointer',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                              }}
+                            >
+                              <Calculator size={13} color="#0c831f" />
+                              <span>{isCalculatingThis ? 'Calculating...' : (comm ? 'Recalculate' : 'Calculate Commission')}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {comm ? (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                            gap: '8px',
+                            background: 'var(--color-surface, #ffffff)',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--color-border, #e2e8f0)',
+                            fontSize: '12px'
+                          }}>
+                            <div>
+                              <div style={{ color: 'var(--color-text-light, #64748b)', fontSize: '11px' }}>Basket Subtotal</div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text, #0f172a)' }}>₹{Number(comm.subtotal || 0).toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div style={{ color: 'var(--color-text-light, #64748b)', fontSize: '11px' }}>Wholesale Cost</div>
+                              <div style={{ fontWeight: 700, color: comm.wholesale_cost !== null && comm.wholesale_cost !== undefined ? 'var(--color-text, #0f172a)' : '#d97706' }}>
+                                {comm.wholesale_cost !== null && comm.wholesale_cost !== undefined ? `₹${Number(comm.wholesale_cost).toFixed(2)}` : 'Cost Missing'}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ color: 'var(--color-text-light, #64748b)', fontSize: '11px' }}>Delivery Fee</div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text, #0f172a)' }}>₹{Number(comm.delivery_fee || 0).toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div style={{ color: 'var(--color-text-light, #64748b)', fontSize: '11px' }}>Shop Share</div>
+                              <div style={{ fontWeight: 800, color: '#0c831f' }}>₹{Number(comm.shop_share || 0).toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div style={{ color: 'var(--color-text-light, #64748b)', fontSize: '11px' }}>Rider Share</div>
+                              <div style={{ fontWeight: 800, color: '#0284c7' }}>₹{Number(comm.rider_share || 0).toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div style={{ color: 'var(--color-text-light, #64748b)', fontSize: '11px' }}>Platform Share</div>
+                              <div style={{
+                                fontWeight: 800,
+                                color: comm.platform_share === null ? '#d97706' : (Number(comm.platform_share) < 0 ? '#ef4444' : '#16a34a')
+                              }}>
+                                {comm.platform_share !== null && comm.platform_share !== undefined ? (
+                                  <>
+                                    ₹{Number(comm.platform_share).toFixed(2)}
+                                    {Number(comm.platform_share) < 0 && <span style={{ fontSize: '10px', marginLeft: '3px' }}>⚠️ Loss</span>}
+                                  </>
+                                ) : (
+                                  <span style={{ fontStyle: 'italic', fontSize: '11px' }}>N/A (Cost Missing)</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-light, #64748b)', fontStyle: 'italic' }}>
+                            Order delivered. Commission not yet calculated. Click "Calculate Commission" above.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
@@ -1592,34 +1950,50 @@ const AdminDashboard = ({ initialTab }) => {
 
                   <div className="form-row">
                     <div className="form-group half">
+                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Wholesale Cost Price (₹)</span>
+                        <span style={{ fontSize: '11px', color: 'var(--color-text-light)' }}>Margin calculation</span>
+                      </label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="admin-input" 
+                        placeholder="Procurement cost (e.g. 75)" 
+                        value={formData.cost_price ?? ''} 
+                        onChange={e => setFormData({...formData, cost_price: e.target.value})}
+                      />
+                    </div>
+                    <div className="form-group half">
                       <label>Amount (e.g. 1kg, 500ml)</label>
                       <input type="text" className="admin-input" value={formData.amount||''} onChange={e=>setFormData({...formData, amount:e.target.value})} required/>
                     </div>
-                    <div className="form-group half">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', margin: 0 }}>
-                          <Barcode size={14} color="#2563eb" /> Barcode (EAN/UPC)
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setIsBarcodeScannerOpen(true)}
-                          style={{
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '8px',
-                            padding: '3px 8px',
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Camera size={12} /> Scan Camera
-                        </button>
-                      </div>
+                  </div>
+
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', margin: 0 }}>
+                        <Barcode size={14} color="#2563eb" /> Barcode (EAN/UPC)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsBarcodeScannerOpen(true)}
+                        style={{
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: '8px',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Camera size={12} /> Scan Camera
+                      </button>
+                    </div>
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <input 
                           type="text" 
@@ -1650,7 +2024,6 @@ const AdminDashboard = ({ initialTab }) => {
                         </button>
                       </div>
                     </div>
-                  </div>
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', margin: '14px 0'}}>
                     <label className={`checkbox-pill ${formData.is_grid ? 'active' : ''}`}>
                       <input type="checkbox" checked={formData.is_grid||false} onChange={e=>setFormData({...formData, is_grid:e.target.checked})} style={{display:'none'}}/>

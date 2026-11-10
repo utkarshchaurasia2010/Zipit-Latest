@@ -10,6 +10,7 @@ import PartnersCodesManager from './components/PartnersCodesManager';
 import SectionsManager from './pages/SectionsManager';
 import RevenuesPage from './pages/RevenuesPage';
 import DeliveryZonesPage from './pages/DeliveryZonesPage';
+import PayoutsPage from './pages/PayoutsPage';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 
@@ -81,6 +82,7 @@ function App() {
             <Route path="/" element={<AdminLayout profile={profile} setProfile={setProfile} />}>
               <Route index element={<Overview />} />
               <Route path="revenues" element={<RevenuesPage />} />
+              <Route path="payouts" element={<PayoutsPage />} />
               <Route path="categories" element={<AdminDashboard key="categories" initialTab="categories" />} />
               <Route path="products" element={<AdminDashboard key="products" initialTab="products" />} />
               <Route path="grid-products" element={<AdminDashboard key="grid-products" initialTab="grid-products" />} />

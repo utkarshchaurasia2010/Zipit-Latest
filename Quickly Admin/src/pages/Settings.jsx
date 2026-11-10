@@ -18,7 +18,9 @@ import {
   RefreshCw,
   Zap,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  IndianRupee,
+  Percent
 } from 'lucide-react';
 import { db } from '../services/db';
 import { useToast } from '../context/ToastContext';
@@ -59,15 +61,27 @@ const Settings = ({ profile, setProfile }) => {
   }, []);
 
   const loadBranding = async () => {
-    const data = await db.branding.get();
-    if (data) {
-      if (!data.ota_bundle_url) {
-        data.ota_bundle_url = OFFICIAL_OTA_URL;
-      }
-      setBranding(data);
-    } else {
-      setBranding({ ota_bundle_url: OFFICIAL_OTA_URL, ota_bundle_version: '1.0.33' });
+    const data = (await db.branding.get()) || {};
+    if (!data.ota_bundle_url) {
+      data.ota_bundle_url = OFFICIAL_OTA_URL;
     }
+    setBranding({
+      ...data,
+      shop_commission_percent: data.shop_commission_percent !== undefined ? data.shop_commission_percent : 7,
+      shop_commission_cap: data.shop_commission_cap !== undefined ? data.shop_commission_cap : 20,
+      rider_commission_mode: data.rider_commission_mode || 'percent',
+      rider_commission_percent: data.rider_commission_percent !== undefined ? data.rider_commission_percent : 4,
+      rider_commission_min: data.rider_commission_min !== undefined ? data.rider_commission_min : 10,
+      rider_commission_max: data.rider_commission_max !== undefined ? data.rider_commission_max : 20,
+      rider_flat_amount: data.rider_flat_amount !== undefined ? data.rider_flat_amount : 12,
+      rider_distance_addon_3_6km: data.rider_distance_addon_3_6km !== undefined ? data.rider_distance_addon_3_6km : 3,
+      rider_distance_addon_6_8km: data.rider_distance_addon_6_8km !== undefined ? data.rider_distance_addon_6_8km : 6,
+      min_order_amount: data.min_order_amount !== undefined ? data.min_order_amount : 199,
+      small_order_fee: data.small_order_fee !== undefined ? data.small_order_fee : 35,
+      delivery_fee_per_km_enabled: data.delivery_fee_per_km_enabled === true,
+      delivery_fee_per_km: data.delivery_fee_per_km !== undefined ? data.delivery_fee_per_km : 0,
+      base_delivery_distance_km: data.base_delivery_distance_km !== undefined ? data.base_delivery_distance_km : 3
+    });
   };
 
   const handleAutoDeployOTA = async () => {
@@ -154,7 +168,27 @@ const Settings = ({ profile, setProfile }) => {
     setSaving(true);
     try {
       await db.branding.update(branding);
-      showToast('Settings saved successfully.', 'success');
+      try {
+        await supabase.from('admin_audit_logs').insert([{
+          action: 'UPDATE_COMMISSIONS_SETTINGS',
+          entity_type: 'settings',
+          entity_id: 'branding',
+          details: {
+            updated_at: new Date().toISOString(),
+            shop_commission_percent: branding.shop_commission_percent ?? 7,
+            shop_commission_cap: branding.shop_commission_cap ?? 20,
+            rider_commission_mode: branding.rider_commission_mode ?? 'percent',
+            rider_commission_percent: branding.rider_commission_percent ?? 4,
+            rider_flat_amount: branding.rider_flat_amount ?? 12,
+            min_order_amount: branding.min_order_amount ?? 199,
+            small_order_fee: branding.small_order_fee ?? 35,
+            delivery_fee: branding.delivery_fee ?? 20
+          },
+          performed_by: profile?.name || 'Super Admin',
+          performed_at: new Date().toISOString()
+        }]);
+      } catch (_) {}
+      showToast('Settings saved successfully and synced with DB.', 'success');
     } catch (err) {
       showToast('Failed to save settings: ' + err.message, 'error');
     } finally {
@@ -485,10 +519,81 @@ const Settings = ({ profile, setProfile }) => {
               placeholder="e.g. 15"
             />
           </div>
+
+          <div className="form-group">
+            <label>Minimum Order Value (₹)</label>
+            <input 
+              type="number" 
+              min="0"
+              step="10"
+              value={branding.min_order_amount ?? 199} 
+              onChange={e => setBranding(prev => ({ ...prev, min_order_amount: parseFloat(e.target.value) || 0 }))}
+              className="clean-input"
+              placeholder="Default: 199"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Small Order Delivery Fee (₹)</label>
+            <input 
+              type="number" 
+              min="0"
+              step="5"
+              value={branding.small_order_fee ?? 35} 
+              onChange={e => setBranding(prev => ({ ...prev, small_order_fee: parseFloat(e.target.value) || 0 }))}
+              className="clean-input"
+              placeholder="Default: 35 (charged if < Min Order)"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Base Free Distance (KM)</label>
+            <input 
+              type="number" 
+              min="1"
+              step="0.5"
+              value={branding.base_delivery_distance_km ?? 3} 
+              onChange={e => setBranding(prev => ({ ...prev, base_delivery_distance_km: parseFloat(e.target.value) || 3 }))}
+              className="clean-input"
+              placeholder="e.g. 3"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Per-KM Delivery Charge (₹/km)</label>
+            <input 
+              type="number" 
+              min="0"
+              step="1"
+              value={branding.delivery_fee_per_km ?? 0} 
+              onChange={e => setBranding(prev => ({ ...prev, delivery_fee_per_km: parseFloat(e.target.value) || 0 }))}
+              className="clean-input"
+              placeholder="e.g. 10 (beyond base distance)"
+            />
+          </div>
         </div>
 
         {/* Toggles */}
         <div className="toggles-grid">
+          <div className="clean-toggle-box">
+            <div>
+              <span className="toggle-label">📏 Per-KM Delivery Distance Surcharge</span>
+              <span className="toggle-subtext">
+                {branding.delivery_fee_per_km_enabled === true 
+                  ? `Active (+₹${branding.delivery_fee_per_km || 0}/km beyond ${branding.base_delivery_distance_km || 3}km)` 
+                  : 'Disabled (Flat delivery fee across all radii)'}
+              </span>
+            </div>
+            <label className="toggle-switch">
+              <input 
+                type="checkbox" 
+                checked={branding.delivery_fee_per_km_enabled === true} 
+                onChange={e => setBranding(prev => ({ ...prev, delivery_fee_per_km_enabled: e.target.checked }))} 
+              />
+              <span className="slider round"></span>
+            </label>
+          </div>
+
           <div className="clean-toggle-box">
             <div>
               <span className="toggle-label">⚡ Surge Pricing (Bad Weather / High Demand)</span>
@@ -560,6 +665,172 @@ const Settings = ({ profile, setProfile }) => {
         </div>
       </div>
 
+      {/* 5. Commissions & Payouts Engine */}
+      <div className="settings-card">
+        <div className="card-title-row">
+          <div className="card-title-icon"><IndianRupee size={18} /></div>
+          <h3>Commissions & Payouts Engine</h3>
+          <span style={{ fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: '6px', fontWeight: '800' }}>
+            Snapshot Engine
+          </span>
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--color-text-light)', marginBottom: '14px' }}>
+          Configure partner commissions and distance tiers. When an order commission is calculated, these settings are snapshot permanently so historical orders remain unchanged.
+        </p>
+
+        {/* Shopkeeper Commission Section */}
+        <div style={{ marginBottom: '18px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)' }}>
+          <h4 style={{ margin: '0 0 10px', fontSize: '14.5px', fontWeight: '800', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Store size={16} color="#15803d" /> Shopkeeper Commission Formula
+          </h4>
+          <div className="form-grid-3">
+            <div className="form-group">
+              <label>Shop Commission (%)</label>
+              <input 
+                type="number" 
+                min="0"
+                max="100"
+                step="0.5"
+                value={branding.shop_commission_percent ?? 7} 
+                onChange={e => setBranding(prev => ({ ...prev, shop_commission_percent: parseFloat(e.target.value) || 0 }))}
+                className="clean-input"
+                placeholder="Default: 7%"
+              />
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '3px' }}>
+                Applied to item basket subtotal
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label>Commission Cap (₹ per order)</label>
+              <input 
+                type="number" 
+                min="0"
+                step="1"
+                value={branding.shop_commission_cap ?? 20} 
+                onChange={e => setBranding(prev => ({ ...prev, shop_commission_cap: parseFloat(e.target.value) || 0 }))}
+                className="clean-input"
+                placeholder="20 (Set 0 for No Cap)"
+              />
+              <span style={{ fontSize: '11px', color: 'var(--color-text-light)', marginTop: '3px' }}>
+                Max payout cap (0 = uncapped)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Rider Commission Section */}
+        <div>
+          <h4 style={{ margin: '0 0 10px', fontSize: '14.5px', fontWeight: '800', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Bike size={16} color="#0284c7" /> Rider Delivery Commission & Distance Tiers
+          </h4>
+
+          <div className="form-grid-3">
+            <div className="form-group">
+              <label>Calculation Mode</label>
+              <select 
+                value={branding.rider_commission_mode || 'percent'} 
+                onChange={e => setBranding(prev => ({ ...prev, rider_commission_mode: e.target.value }))}
+                className="clean-input"
+                style={{ fontWeight: '700' }}
+              >
+                <option value="percent">Percentage Mode (4% Min ₹10 / Max ₹20)</option>
+                <option value="flat">Flat Amount Mode (₹12 per order)</option>
+              </select>
+            </div>
+
+            {branding.rider_commission_mode === 'flat' ? (
+              <div className="form-group">
+                <label>Flat Amount (₹)</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  step="1"
+                  value={branding.rider_flat_amount ?? 12} 
+                  onChange={e => setBranding(prev => ({ ...prev, rider_flat_amount: parseFloat(e.target.value) || 0 }))}
+                  className="clean-input"
+                  placeholder="Default: 12"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label>Rider Commission (%)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={branding.rider_commission_percent ?? 4} 
+                    onChange={e => setBranding(prev => ({ ...prev, rider_commission_percent: parseFloat(e.target.value) || 0 }))}
+                    className="clean-input"
+                    placeholder="Default: 4%"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Rider Minimum Payout (₹)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    step="1"
+                    value={branding.rider_commission_min ?? 10} 
+                    onChange={e => setBranding(prev => ({ ...prev, rider_commission_min: parseFloat(e.target.value) || 0 }))}
+                    className="clean-input"
+                    placeholder="Default: 10"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Rider Maximum Payout (₹)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    step="1"
+                    value={branding.rider_commission_max ?? 20} 
+                    onChange={e => setBranding(prev => ({ ...prev, rider_commission_max: parseFloat(e.target.value) || 0 }))}
+                    className="clean-input"
+                    placeholder="Default: 20"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="form-group">
+              <label>Distance Add-on: 3 – 6 km (+₹)</label>
+              <input 
+                type="number" 
+                min="0"
+                step="1"
+                value={branding.rider_distance_addon_3_6km ?? 3} 
+                onChange={e => setBranding(prev => ({ ...prev, rider_distance_addon_3_6km: parseFloat(e.target.value) || 0 }))}
+                className="clean-input"
+                placeholder="Default: +3"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Distance Add-on: 6 – 8 km (+₹)</label>
+              <input 
+                type="number" 
+                min="0"
+                step="1"
+                value={branding.rider_distance_addon_6_8km ?? 6} 
+                onChange={e => setBranding(prev => ({ ...prev, rider_distance_addon_6_8km: parseFloat(e.target.value) || 0 }))}
+                className="clean-input"
+                placeholder="Default: +6"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="form-actions" style={{ marginTop: '16px' }}>
+          <button type="button" onClick={handleSaveBranding} disabled={saving} className="save-btn">
+            <span>{saving ? 'Saving...' : 'Save Commission & Payout Rules'}</span>
+          </button>
+        </div>
+      </div>
+
       {/* 5. Shopkeeper & Rider Operations */}
       <div className="settings-card">
         <div className="card-title-row">
@@ -567,7 +838,7 @@ const Settings = ({ profile, setProfile }) => {
           <h3>Partner Fleet & SLA Controls</h3>
         </div>
 
-        <div className="form-grid-3">
+        <div className="form-grid-2">
           <div className="form-group">
             <label>Shop Acceptance Timeout (Mins)</label>
             <input 
@@ -576,39 +847,6 @@ const Settings = ({ profile, setProfile }) => {
               max="15"
               value={branding.shopkeeper_sla_mins ?? 3} 
               onChange={e => setBranding(prev => ({ ...prev, shopkeeper_sla_mins: parseInt(e.target.value) || 3 }))}
-              className="clean-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Shop Packing Commission (₹)</label>
-            <input 
-              type="number" 
-              min="0"
-              value={branding.shopkeeper_commission_fixed ?? 10} 
-              onChange={e => setBranding(prev => ({ ...prev, shopkeeper_commission_fixed: parseFloat(e.target.value) || 0 }))}
-              className="clean-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Rider Base Payout (₹)</label>
-            <input 
-              type="number" 
-              min="0"
-              value={branding.rider_base_payout ?? 25} 
-              onChange={e => setBranding(prev => ({ ...prev, rider_base_payout: parseFloat(e.target.value) || 0 }))}
-              className="clean-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Rider Distance Bonus (₹/km)</label>
-            <input 
-              type="number" 
-              min="0"
-              value={branding.rider_per_km_bonus ?? 5} 
-              onChange={e => setBranding(prev => ({ ...prev, rider_per_km_bonus: parseFloat(e.target.value) || 0 }))}
               className="clean-input"
             />
           </div>

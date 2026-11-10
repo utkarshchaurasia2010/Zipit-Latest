@@ -549,8 +549,14 @@ export default function PartnerRegistrationPage({ navigate }) {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="partner-submit-btn"
+              disabled={loading || !formData.agreed_terms}
+              className={`partner-submit-btn ${!formData.agreed_terms ? 'disabled-faded' : ''}`}
+              style={{
+                opacity: (!formData.agreed_terms || loading) ? 0.38 : 1,
+                cursor: (!formData.agreed_terms || loading) ? 'not-allowed' : 'pointer',
+                filter: (!formData.agreed_terms) ? 'grayscale(40%)' : 'none',
+                transition: 'all 0.25s ease'
+              }}
             >
               {loading ? 'Submitting Application...' : (
                 <>
