@@ -12,17 +12,58 @@ import {
   Navigation, 
   Bike, 
   Clock, 
-  ShieldCheck, 
   RotateCcw, 
   Info, 
   Crosshair,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Search,
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { db, supabase } from '../services/db';
 import { isPointInPolygon, calculatePolygonCenter, getDistanceMeters, rankRidersForOrder } from '../utils/geoZones';
 import { useToast } from '../context/ToastContext';
 import './DeliveryZonesPage.css';
+
+// Official Google Maps API Key used in Quickly Customer App & Rider App
+export const DEFAULT_GOOGLE_MAPS_KEY = 'AIzaSyA_pq9MB8GYWB6b03uAL4Ej7Cu6CatewmM';
+
+export const getStoredGoogleMapsKey = () => {
+  return localStorage.getItem('zipit_google_maps_key') || 
+    import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 
+    DEFAULT_GOOGLE_MAPS_KEY;
+};
+
+// Dynamically load Google Maps Places SDK
+export const loadGoogleMapsSDK = (key) => {
+  const activeKey = key || getStoredGoogleMapsKey();
+  if (!activeKey) return Promise.resolve(false);
+  if (typeof window !== 'undefined' && window.google?.maps?.places) {
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined') return resolve(false);
+    const existing = document.getElementById('zipit-admin-gmaps-script');
+    if (existing) {
+      if (window.google?.maps?.places) return resolve(true);
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'zipit-admin-gmaps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${activeKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      console.warn('Google Maps SDK load error');
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+};
 
 // Fix Leaflet default icon paths in bundled Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -45,6 +86,7 @@ const PRESET_COLORS = [
 export default function DeliveryZonesPage() {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
   const polygonsLayerGroupRef = useRef(null);
   const drawLayerGroupRef = useRef(null);
   const testMarkerRef = useRef(null);
@@ -55,6 +97,9 @@ export default function DeliveryZonesPage() {
   const [storeCoords, setStoreCoords] = useState([25.6744, 83.4985]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Map view style: 'google-streets' | 'google-hybrid'
+  const [mapStyle, setMapStyle] = useState('google-hybrid'); // Default to high-detail satellite view
 
   // Drawing mode state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -79,10 +124,17 @@ export default function DeliveryZonesPage() {
   const [isTestingLocation, setIsTestingLocation] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
+  // Landmark / Address Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef(null);
+
   const { showToast } = useToast();
 
-  // Load zones, store coordinates, and rider statuses
+  // Load Google Maps SDK, zones, store coordinates, and rider statuses
   useEffect(() => {
+    loadGoogleMapsSDK();
     loadData();
   }, []);
 
@@ -113,7 +165,7 @@ export default function DeliveryZonesPage() {
     }
   };
 
-  // Initialize Leaflet map
+  // Initialize Leaflet map with Official Google Maps Tiles
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -121,14 +173,24 @@ export default function DeliveryZonesPage() {
       const map = L.map(mapContainerRef.current, {
         center: storeCoords,
         zoom: 14,
-        zoomControl: true
+        zoomControl: true,
+        attributionControl: false
       });
 
-      // CartoDB Voyager or OSM clean tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-        maxZoom: 19
+      // Official Google Maps Tile Layer with multi-subdomain parallelism
+      const initialTileUrl = mapStyle === 'google-hybrid'
+        ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+        : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+
+      const tileLayer = L.tileLayer(initialTileUrl, {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
+        keepBuffer: 4
       }).addTo(map);
+
+      tileLayerRef.current = tileLayer;
 
       // Layer groups for dynamic rendering
       polygonsLayerGroupRef.current = L.layerGroup().addTo(map);
@@ -151,9 +213,112 @@ export default function DeliveryZonesPage() {
     }
 
     return () => {
-      // Cleanup on unmount handled by ref
+      // Map cleanup on unmount handled by ref
     };
   }, [storeCoords]);
+
+  // Switch between Google Hybrid (Satellite + Roads) and Google Streets without reloading
+  const handleToggleMapStyle = () => {
+    const nextStyle = mapStyle === 'google-streets' ? 'google-hybrid' : 'google-streets';
+    setMapStyle(nextStyle);
+    if (tileLayerRef.current) {
+      const nextUrl = nextStyle === 'google-hybrid'
+        ? 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+        : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+      tileLayerRef.current.setUrl(nextUrl);
+    }
+  };
+
+  // Google Places Autocomplete search
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (!query || query.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      const activeKey = getStoredGoogleMapsKey();
+      try {
+        if (window.google?.maps?.places?.AutocompleteService) {
+          const service = new window.google.maps.places.AutocompleteService();
+          service.getPlacePredictions({
+            input: query,
+            componentRestrictions: { country: 'in' },
+            locationBias: new window.google.maps.Circle({
+              center: { lat: storeCoords[0], lng: storeCoords[1] },
+              radius: 30000
+            })
+          }, (predictions, status) => {
+            setIsSearching(false);
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+              setSearchResults(predictions.map(p => ({
+                description: p.description,
+                place_id: p.place_id,
+                main_text: p.structured_formatting?.main_text || p.description
+              })));
+            } else {
+              setSearchResults([]);
+            }
+          });
+        } else {
+          // Fallback REST endpoint
+          const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${activeKey}`);
+          if (res.ok) {
+            const data = await res.json();
+            const results = (data.results || []).slice(0, 5).map(r => ({
+              description: r.formatted_address,
+              place_id: r.place_id,
+              main_text: r.address_components?.[0]?.long_name || r.formatted_address,
+              location: r.geometry?.location
+            }));
+            setSearchResults(results);
+          }
+          setIsSearching(false);
+        }
+      } catch (err) {
+        console.warn('Search place error:', err);
+        setIsSearching(false);
+      }
+    }, 350);
+  };
+
+  const handleSelectPlace = (place) => {
+    setSearchQuery(place.main_text || place.description);
+    setSearchResults([]);
+    const activeKey = getStoredGoogleMapsKey();
+
+    if (place.location && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([place.location.lat, place.location.lng], 16, { animate: true });
+      return;
+    }
+
+    if (window.google?.maps?.places?.PlacesService && mapInstanceRef.current) {
+      const dummy = document.createElement('div');
+      const service = new window.google.maps.places.PlacesService(dummy);
+      service.getDetails({ placeId: place.place_id, fields: ['geometry'] }, (res, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && res?.geometry?.location) {
+          mapInstanceRef.current.flyTo([res.geometry.location.lat(), res.geometry.location.lng()], 16, { animate: true });
+        }
+      });
+    } else {
+      fetch(`https://maps.googleapis.com/maps/api/geocode/json?place_id=${place.place_id}&key=${activeKey}`)
+        .then(r => r.json())
+        .then(d => {
+          const loc = d.results?.[0]?.geometry?.location;
+          if (loc && mapInstanceRef.current) {
+            mapInstanceRef.current.flyTo([loc.lat, loc.lng], 16, { animate: true });
+          }
+        })
+        .catch(() => {});
+    }
+  };
 
   // Handle map clicks for drawing and testing
   useEffect(() => {
@@ -194,7 +359,7 @@ export default function DeliveryZonesPage() {
         weight: zone.is_active ? 2.5 : 1.5,
         dashArray: zone.is_active ? null : '6, 6',
         fillColor: zone.color || '#0c831f',
-        fillOpacity: zone.is_active ? 0.22 : 0.08
+        fillOpacity: zone.is_active ? 0.25 : 0.08
       }).addTo(layerGroup);
 
       const center = calculatePolygonCenter(zone.polygon);
@@ -217,7 +382,7 @@ export default function DeliveryZonesPage() {
       // Centroid Label Badge
       const labelIcon = L.divIcon({
         className: 'zone-centroid-label',
-        html: `<span style="border-color: ${zone.color}; color: ${zone.color};">${zone.name}</span>`,
+        html: `<span style="border-color: ${zone.color}; color: ${zone.color}; background: rgba(0,0,0,0.7);">${zone.name}</span>`,
         iconSize: [120, 24],
         iconAnchor: [60, 12]
       });
@@ -249,15 +414,15 @@ export default function DeliveryZonesPage() {
     if (drawPoints.length > 2) {
       L.polygon(drawPoints, {
         color: zoneForm.color || '#0c831f',
-        weight: 2,
+        weight: 2.5,
         dashArray: '5, 5',
         fillColor: zoneForm.color || '#0c831f',
-        fillOpacity: 0.15
+        fillOpacity: 0.22
       }).addTo(layerGroup);
     } else if (drawPoints.length === 2) {
       L.polyline(drawPoints, {
         color: zoneForm.color || '#0c831f',
-        weight: 2,
+        weight: 2.5,
         dashArray: '5, 5'
       }).addTo(layerGroup);
     }
@@ -465,7 +630,7 @@ export default function DeliveryZonesPage() {
         <div>
           <div className="zones-title-row">
             <Layers className="zones-header-icon" />
-            <h2>Delivery Zones & Polygon Logic</h2>
+            <h2>Delivery Zones &amp; Polygon Logic</h2>
             <span className="zones-count-pill">{zones.length} Zones Active</span>
           </div>
           <p className="zones-subtitle">
@@ -476,6 +641,17 @@ export default function DeliveryZonesPage() {
         <div className="zones-header-actions">
           {!isDrawing ? (
             <>
+              {/* Satellite / Streets View Switcher */}
+              <button 
+                type="button" 
+                className={`btn-action style-toggle-btn ${mapStyle === 'google-hybrid' ? 'satellite-active' : ''}`}
+                onClick={handleToggleMapStyle}
+                title="Toggle Google Satellite / Street View"
+              >
+                <Eye size={16} />
+                <span>{mapStyle === 'google-hybrid' ? 'Satellite View' : 'Street Map'}</span>
+              </button>
+
               <button 
                 type="button" 
                 className={`btn-action test-toggle-btn ${isTestingLocation ? 'active' : ''}`}
@@ -503,6 +679,14 @@ export default function DeliveryZonesPage() {
               <span className="drawing-status-badge">
                 <Edit3 size={14} /> Points: {drawPoints.length}
               </span>
+              <button 
+                type="button" 
+                className={`btn-draw-tool ${mapStyle === 'google-hybrid' ? 'satellite-active' : ''}`}
+                onClick={handleToggleMapStyle}
+                title="Toggle Satellite while drawing"
+              >
+                <Eye size={13} /> {mapStyle === 'google-hybrid' ? 'Satellite' : 'Streets'}
+              </button>
               <button 
                 type="button" 
                 className="btn-draw-tool" 
@@ -562,13 +746,57 @@ export default function DeliveryZonesPage() {
         </div>
       )}
 
-      {/* Main Map Box */}
+      {/* Main Map Box with Floating Controls */}
       <div className="zones-map-card">
         <div ref={mapContainerRef} className="zones-leaflet-map" />
 
+        {/* Floating Google Places Landmark Search */}
+        <div className="map-search-overlay">
+          <div className="map-search-input-wrap">
+            <Search size={16} className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="Search area, landmark or street (e.g. Jangipur, Lanka)..." 
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+            {isSearching && <Loader2 size={16} className="search-spinner animate-spin" />}
+            {searchQuery && !isSearching && (
+              <X size={16} className="search-clear" onClick={() => { setSearchQuery(''); setSearchResults([]); }} />
+            )}
+          </div>
+
+          {searchResults.length > 0 && (
+            <div className="search-results-dropdown">
+              {searchResults.map((res, i) => (
+                <div key={i} className="search-result-row" onClick={() => handleSelectPlace(res)}>
+                  <MapPin size={14} className="result-icon" />
+                  <div>
+                    <strong>{res.main_text}</strong>
+                    <span>{res.description}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Floating View Switcher on Map */}
+        <div className="map-controls-floating">
+          <button 
+            type="button" 
+            className={`map-floating-style-btn ${mapStyle === 'google-hybrid' ? 'active-sat' : ''}`}
+            onClick={handleToggleMapStyle}
+            title={mapStyle === 'google-hybrid' ? 'Switch to Street Map' : 'Switch to High-Res Google Satellite View'}
+          >
+            <Layers size={16} />
+            <span>{mapStyle === 'google-hybrid' ? '🛰️ Satellite' : '🗺️ Streets'}</span>
+          </button>
+        </div>
+
         {/* Floating Map Legend */}
         <div className="map-legend-overlay">
-          <h4>Map Legend</h4>
+          <h4>Google Maps Layers</h4>
           <div className="legend-item">
             <span className="legend-icon-hub"></span>
             <span>Quickly Dark Store / Hub</span>
@@ -579,12 +807,12 @@ export default function DeliveryZonesPage() {
           </div>
           <div className="legend-item">
             <span className="legend-icon-zone"></span>
-            <span>Polygon Delivery Boundary</span>
+            <span>Polygon Boundary</span>
           </div>
         </div>
       </div>
 
-      {/* Zones List Grid */}
+      {/* Zones List Section */}
       <div className="zones-list-section">
         <div className="section-title-bar">
           <h3>Configured Delivery Zones ({zones.length})</h3>
@@ -595,7 +823,7 @@ export default function DeliveryZonesPage() {
           <div className="zones-empty-card">
             <Layers size={36} color="#94a3b8" />
             <h4>No Delivery Zones Created Yet</h4>
-            <p>Click <strong>Draw New Zone</strong> above, click at least 3 points on the map to outline your service boundary, and save your first polygon.</p>
+            <p>Click <strong>Draw New Zone</strong> above, click at least 3 points on the satellite map to outline your service boundary, and save your first polygon.</p>
           </div>
         ) : (
           <div className="zones-cards-grid">

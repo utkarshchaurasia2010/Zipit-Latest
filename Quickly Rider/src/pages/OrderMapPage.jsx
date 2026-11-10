@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, db } from '../services/db';
-import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Navigation, CheckCircle2, Phone, PackageOpen, QrCode, X, KeyRound, AlertTriangle, RefreshCw, Layers } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import SlideToAccept from '../components/SlideToAccept';
@@ -171,6 +171,7 @@ export default function OrderMapPage() {
   const [otpError, setOtpError] = useState('');
   const [sliderResetKey, setSliderResetKey] = useState(0);
   const [routePolyline, setRoutePolyline] = useState(null);
+  const [mapStyle, setMapStyle] = useState('streets'); // 'streets' | 'satellite'
   const watchIdRef = useRef(null);
   const mapRef = useRef(null);
 
@@ -545,9 +546,12 @@ export default function OrderMapPage() {
             <MapResizer />
             <MapBoundsFitter positions={[myLocation, destLocation, ...(routePolyline || [])]} />
 
-            {/* Primary Google Maps Roadmap Tiles */}
+            {/* Google Maps Roadmap / Satellite Tiles */}
             <TileLayer 
-              url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+              key={mapStyle}
+              url={mapStyle === 'satellite' 
+                ? "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
+                : "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"} 
               subdomains={['0', '1', '2', '3']}
               maxZoom={20} 
             />
@@ -574,6 +578,36 @@ export default function OrderMapPage() {
           </MapContainer>
         </MapErrorBoundary>
         
+        {/* Satellite View Switcher Button */}
+        <button 
+          type="button"
+          onClick={() => setMapStyle(mapStyle === 'streets' ? 'satellite' : 'streets')}
+          style={{ 
+            position: 'absolute', 
+            bottom: '86px', 
+            right: '16px', 
+            zIndex: 1000, 
+            background: 'var(--color-surface)', 
+            width: '52px',
+            height: '52px', 
+            borderRadius: '50%', 
+            border: mapStyle === 'satellite' ? '2px solid #2563eb' : 'none', 
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)', 
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: mapStyle === 'satellite' ? '#2563eb' : 'var(--color-text)',
+            gap: '2px',
+            transition: 'all 0.15s ease'
+          }}
+          title={mapStyle === 'streets' ? 'Switch to Satellite View' : 'Switch to Street Map'}
+        >
+          <Layers size={20} />
+          <span style={{ fontSize: '8.5px', fontWeight: 800 }}>{mapStyle === 'satellite' ? 'SAT' : 'MAP'}</span>
+        </button>
+
         {/* Recenter Button */}
         <button 
           onClick={() => {
