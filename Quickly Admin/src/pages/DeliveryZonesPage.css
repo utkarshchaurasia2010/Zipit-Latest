@@ -905,33 +905,217 @@ body[data-theme="dark"] .map-legend-overlay {
   cursor: pointer;
 }
 
-/* Rider select pills */
+/* Assigned Priority Riders UI */
+.riders-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.riders-header-row label {
+  margin-bottom: 0 !important;
+}
+
+.riders-count-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--color-surface-muted, #f1f5f9);
+  color: var(--color-text-light);
+  border: 1px solid var(--color-border);
+}
+
 .riders-select-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.rider-select-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-background);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.rider-select-card:hover {
+  border-color: #0c831f;
+  background: rgba(12, 131, 31, 0.03);
+}
+
+.rider-select-card.selected {
+  border-color: #0c831f;
+  background: rgba(12, 131, 31, 0.08);
+}
+
+.rider-card-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rider-card-checkbox input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #0c831f;
+  cursor: pointer;
+  margin: 0;
+}
+
+.rider-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rider-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rider-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.rider-badge-code {
+  font-size: 10.5px;
+  font-weight: 800;
+  font-family: monospace;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.rider-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--color-text-light);
+  flex-wrap: wrap;
+}
+
+.rider-chip-vehicle,
+.rider-chip-phone {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rider-status-dot-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.rider-status-dot-wrap .rider-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.rider-status-dot-wrap.online {
+  color: #059669;
+}
+
+.rider-status-dot-wrap.online .rider-status-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.rider-status-dot-wrap.offline {
+  color: #94a3b8;
+}
+
+.rider-status-dot-wrap.offline .rider-status-dot {
+  background: #94a3b8;
+}
+
+.no-riders-found {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+/* Zone Card Assigned Riders Row */
+.zone-assigned-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  background: var(--color-background);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.zone-assigned-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-text-light);
+  letter-spacing: 0.5px;
+}
+
+.zone-assigned-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 120px;
-  overflow-y: auto;
-  padding: 4px;
 }
 
-.rider-select-pill {
+.zone-assigned-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 2px 8px;
   border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-muted, #f8fafc);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  background: rgba(12, 131, 31, 0.1);
+  color: #0c831f;
+  font-size: 11.5px;
+  font-weight: 700;
 }
 
-.rider-select-pill.selected {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #0c831f;
+.status-mini-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-mini-dot.online {
+  background: #10b981;
+}
+
+.status-mini-dot.offline {
+  background: #94a3b8;
 }
 
 .checkbox-label {

@@ -94,6 +94,7 @@ export default function DeliveryZonesPage() {
 
   const [zones, setZones] = useState([]);
   const [riders, setRiders] = useState([]);
+  const [registeredRiders, setRegisteredRiders] = useState([]);
   const [storeCoords, setStoreCoords] = useState([25.6744, 83.4985]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -132,10 +133,25 @@ export default function DeliveryZonesPage() {
 
   const { showToast } = useToast();
 
-  // Load Google Maps SDK, zones, store coordinates, and rider statuses
+  // Load Google Maps SDK, zones, store coordinates, and verified registered riders
   useEffect(() => {
     loadGoogleMapsSDK();
     loadData();
+
+    // Realtime synchronization when riders change status or register
+    const channel = supabase
+      .channel('delivery-zones-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'access_codes' }, () => {
+        loadData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_status' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadData = async () => {
@@ -152,11 +168,46 @@ export default function DeliveryZonesPage() {
         }
       }
 
-      // 2. Load online riders
-      const { data: riderRows } = await supabase.from('rider_status').select('*');
-      if (riderRows) {
-        setRiders(riderRows);
-      }
+      // 2. Load strictly verified registered delivery riders from access_codes
+      const { data: partnerCodes, error: codesErr } = await supabase
+        .from('access_codes')
+        .select('*')
+        .eq('role', 'rider')
+        .order('name', { ascending: true });
+
+      if (codesErr) console.warn('Could not load access_codes:', codesErr);
+
+      const isApplication = (item) => {
+        return (item.code && item.code.startsWith('APP-')) || 
+               (item.label && (item.label.includes('Application') || item.label.includes('Pending')));
+      };
+
+      // Filter only real, approved delivery riders (exclude shopkeepers and pending applications)
+      const verifiedRiders = (partnerCodes || []).filter(c => !isApplication(c) && c.role === 'rider');
+
+      // 3. Load live rider statuses (GPS & online state)
+      const { data: statusRows } = await supabase.from('rider_status').select('*');
+      const statusMap = new Map((statusRows || []).map(s => [s.rider_code, s]));
+
+      // Merge verified riders with their real-time telemetry (strictly excludes fake seed IDs and shopkeepers)
+      const verifiedRidersWithStatus = verifiedRiders.map(vr => {
+        const liveStatus = statusMap.get(vr.code);
+        return {
+          rider_code: vr.code,
+          rider_name: vr.name || vr.code,
+          phone: vr.mobile || '',
+          vehicle_no: vr.vehicle_no || '',
+          is_active_partner: vr.is_active !== false,
+          is_online: liveStatus?.is_online === true,
+          current_lat: liveStatus?.current_lat ?? liveStatus?.lat ?? null,
+          current_lng: liveStatus?.current_lng ?? liveStatus?.lng ?? null,
+          active_order_id: liveStatus?.active_order_id ?? null,
+          last_ping: liveStatus?.last_ping ?? null
+        };
+      });
+
+      setRegisteredRiders(verifiedRiders);
+      setRiders(verifiedRidersWithStatus);
     } catch (err) {
       console.error('Failed to load delivery zones data:', err);
       showToast('Error loading delivery zones', 'error');
@@ -879,6 +930,23 @@ export default function DeliveryZonesPage() {
                     </div>
                   </div>
 
+                  {Array.isArray(zone.assigned_riders) && zone.assigned_riders.length > 0 && (
+                    <div className="zone-assigned-row">
+                      <span className="zone-assigned-title">Priority Riders:</span>
+                      <div className="zone-assigned-tags">
+                        {zone.assigned_riders.map(code => {
+                          const rMatch = riders.find(r => r.rider_code === code);
+                          return (
+                            <span key={code} className="zone-assigned-pill">
+                              <span className={`status-mini-dot ${rMatch?.is_online ? 'online' : 'offline'}`} />
+                              {rMatch?.rider_name || code}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="zone-card-footer">
                     <button 
                       type="button" 
@@ -982,31 +1050,56 @@ export default function DeliveryZonesPage() {
               </div>
 
               <div className="form-group">
-                <label>Assigned Priority Riders (Optional)</label>
-                <p className="form-input-hint">Riders assigned here get dispatch priority even when positioned near the zone border.</p>
+                <div className="riders-header-row">
+                  <label>Assigned Priority Delivery Riders (Optional)</label>
+                  <span className="riders-count-badge">
+                    {riders.length} Registered Rider{riders.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <p className="form-input-hint">
+                  Strictly showing verified delivery riders from database (role: rider). Excludes shopkeepers and unverified accounts.
+                </p>
                 <div className="riders-select-grid">
                   {riders.map(r => {
                     const isSelected = Array.isArray(zoneForm.assigned_riders) && zoneForm.assigned_riders.includes(r.rider_code);
                     return (
-                      <label key={r.rider_code} className={`rider-select-pill ${isSelected ? 'selected' : ''}`}>
-                        <input 
-                          type="checkbox" 
-                          checked={isSelected}
-                          onChange={(e) => {
-                            const cur = zoneForm.assigned_riders || [];
-                            if (e.target.checked) {
-                              setZoneForm({ ...zoneForm, assigned_riders: [...cur, r.rider_code] });
-                            } else {
-                              setZoneForm({ ...zoneForm, assigned_riders: cur.filter(c => c !== r.rider_code) });
-                            }
-                          }}
-                        />
-                        <span>{r.rider_name || r.rider_code}</span>
+                      <label key={r.rider_code} className={`rider-select-card ${isSelected ? 'selected' : ''}`}>
+                        <div className="rider-card-checkbox">
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const cur = zoneForm.assigned_riders || [];
+                              if (e.target.checked) {
+                                setZoneForm({ ...zoneForm, assigned_riders: [...cur, r.rider_code] });
+                              } else {
+                                setZoneForm({ ...zoneForm, assigned_riders: cur.filter(c => c !== r.rider_code) });
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="rider-card-info">
+                          <div className="rider-card-name-row">
+                            <span className="rider-card-name">{r.rider_name || r.rider_code}</span>
+                            <span className="rider-badge-code">{r.rider_code}</span>
+                          </div>
+                          <div className="rider-card-sub">
+                            {r.vehicle_no && <span className="rider-chip-vehicle">{r.vehicle_no}</span>}
+                            {r.phone && <span className="rider-chip-phone">{r.phone}</span>}
+                            <span className={`rider-status-dot-wrap ${r.is_online ? 'online' : 'offline'}`}>
+                              <span className="rider-status-dot"></span>
+                              <span className="rider-status-text">{r.is_online ? 'Online' : 'Offline'}</span>
+                            </span>
+                          </div>
+                        </div>
                       </label>
                     );
                   })}
                   {riders.length === 0 && (
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>No riders registered in system yet.</span>
+                    <div className="no-riders-found">
+                      <AlertCircle size={15} />
+                      <span>No registered delivery riders found in database. Create or approve rider accounts under Partner Codes first.</span>
+                    </div>
                   )}
                 </div>
               </div>
